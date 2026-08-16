@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum StaffStatus {
+  ACTIVE
+  RETIRED
+}
+
+enum ClockType {
+  IN
+  OUT
+}
+
+enum WorkType {
+  BAND
+  SPOT
+}
+
+enum PaymentMethod {
+  FIXED // 固定支払
+  REQUEST // 申請支払
+}
+
+enum TransferRequestStatus {
+  REQUESTING
+  PAID
+}
+
+model Staff {
+  id           String      @id @default(cuid())
+  employeeCode String      @unique
+  name         String
+  email        String
+  status       StaffStatus @default(ACTIVE)
+
+  // 個人情報(item 4)
+  birthDate    DateTime?
+  phoneNumber  String?
+  address      String?
+
+  // 報酬振込先口座(item 4)
+  bankName          String?
+  bankBranchName    String?
+  bankAccountNumber String?
+  bankAccountHolder String?
+
+  // インボイス登録番号(任意, item 4)
+  invoiceRegistrationNumber String?
+
+  // 支払方法(item 6)
+  paymentMethod PaymentMethod @default(REQUEST)
+
+  // 固定支払スケジュール(item 7)。paymentMethod=FIXED の場合のみ使用。
+  // 日付は 1-31、月末は 0 で表す。
+  fixedClosingDay         Int?
+  fixedPaymentMonthOffset Int? // 0 = 当月, 1 = 翌月, ...
+  fixedPaymentDay         Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shifts                Shift[]
+  clockRecords          ClockRecord[]
+  shiftHistories        ShiftHistory[]
+  monthlyEarningTargets MonthlyEarningTarget[]
+  transferRequests      TransferRequest[]
+  clockRecordHistories  ClockRecordHistory[]
+}
+
+model MonthlyEarningTarget {
+  id           String   @id @default(cuid())
+  staffId      String
+  staff        Staff    @relation(fields: [staffId], references: [id])
+  yearMonth    String // "YYYY-MM" (JST)
+  targetAmount Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([staffId, yearMonth])
+}
+
+model Shift {
+  id         String   @id @default(cuid())
+  staffId    String
+  staff      Staff    @relation(fields: [staffId], references: [id])
+  workType   WorkType
+  carrier    String
+  storeName  String
+  startTime  DateTime
+  endTime    DateTime
+  unitAmount Int? // SPOT稼働の1稼働分の単価。BAND稼働では未使用(null)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  histories    ShiftHistory[]
+  clockRecords ClockRecord[]
+  noShowAlert  NoShowAlert?
+
+  @@index([staffId, startTime])
+}
+
+model ShiftHistory {
+  id         String   @id @default(cuid())
+  shiftId    String?
+  shift      Shift?   @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  staffId    String
+  staff      Staff    @relation(fields: [staffId], references: [id])
+  changeType String
+  before     Json?
+  after      Json
+  changedAt  DateTime @default(now())
+
+  @@index([shiftId])
+  @@index([staffId])
+}
+
+model ClockRecord {
+  id            String    @id @default(cuid())
+  staffId       String
+  staff         Staff     @relation(fields: [staffId], references: [id])
+  type          ClockType
+  timestamp     DateTime
+  latitude      Float?
+  longitude     Float?
+  storeName     String?
+  shiftId       String?
+  shift         Shift?    @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  editedByAdmin Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  histories ClockRecordHistory[]
+
+  @@index([staffId, timestamp])
+}
+
+// 管理者による打刻記録の手動修正・削除の履歴(item 60)。
+// このアプリには個別の管理者アカウントがなく共通パスワードのみのため、
+// 「操作した管理者」は自由記述の operatorName で記録する。
+model ClockRecordHistory {
+  id            String       @id @default(cuid())
+  clockRecordId String?
+  clockRecord   ClockRecord? @relation(fields: [clockRecordId], references: [id], onDelete: SetNull)
+  staffId       String
+  staff         Staff        @relation(fields: [staffId], references: [id])
+  changeType    String // UPDATE | DELETE
+  before        Json?
+  after         Json?
+  operatorName  String?
+  changedAt     DateTime     @default(now())
+
+  @@index([clockRecordId])
+  @@index([staffId])
+}
+
+// スタッフからの振込申請(item 44-52)。
+// 「確定した報酬額」と「実際に振り込まれた金額」は別概念として、
+// TransferRequest はあくまで申請〜振込済みの記録のみを保持する。
+model TransferRequest {
+  id                String                @id @default(cuid())
+  staffId           String
+  staff             Staff                 @relation(fields: [staffId], references: [id])
+  amount            Int
+  desiredPaymentDate DateTime
+  status            TransferRequestStatus @default(REQUESTING)
+  requestedAt       DateTime              @default(now())
+  paidAt            DateTime?
+  paidAmount        Int?
+  // 操作した管理者(自由記述。個別管理者アカウントがないため)
+  paidByOperatorName String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  @@index([staffId, status])
+}
+
+model NoShowAlert {
+  id      String   @id @default(cuid())
+  shiftId String   @unique
+  shift   Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  sentAt  DateTime @default(now())
+}
+
+model AdminEmail {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}

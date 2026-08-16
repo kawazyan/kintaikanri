@@ -1,0 +1,80 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { requireAdmin } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { combineJstDateAndTime } from "@/lib/time";
+
+export async function adminUpdateShift(shiftId: string, formData: FormData) {
+  await requireAdmin();
+
+  const workType = String(formData.get("workType") ?? "");
+  const carrier = String(formData.get("carrier") ?? "").trim();
+  const storeName = String(formData.get("storeName") ?? "").trim();
+  const date = String(formData.get("date") ?? "");
+  const startTimeStr = String(formData.get("startTime") ?? "");
+  const endTimeStr = String(formData.get("endTime") ?? "");
+  const unitAmountRaw = String(formData.get("unitAmount") ?? "").trim();
+
+  if (
+    (workType !== "BAND" && workType !== "SPOT") ||
+    !carrier ||
+    !storeName ||
+    !date ||
+    !startTimeStr ||
+    !endTimeStr
+  ) {
+    return;
+  }
+  if (unitAmountRaw && (!/^\d+$/.test(unitAmountRaw))) return;
+
+  const existing = await prisma.shift.findUnique({ where: { id: shiftId } });
+  if (!existing) return;
+
+  const startTime = combineJstDateAndTime(date, startTimeStr);
+  let endTime = combineJstDateAndTime(date, endTimeStr);
+  if (endTime <= startTime) {
+    endTime = new Date(endTime.getTime() + 24 * 60 * 60 * 1000);
+  }
+
+  const unitAmount = workType === "SPOT" && unitAmountRaw ? Number(unitAmountRaw) : null;
+
+  const updated = await prisma.shift.update({
+    where: { id: shiftId },
+    data: { workType, carrier, storeName, startTime, endTime, unitAmount },
+  });
+
+  await prisma.shiftHistory.create({
+    data: {
+      shiftId: updated.id,
+      staffId: updated.staffId,
+      changeType: "UPDATE",
+      before: JSON.parse(JSON.stringify(existing)),
+      after: JSON.parse(JSON.stringify(updated)),
+    },
+  });
+
+  revalidatePath("/admin/shifts");
+  redirect("/admin/shifts");
+}
+
+export async function adminDeleteShift(shiftId: string) {
+  await requireAdmin();
+
+  const existing = await prisma.shift.findUnique({ where: { id: shiftId } });
+  if (!existing) return;
+
+  await prisma.shiftHistory.create({
+    data: {
+      shiftId: existing.id,
+      staffId: existing.staffId,
+      changeType: "DELETE",
+      before: JSON.parse(JSON.stringify(existing)),
+      after: JSON.parse(JSON.stringify(existing)),
+    },
+  });
+
+  await prisma.shift.delete({ where: { id: shiftId } });
+  revalidatePath("/admin/shifts");
+}
