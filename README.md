@@ -154,13 +154,16 @@ cloudflared tunnel --url http://localhost:3000
 シフト開始時刻から5分経過しても出勤打刻がないスタッフを検出してメール送信するAPIです。
 
 **Vercelの無料(Hobby)プランは Cron の実行間隔が1日1回に制限されており、
-「5分経過で検知」という要件を満たすには以下のいずれかが必要です。**
+「5分経過で検知」という要件を満たせません。** また、Hobbyプランでは分間隔のCron設定自体が
+デプロイをブロックするため、`vercel.json` には現在Cron設定を含めていません。
 
-- Vercel **Pro プラン**にアップグレードする(`vercel.json` の `*/1 * * * *` 設定がそのまま有効になり、
-  `CRON_SECRET` 環境変数を設定すればVercelが自動でAuthorizationヘッダーを付与します)
-- 無料の外部Cronサービス(例: [cron-job.org](https://cron-job.org))から
-  `https://<your-domain>/api/cron/no-show-check` に `Authorization: Bearer <CRON_SECRET>` ヘッダー付きで
-  1〜2分間隔にGETリクエストを送る
+代わりに、無料の外部Cronサービス(例: [cron-job.org](https://cron-job.org))から
+`https://<your-domain>/api/cron/no-show-check` に `Authorization: Bearer <CRON_SECRET>` ヘッダー付きで
+1〜2分間隔にGETリクエストを送る運用としています。
+
+(将来 Vercel **Pro プラン**に切り替える場合は、`vercel.json` に
+`{ "crons": [{ "path": "/api/cron/no-show-check", "schedule": "*/1 * * * *" }] }`
+を再度追加すれば、`CRON_SECRET` 環境変数を設定するだけでVercel Cronが自動でAuthorizationヘッダーを付与します)
 
 ## スコープ外(次段階で対応予定)
 
