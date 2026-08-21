@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { DoorOpen, Home } from "lucide-react";
+import { DoorOpen, Home, CheckCircle2 } from "lucide-react";
 import { clockAction } from "./actions";
 
 function getPosition(): Promise<GeolocationPosition | null> {
@@ -36,9 +36,11 @@ function getPosition(): Promise<GeolocationPosition | null> {
 export function ClockButtons({
   canClockIn,
   canClockOut,
+  finishedToday,
 }: {
   canClockIn: boolean;
   canClockOut: boolean;
+  finishedToday: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [busyType, setBusyType] = useState<"IN" | "OUT" | null>(null);
@@ -88,6 +90,15 @@ export function ClockButtons({
   }
 
   const busy = pending || busyType !== null;
+
+  if (finishedToday) {
+    return (
+      <div className="flex flex-col items-center gap-2 rounded-2xl border border-slate-800 bg-slate-900/60 py-6 text-slate-300 shadow-lg shadow-black/40">
+        <CheckCircle2 size={26} className="text-emerald-400" />
+        <p className="text-sm font-semibold">本日の勤務は終了しました</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3">

@@ -58,6 +58,7 @@ export default async function ClockPage() {
   const canClockOut = !!lastToday && lastToday.type === "IN";
 
   const avatarState: AvatarState = !lastToday ? "HOME" : lastToday.type === "IN" ? "WORK" : "NIGHT";
+  const finishedToday = avatarState === "NIGHT";
 
   const todayIn = todaysRecords.find((r) => r.type === "IN");
   const todayOut = [...todaysRecords].reverse().find((r) => r.type === "OUT");
@@ -99,7 +100,7 @@ export default async function ClockPage() {
       <LiveClock />
 
       {/* 2. 出退勤ボタン */}
-      <ClockButtons canClockIn={canClockIn} canClockOut={canClockOut} />
+      <ClockButtons canClockIn={canClockIn} canClockOut={canClockOut} finishedToday={finishedToday} />
 
       {!todayHasShift && (todayIn || todayOut) && (
         <p className="-mt-3 text-center text-sm font-medium text-red-400">
