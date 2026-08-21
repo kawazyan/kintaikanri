@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { DoorOpen, Home } from "lucide-react";
 import { clockAction } from "./actions";
 
 function getPosition(): Promise<GeolocationPosition | null> {
@@ -95,16 +96,18 @@ export function ClockButtons({
           type="button"
           disabled={busy || !canClockIn}
           onClick={() => handleClock("IN")}
-          className="flex-1 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 py-7 text-lg font-bold text-white shadow-lg shadow-emerald-950/50 transition active:scale-[0.98] disabled:opacity-40"
+          className="flex flex-1 flex-col items-center gap-1.5 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 py-6 text-lg font-bold text-white shadow-lg shadow-emerald-950/50 transition active:scale-[0.98] disabled:opacity-40"
         >
+          <DoorOpen size={26} strokeWidth={2.2} />
           {busyType === "IN" ? "記録中..." : "出勤"}
         </button>
         <button
           type="button"
           disabled={busy || !canClockOut}
           onClick={() => handleClock("OUT")}
-          className="flex-1 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 py-7 text-lg font-bold text-white shadow-lg shadow-blue-950/50 transition active:scale-[0.98] disabled:opacity-40"
+          className="flex flex-1 flex-col items-center gap-1.5 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 py-6 text-lg font-bold text-white shadow-lg shadow-blue-950/50 transition active:scale-[0.98] disabled:opacity-40"
         >
+          <Home size={26} strokeWidth={2.2} />
           {busyType === "OUT" ? "記録中..." : "退勤"}
         </button>
       </div>

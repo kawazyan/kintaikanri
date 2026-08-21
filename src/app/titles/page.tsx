@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAllTitlesForStaff, getPerfectAttendanceHistory } from "@/lib/game";
 import { formatJst, yearMonthLabel } from "@/lib/time";
+import { BottomTabBar } from "@/components/bottom-tab-bar";
 
 export default async function TitlesPage() {
   const staffId = await getStaffId();
@@ -18,15 +18,10 @@ export default async function TitlesPage() {
   ]);
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col gap-6 px-4 py-6">
-      <div>
-        <Link href="/clock" className="text-sm text-blue-400 underline">
-          ← ホームへ戻る
-        </Link>
-        <h1 className="mt-2 bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
-          称号・バッジ一覧
-        </h1>
-      </div>
+    <main className="mx-auto flex min-h-dvh max-w-sm flex-col gap-6 px-4 pt-6 pb-28">
+      <h1 className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
+        称号・バッジ一覧
+      </h1>
 
       <section className="flex flex-col gap-3">
         {titles.map((t) => (
@@ -34,7 +29,7 @@ export default async function TitlesPage() {
             key={t.code}
             className={
               t.achievedAt
-                ? "flex items-center justify-between rounded-2xl border border-blue-500/30 bg-gradient-to-r from-blue-600/20 to-cyan-500/10 p-4"
+                ? "flex items-center justify-between rounded-2xl border border-blue-500/30 bg-gradient-to-r from-blue-600/20 to-cyan-500/10 p-4 shadow-lg shadow-black/40"
                 : "flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/40 p-4 opacity-60"
             }
           >
@@ -55,7 +50,7 @@ export default async function TitlesPage() {
         ))}
       </section>
 
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 backdrop-blur-sm">
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-lg shadow-black/40 backdrop-blur-sm">
         <h2 className="mb-2 text-xs font-semibold tracking-wide text-amber-400/80 uppercase">
           皆勤賞の履歴
         </h2>
@@ -75,6 +70,8 @@ export default async function TitlesPage() {
           </ul>
         )}
       </section>
+
+      <BottomTabBar />
     </main>
   );
 }

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { CalendarDays, Wallet, ChevronRight } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -13,12 +14,12 @@ import {
 import { computeMonthlyEarnings, computeTransferBalance } from "@/lib/earnings";
 import { nextFixedPaymentDate } from "@/lib/payment";
 import { syncAndGetGameState } from "@/lib/game";
-import { switchUser } from "../identify-actions";
 import { ClockButtons } from "./clock-buttons";
 import { LiveClock } from "./live-clock";
 import { CharacterAvatar, type AvatarState } from "./character-avatar";
 import { GamePanel } from "./game-panel";
 import { StampCard } from "./stamp-card";
+import { BottomTabBar } from "@/components/bottom-tab-bar";
 
 const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -87,7 +88,7 @@ export default async function ClockPage() {
     });
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col gap-6 px-4 py-6">
+    <main className="mx-auto flex min-h-dvh max-w-sm flex-col gap-6 px-4 pt-6 pb-28">
       <div className="text-center">
         <p className="text-sm text-slate-400">{staff.name} さん</p>
       </div>
@@ -175,15 +176,17 @@ export default async function ClockPage() {
               </div>
               <Link
                 href="/payment/request"
-                className="mt-1 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 py-2.5 text-center text-sm font-medium text-white shadow-md shadow-blue-950/50 active:scale-[0.98]"
+                className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 py-2.5 text-center text-sm font-medium text-white shadow-md shadow-blue-950/50 active:scale-[0.98]"
               >
+                <Wallet size={16} />
                 振込申請
               </Link>
               <Link
                 href="/payment/history"
-                className="text-center text-xs text-blue-400 underline"
+                className="flex items-center justify-center gap-1 text-center text-xs text-blue-400"
               >
                 振込申請履歴を見る
+                <ChevronRight size={12} />
               </Link>
             </div>
           )
@@ -218,24 +221,15 @@ export default async function ClockPage() {
       <StampCard stamp={game.stamp} />
 
       {/* 7. シフト登録への導線 */}
-      <div className="mt-auto flex flex-col gap-2">
-        <Link
-          href="/shift"
-          className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 py-3 text-center text-sm font-medium text-white shadow-md shadow-blue-950/50 active:scale-[0.98]"
-        >
-          シフト登録・確認
-        </Link>
-        <div className="flex justify-between text-sm">
-          <Link href="/history" className="text-blue-400 underline">
-            打刻履歴を見る
-          </Link>
-          <form action={switchUser}>
-            <button type="submit" className="text-slate-500 underline">
-              利用者を切り替える
-            </button>
-          </form>
-        </div>
-      </div>
+      <Link
+        href="/shift"
+        className="mt-auto flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-950/50 active:scale-[0.98]"
+      >
+        <CalendarDays size={18} />
+        シフト登録・確認
+      </Link>
+
+      <BottomTabBar />
     </main>
   );
 }

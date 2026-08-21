@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
+import { LogIn, LogOut } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatJst } from "@/lib/time";
+import { BottomTabBar } from "@/components/bottom-tab-bar";
 
 export default async function HistoryPage() {
   const staffId = await getStaffId();
@@ -15,7 +16,7 @@ export default async function HistoryPage() {
   });
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-4 py-8">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-4 pt-8 pb-28">
       <h1 className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
         打刻履歴
       </h1>
@@ -24,13 +25,22 @@ export default async function HistoryPage() {
         {records.map((r) => (
           <li
             key={r.id}
-            className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 backdrop-blur-sm"
+            className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2.5 shadow-md shadow-black/30 backdrop-blur-sm"
           >
+            <span
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                r.type === "IN" ? "bg-emerald-500/10 text-emerald-400" : "bg-cyan-500/10 text-cyan-400"
+              }`}
+            >
+              {r.type === "IN" ? <LogIn size={16} /> : <LogOut size={16} />}
+            </span>
             <span className={r.type === "IN" ? "text-emerald-400" : "text-cyan-400"}>
               {r.type === "IN" ? "出勤" : "退勤"}
             </span>
-            <span className="text-slate-200">{formatJst(r.timestamp)}</span>
-            <span className="text-slate-500">{r.storeName ?? "-"}</span>
+            <span className="flex-1 text-right text-slate-200">{formatJst(r.timestamp)}</span>
+            <span className="w-20 shrink-0 truncate text-right text-xs text-slate-500">
+              {r.storeName ?? "-"}
+            </span>
           </li>
         ))}
         {records.length === 0 && (
@@ -38,9 +48,7 @@ export default async function HistoryPage() {
         )}
       </ul>
 
-      <Link href="/clock" className="text-sm text-blue-400 underline">
-        打刻画面に戻る
-      </Link>
+      <BottomTabBar />
     </main>
   );
 }

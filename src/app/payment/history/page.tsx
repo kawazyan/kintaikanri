@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatJst } from "@/lib/time";
+import { BottomTabBar } from "@/components/bottom-tab-bar";
 
 export default async function PaymentHistoryPage() {
   const staffId = await getStaffId();
@@ -16,7 +16,7 @@ export default async function PaymentHistoryPage() {
   });
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-4 py-8">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-4 pt-8 pb-28">
       <h1 className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
         振込申請履歴
       </h1>
@@ -25,7 +25,7 @@ export default async function PaymentHistoryPage() {
         {requests.map((r) => (
           <li
             key={r.id}
-            className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 backdrop-blur-sm"
+            className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 shadow-md shadow-black/30 backdrop-blur-sm"
           >
             <div className="flex items-center justify-between">
               <span className="font-medium text-slate-100">
@@ -57,9 +57,7 @@ export default async function PaymentHistoryPage() {
         )}
       </ul>
 
-      <Link href="/clock" className="text-sm text-blue-400 underline">
-        打刻画面に戻る
-      </Link>
+      <BottomTabBar />
     </main>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Award, ChevronRight } from "lucide-react";
 import type { GameState } from "@/lib/game";
 
 export function GamePanel({ game }: { game: GameState }) {
@@ -11,8 +12,13 @@ export function GamePanel({ game }: { game: GameState }) {
         <h2 className="text-xs font-semibold tracking-wide text-blue-400/80 uppercase">
           ゲーム状況
         </h2>
-        <Link href="/titles" className="text-xs text-blue-400 underline">
+        <Link
+          href="/titles"
+          className="flex items-center gap-1 rounded-full border border-slate-700 bg-slate-800/60 px-2.5 py-1 text-[11px] font-semibold text-cyan-300 shadow-sm shadow-black/30 transition active:scale-95"
+        >
+          <Award size={12} />
           称号一覧
+          <ChevronRight size={12} className="text-slate-500" />
         </Link>
       </div>
 

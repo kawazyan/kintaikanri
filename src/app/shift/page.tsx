@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatJst } from "@/lib/time";
 import { WORK_TYPE_LABEL } from "@/lib/carriers";
 import { DeleteShiftButton } from "./delete-shift-button";
+import { BottomTabBar } from "@/components/bottom-tab-bar";
 
 export default async function ShiftListPage() {
   const staffId = await getStaffId();
@@ -17,16 +19,17 @@ export default async function ShiftListPage() {
   });
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-4 py-8">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-4 pt-8 pb-28">
       <div className="flex items-center justify-between">
         <h1 className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
           シフト一覧
         </h1>
         <Link
           href="/shift/new"
-          className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-3 py-2 text-sm font-medium text-white shadow-md shadow-blue-950/50 active:scale-[0.98]"
+          className="flex items-center gap-1 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-3 py-2 text-sm font-medium text-white shadow-md shadow-blue-950/50 active:scale-[0.98]"
         >
-          + 新規登録
+          <Plus size={16} />
+          新規登録
         </Link>
       </div>
 
@@ -34,7 +37,7 @@ export default async function ShiftListPage() {
         {shifts.map((s) => (
           <li
             key={s.id}
-            className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-sm backdrop-blur-sm"
+            className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-sm shadow-md shadow-black/30 backdrop-blur-sm"
           >
             <div className="flex items-center justify-between">
               <span className="rounded bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-300">
@@ -63,9 +66,7 @@ export default async function ShiftListPage() {
         )}
       </ul>
 
-      <Link href="/clock" className="text-sm text-blue-400 underline">
-        打刻画面に戻る
-      </Link>
+      <BottomTabBar />
     </main>
   );
 }
