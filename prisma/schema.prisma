@@ -31,6 +31,15 @@ enum TransferRequestStatus {
   PAID
 }
 
+// 連続勤務ストリークの閾値で獲得する通常称号(item 5)。一度獲得したら永久保持。
+enum GameTitleCode {
+  CHALLENGER
+  TOP_PLAYER
+  EXECUTIVE
+  PLATINUM_MASTER
+  LEGEND
+}
+
 model Staff {
   id           String      @id @default(cuid())
   employeeCode String      @unique
@@ -70,6 +79,8 @@ model Staff {
   monthlyEarningTargets MonthlyEarningTarget[]
   transferRequests      TransferRequest[]
   clockRecordHistories  ClockRecordHistory[]
+  gameTitles            GameTitle[]
+  perfectAttendances    PerfectAttendance[]
 }
 
 model MonthlyEarningTarget {
@@ -190,4 +201,29 @@ model AdminEmail {
   id        String   @id @default(cuid())
   email     String   @unique
   createdAt DateTime @default(now())
+}
+
+// ゲーミフィケーション: 獲得済み称号(永続データ)。XP・コイン・現在ストリークは
+// 打刻+シフトから毎回再計算する方式のためテーブルを持たない(src/lib/game.ts参照)。
+// 条件を初めて満たした瞬間に1件だけ作成し、以後ストリークが途切れても削除しない。
+model GameTitle {
+  id         String        @id @default(cuid())
+  staffId    String
+  staff      Staff         @relation(fields: [staffId], references: [id])
+  titleCode  GameTitleCode
+  achievedAt DateTime      @default(now())
+
+  @@unique([staffId, titleCode])
+}
+
+// ゲーミフィケーション: 月間皆勤賞(永続データ)。staffId + yearMonth 単位で、
+// 過去月分も削除せず履歴として保持する。
+model PerfectAttendance {
+  id         String   @id @default(cuid())
+  staffId    String
+  staff      Staff    @relation(fields: [staffId], references: [id])
+  yearMonth  String // "YYYY-MM" (JST)
+  achievedAt DateTime @default(now())
+
+  @@unique([staffId, yearMonth])
 }

@@ -12,9 +12,13 @@ import {
 } from "@/lib/time";
 import { computeMonthlyEarnings, computeTransferBalance } from "@/lib/earnings";
 import { nextFixedPaymentDate } from "@/lib/payment";
+import { syncAndGetGameState } from "@/lib/game";
 import { switchUser } from "../identify-actions";
 import { ClockButtons } from "./clock-buttons";
 import { LiveClock } from "./live-clock";
+import { CharacterAvatar, type AvatarState } from "./character-avatar";
+import { GamePanel } from "./game-panel";
+import { StampCard } from "./stamp-card";
 
 const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -29,7 +33,7 @@ export default async function ClockPage() {
   const yearMonth = currentJstYearMonth();
   const { start: monthStart, end: monthEnd } = jstMonthRange(yearMonth);
 
-  const [todaysRecords, monthRecords, earnings, transferBalance] = await Promise.all([
+  const [todaysRecords, monthRecords, earnings, transferBalance, game] = await Promise.all([
     prisma.clockRecord.findMany({
       where: { staffId, timestamp: { gte: todayStart, lt: todayEnd } },
       orderBy: { timestamp: "asc" },
@@ -40,6 +44,7 @@ export default async function ClockPage() {
     }),
     computeMonthlyEarnings(staffId, yearMonth),
     staff.paymentMethod === "REQUEST" ? computeTransferBalance(staffId) : null,
+    syncAndGetGameState(staffId),
   ]);
 
   const nextPaymentDate =
@@ -50,6 +55,8 @@ export default async function ClockPage() {
   const lastToday = todaysRecords[todaysRecords.length - 1];
   const canClockIn = !lastToday || lastToday.type === "OUT";
   const canClockOut = !!lastToday && lastToday.type === "IN";
+
+  const avatarState: AvatarState = !lastToday ? "HOME" : lastToday.type === "IN" ? "WORK" : "NIGHT";
 
   const todayIn = todaysRecords.find((r) => r.type === "IN");
   const todayOut = [...todaysRecords].reverse().find((r) => r.type === "OUT");
@@ -84,6 +91,8 @@ export default async function ClockPage() {
       <div className="text-center">
         <p className="text-sm text-slate-400">{staff.name} さん</p>
       </div>
+
+      <CharacterAvatar state={avatarState} />
 
       {/* 1. 現在日時 */}
       <LiveClock />
@@ -203,6 +212,10 @@ export default async function ClockPage() {
           </ul>
         )}
       </section>
+
+      {/* ゲーミフィケーション(ストリーク・レベル・コイン・スタンプカード) */}
+      <GamePanel game={game} />
+      <StampCard stamp={game.stamp} />
 
       {/* 7. シフト登録への導線 */}
       <div className="mt-auto flex flex-col gap-2">

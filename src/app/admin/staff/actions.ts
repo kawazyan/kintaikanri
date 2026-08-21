@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { deleteGameData } from "@/lib/game";
 
 export async function createStaff(formData: FormData) {
   await requireAdmin();
@@ -23,10 +24,18 @@ export async function updateStaff(staffId: string, formData: FormData) {
   const status = String(formData.get("status") ?? "ACTIVE") as "ACTIVE" | "RETIRED";
   if (!employeeCode || !name || !email) return;
 
+  const before = await prisma.staff.findUnique({ where: { id: staffId }, select: { status: true } });
+
   await prisma.staff.update({
     where: { id: staffId },
     data: { employeeCode, name, email, status },
   });
+
+  // ゲームデータ(称号・皆勤賞)は退職と同時に無効化する。異動等では削除しない。
+  if (before?.status === "ACTIVE" && status === "RETIRED") {
+    await deleteGameData(staffId);
+  }
+
   revalidatePath("/admin/staff");
 }
 
