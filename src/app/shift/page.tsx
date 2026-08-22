@@ -3,20 +3,53 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatJst } from "@/lib/time";
-import { WORK_TYPE_LABEL } from "@/lib/carriers";
-import { DeleteShiftButton } from "./delete-shift-button";
+import {
+  currentJstYearMonth,
+  jstMonthRange,
+  listDaysInJstYearMonth,
+  toJstDateValue,
+  toJstTimeValue,
+  yearMonthLabel,
+} from "@/lib/time";
+import { ShiftCalendar, type ShiftSummary } from "./shift-calendar";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 
-export default async function ShiftListPage() {
+function shiftYearMonth(yearMonth: string, delta: number): string {
+  const [y, m] = yearMonth.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+export default async function ShiftListPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string }>;
+}) {
   const staffId = await getStaffId();
   if (!staffId) redirect("/");
 
+  const { month } = await searchParams;
+  const yearMonth = month ?? currentJstYearMonth();
+  const { start, end } = jstMonthRange(yearMonth);
+
   const shifts = await prisma.shift.findMany({
-    where: { staffId },
-    orderBy: { startTime: "desc" },
-    take: 100,
+    where: { staffId, startTime: { gte: start, lt: end } },
+    orderBy: { startTime: "asc" },
   });
+
+  const shiftsByDate: Record<string, ShiftSummary[]> = {};
+  for (const s of shifts) {
+    const key = toJstDateValue(s.startTime);
+    const entry: ShiftSummary = {
+      id: s.id,
+      workType: s.workType,
+      carrier: s.carrier,
+      storeName: s.storeName,
+      startTime: toJstTimeValue(s.startTime),
+      endTime: toJstTimeValue(s.endTime),
+    };
+    (shiftsByDate[key] ??= []).push(entry);
+  }
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-4 pt-8 pb-28">
@@ -33,38 +66,14 @@ export default async function ShiftListPage() {
         </Link>
       </div>
 
-      <ul className="flex flex-col gap-2">
-        {shifts.map((s) => (
-          <li
-            key={s.id}
-            className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-sm shadow-md shadow-black/30 backdrop-blur-sm"
-          >
-            <div className="flex items-center justify-between">
-              <span className="rounded bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-300">
-                {WORK_TYPE_LABEL[s.workType]}
-              </span>
-              <div className="flex gap-3">
-                <Link href={`/shift/${s.id}`} className="text-blue-400 underline">
-                  編集
-                </Link>
-                <Link href={`/shift/new?copy=${s.id}`} className="text-blue-400 underline">
-                  複製
-                </Link>
-                <DeleteShiftButton shiftId={s.id} />
-              </div>
-            </div>
-            <div className="mt-1 font-medium text-slate-100">
-              {formatJst(s.startTime)} 〜 {formatJst(s.endTime)}
-            </div>
-            <div className="text-slate-400">
-              {s.carrier} / {s.storeName}
-            </div>
-          </li>
-        ))}
-        {shifts.length === 0 && (
-          <p className="text-sm text-slate-500">シフトが登録されていません。</p>
-        )}
-      </ul>
+      <ShiftCalendar
+        days={listDaysInJstYearMonth(yearMonth)}
+        shiftsByDate={shiftsByDate}
+        todayDateKey={toJstDateValue(new Date())}
+        prevMonth={shiftYearMonth(yearMonth, -1)}
+        nextMonth={shiftYearMonth(yearMonth, 1)}
+        monthLabel={yearMonthLabel(yearMonth)}
+      />
 
       <BottomTabBar />
     </main>

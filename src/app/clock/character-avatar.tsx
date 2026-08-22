@@ -1,4 +1,5 @@
 import Image from "next/image";
+import type { ReactNode } from "react";
 
 export type AvatarState = "HOME" | "WORK" | "NIGHT";
 
@@ -14,9 +15,17 @@ const AVATAR_LABEL: Record<AvatarState, string> = {
   NIGHT: "退勤済み",
 };
 
-export function CharacterAvatar({ state }: { state: AvatarState }) {
+export function CharacterAvatar({
+  state,
+  staffName,
+  children,
+}: {
+  state: AvatarState;
+  staffName: string;
+  children?: ReactNode;
+}) {
   return (
-    <div className="relative -mx-4 h-64 overflow-hidden">
+    <div className="relative -mx-4 h-[32rem] overflow-hidden">
       <Image
         src={AVATAR_SRC[state]}
         alt={AVATAR_LABEL[state]}
@@ -25,10 +34,22 @@ export function CharacterAvatar({ state }: { state: AvatarState }) {
         className="object-cover object-top"
         priority
       />
-      <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#05070f] to-transparent" />
-      <span className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-slate-900/90 px-3 py-0.5 text-xs font-medium text-blue-300 shadow-md shadow-black/40 ring-1 ring-blue-500/30">
-        {AVATAR_LABEL[state]}
-      </span>
+      {/* Darkens the lower portion so the overlaid UI stays legible against
+          the character art, fading out toward the top so the face is clear. */}
+      <div className="absolute inset-0 bg-gradient-to-t from-[#05070f] from-15% via-[#05070f]/80 via-55% to-transparent" />
+
+      <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4">
+        <span className="rounded-full bg-slate-950/60 px-3 py-1 text-xs font-medium text-slate-200 shadow-md shadow-black/30 backdrop-blur-sm">
+          {staffName} さん
+        </span>
+        <span className="rounded-full bg-slate-950/60 px-3 py-1 text-xs font-medium text-blue-300 shadow-md shadow-black/30 backdrop-blur-sm">
+          {AVATAR_LABEL[state]}
+        </span>
+      </div>
+
+      {children && (
+        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-3 p-4 pb-5">{children}</div>
+      )}
     </div>
   );
 }

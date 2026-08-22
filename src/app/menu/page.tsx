@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Award, Sofa, Users, Wallet, ArrowLeftRight, ChevronRight, type LucideIcon } from "lucide-react";
+import { Award, Sofa, Users, Wallet, LogOut, ChevronRight, type LucideIcon } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { switchUser } from "../identify-actions";
@@ -51,12 +51,12 @@ export default async function MenuPage() {
       <form action={switchUser}>
         <button
           type="submit"
-          className="flex w-full items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/40 p-4 text-left shadow-md shadow-black/30 backdrop-blur-sm transition active:scale-[0.98] active:bg-slate-800/60"
+          className="flex w-full items-center gap-3 rounded-2xl border border-red-500/20 bg-red-500/5 p-4 text-left shadow-md shadow-black/30 backdrop-blur-sm transition active:scale-[0.98] active:bg-red-500/10"
         >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-800">
-            <ArrowLeftRight size={20} className="text-slate-300" />
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-500/10">
+            <LogOut size={20} className="text-red-400" />
           </span>
-          <span className="flex-1 text-sm font-semibold text-slate-300">利用者を切り替える</span>
+          <span className="flex-1 text-sm font-semibold text-red-400">ログアウト</span>
         </button>
       </form>
 

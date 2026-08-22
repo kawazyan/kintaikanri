@@ -90,23 +90,19 @@ export default async function ClockPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col gap-6 px-4 pt-6 pb-28">
-      <div className="text-center">
-        <p className="text-sm text-slate-400">{staff.name} さん</p>
-      </div>
+      <CharacterAvatar state={avatarState} staffName={staff.name}>
+        {/* 1. 現在日時 */}
+        <LiveClock />
 
-      <CharacterAvatar state={avatarState} />
+        {/* 2. 出退勤ボタン */}
+        <ClockButtons canClockIn={canClockIn} canClockOut={canClockOut} finishedToday={finishedToday} />
 
-      {/* 1. 現在日時 */}
-      <LiveClock />
-
-      {/* 2. 出退勤ボタン */}
-      <ClockButtons canClockIn={canClockIn} canClockOut={canClockOut} finishedToday={finishedToday} />
-
-      {!todayHasShift && (todayIn || todayOut) && (
-        <p className="-mt-3 text-center text-sm font-medium text-red-400">
-          本日のシフトが登録されていません
-        </p>
-      )}
+        {!todayHasShift && (todayIn || todayOut) && (
+          <p className="text-center text-sm font-medium text-red-400">
+            本日のシフトが登録されていません
+          </p>
+        )}
+      </CharacterAvatar>
 
       {/* 3. 今日の打刻履歴 */}
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-lg shadow-black/40 backdrop-blur-sm">
