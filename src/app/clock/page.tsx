@@ -17,6 +17,7 @@ import { syncAndGetGameState } from "@/lib/game";
 import { ClockButtons } from "./clock-buttons";
 import { LiveClock } from "./live-clock";
 import { CharacterAvatar, type AvatarState } from "./character-avatar";
+import { CancelPunchButton } from "./cancel-punch-button";
 import { GamePanel } from "./game-panel";
 import { StampCard } from "./stamp-card";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
@@ -123,6 +124,14 @@ export default async function ClockPage() {
             </span>
           </span>
         </div>
+        {lastToday && (
+          <div className="mt-2 flex justify-end">
+            <CancelPunchButton
+              recordId={lastToday.id}
+              timestamp={lastToday.timestamp.toISOString()}
+            />
+          </div>
+        )}
       </section>
 
       {/* 4. 今月の確定受取金額 */}

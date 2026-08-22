@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getStaffId } from "@/lib/auth";
-import { combineJstDateAndTime, jstMonthRange, toJstDateValue } from "@/lib/time";
+import { combineJstDateAndTime, jstDayRange, jstMonthRange, toJstDateValue } from "@/lib/time";
 import { notifyAdminsOfShiftChange } from "@/lib/notify";
 
 export type BulkShiftInput = {
@@ -139,6 +139,21 @@ export async function createShiftsBulk(
         after: JSON.parse(JSON.stringify(shift)),
       })),
     });
+
+    // A staff member may have already clocked in/out that day before this
+    // shift existed yet (clockAction only links shiftId to a shift that's
+    // already registered at punch time). Without this, those punches would
+    // stay permanently unlinked and never count toward confirmed earnings
+    // even after the matching shift is registered.
+    await Promise.all(
+      created.map((shift) => {
+        const { start: dayStart, end: dayEnd } = jstDayRange(shift.startTime);
+        return prisma.clockRecord.updateMany({
+          where: { staffId, shiftId: null, timestamp: { gte: dayStart, lt: dayEnd } },
+          data: { shiftId: shift.id },
+        });
+      })
+    );
   }
 
   // Only BAND uses a monthly target; leave it untouched if left blank so an
