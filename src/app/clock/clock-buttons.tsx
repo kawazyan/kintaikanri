@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { DoorOpen, Home, CheckCircle2 } from "lucide-react";
+import { LogIn, LogOut, CheckCircle2 } from "lucide-react";
 import { clockAction } from "./actions";
 
 function getPosition(): Promise<GeolocationPosition | null> {
@@ -34,23 +34,23 @@ function getPosition(): Promise<GeolocationPosition | null> {
 }
 
 export function ClockButtons({
-  canClockIn,
   canClockOut,
   finishedToday,
 }: {
-  canClockIn: boolean;
   canClockOut: boolean;
   finishedToday: boolean;
 }) {
   const [pending, startTransition] = useTransition();
-  const [busyType, setBusyType] = useState<"IN" | "OUT" | null>(null);
+  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; ok: boolean; warning?: string } | null>(
     null
   );
   const router = useRouter();
 
-  async function handleClock(type: "IN" | "OUT") {
-    setBusyType(type);
+  const mode: "IN" | "OUT" = canClockOut ? "OUT" : "IN";
+
+  async function handleClock() {
+    setBusy(true);
     setMessage(null);
 
     let latitude: number | null = null;
@@ -65,10 +65,10 @@ export function ClockButtons({
 
     startTransition(async () => {
       try {
-        const result = await clockAction(type, latitude, longitude);
+        const result = await clockAction(mode, latitude, longitude);
         if (result.ok) {
           setMessage({
-            text: `${type === "IN" ? "出勤" : "退勤"}を記録しました${
+            text: `${mode === "IN" ? "出勤" : "退勤"}を記録しました${
               result.storeName ? `(${result.storeName})` : ""
             }`,
             ok: true,
@@ -84,46 +84,47 @@ export function ClockButtons({
           ok: false,
         });
       } finally {
-        setBusyType(null);
+        setBusy(false);
       }
     });
   }
 
-  const busy = pending || busyType !== null;
+  const isBusy = pending || busy;
 
   if (finishedToday) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-2xl border border-slate-800 bg-slate-900/60 py-6 text-slate-300 shadow-lg shadow-black/40">
+      <div className="flex flex-col items-center gap-2 rounded-2xl bg-slate-950/70 py-6 shadow-[0_4px_16px_rgba(0,0,0,0.5)] ring-1 ring-slate-700/60 backdrop-blur-sm">
         <CheckCircle2 size={26} className="text-emerald-400" />
-        <p className="text-sm font-semibold">本日の勤務は終了しました</p>
+        <p className="text-sm font-semibold text-slate-200">本日の勤務は終了しました</p>
       </div>
     );
   }
 
+  const label = mode === "IN" ? "出勤する" : "退勤する";
+  const Icon = mode === "IN" ? LogIn : LogOut;
+  const gradient =
+    mode === "IN"
+      ? "from-emerald-300 via-emerald-500 to-emerald-700"
+      : "from-red-400 via-[#e0272e] to-red-800";
+  const glow = mode === "IN" ? "rgba(16,185,129,0.55)" : "rgba(220,38,38,0.55)";
+
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex gap-3">
-        <button
-          type="button"
-          disabled={busy || !canClockIn}
-          onClick={() => handleClock("IN")}
-          className="flex flex-1 flex-col items-center gap-1.5 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 py-6 text-lg font-bold text-white shadow-lg shadow-emerald-950/50 transition active:scale-[0.98] disabled:opacity-40"
-        >
-          <DoorOpen size={26} strokeWidth={2.2} />
-          {busyType === "IN" ? "記録中..." : "出勤"}
-        </button>
-        <button
-          type="button"
-          disabled={busy || !canClockOut}
-          onClick={() => handleClock("OUT")}
-          className="flex flex-1 flex-col items-center gap-1.5 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 py-6 text-lg font-bold text-white shadow-lg shadow-blue-950/50 transition active:scale-[0.98] disabled:opacity-40"
-        >
-          <Home size={26} strokeWidth={2.2} />
-          {busyType === "OUT" ? "記録中..." : "退勤"}
-        </button>
-      </div>
+    <div className="flex flex-col items-center gap-2">
+      <button
+        type="button"
+        disabled={isBusy}
+        onClick={handleClock}
+        style={{
+          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -3px 6px rgba(0,0,0,0.25), 0 6px 18px ${glow}, 0 3px 8px rgba(0,0,0,0.5)`,
+        }}
+        className={`relative flex w-full max-w-[280px] items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-to-b ${gradient} py-4 text-lg font-bold text-white transition active:scale-[0.97] disabled:opacity-50`}
+      >
+        <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-full bg-gradient-to-b from-white/40 to-transparent" />
+        <Icon size={22} strokeWidth={2.4} className="relative" />
+        <span className="relative">{isBusy ? "記録中..." : label}</span>
+      </button>
       {message && (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col items-center gap-1">
           <p className={`text-sm ${message.ok ? "text-emerald-400" : "text-red-400"}`}>
             {message.text}
           </p>

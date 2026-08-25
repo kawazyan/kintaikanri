@@ -53,9 +53,8 @@ export default async function ClockPage() {
     staff.paymentMethod === "FIXED" ? nextFixedPaymentDate(staff) : null;
 
   // Current punch state: whether the last action today was an IN without a
-  // matching OUT yet, used to drive which of the two buttons is usable.
+  // matching OUT yet, used to drive which single button (出勤/退勤) shows.
   const lastToday = todaysRecords[todaysRecords.length - 1];
-  const canClockIn = !lastToday || lastToday.type === "OUT";
   const canClockOut = !!lastToday && lastToday.type === "IN";
 
   const avatarState: AvatarState = !lastToday ? "HOME" : lastToday.type === "IN" ? "WORK" : "NIGHT";
@@ -96,7 +95,7 @@ export default async function ClockPage() {
         <LiveClock />
 
         {/* 2. 出退勤ボタン */}
-        <ClockButtons canClockIn={canClockIn} canClockOut={canClockOut} finishedToday={finishedToday} />
+        <ClockButtons canClockOut={canClockOut} finishedToday={finishedToday} />
 
         {!todayHasShift && (todayIn || todayOut) && (
           <p className="text-center text-sm font-medium text-red-400">

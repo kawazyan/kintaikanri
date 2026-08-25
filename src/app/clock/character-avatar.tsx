@@ -15,6 +15,12 @@ const AVATAR_LABEL: Record<AvatarState, string> = {
   NIGHT: "退勤済み",
 };
 
+const AVATAR_DOT: Record<AvatarState, string> = {
+  HOME: "bg-slate-400",
+  WORK: "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)]",
+  NIGHT: "bg-blue-400",
+};
+
 export function CharacterAvatar({
   state,
   staffName,
@@ -35,14 +41,17 @@ export function CharacterAvatar({
         priority
       />
       {/* Darkens the lower portion so the overlaid UI stays legible against
-          the character art, fading out toward the top so the face is clear. */}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#05070f] from-15% via-[#05070f]/80 via-55% to-transparent" />
+          the character art (with a warm red tint matching the brand accent),
+          fading out toward the top so the face is clear. */}
+      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0407] from-15% via-[#05070f]/85 via-55% to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-transparent" />
 
       <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4">
-        <span className="rounded-full bg-slate-950/60 px-3 py-1 text-xs font-medium text-slate-200 shadow-md shadow-black/30 backdrop-blur-sm">
+        <span className="rounded-full bg-slate-950/70 px-3 py-1.5 text-xs font-semibold text-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.5)] ring-1 ring-white/10 backdrop-blur-sm">
           {staffName} さん
         </span>
-        <span className="rounded-full bg-slate-950/60 px-3 py-1 text-xs font-medium text-blue-300 shadow-md shadow-black/30 backdrop-blur-sm">
+        <span className="flex items-center gap-1.5 rounded-full bg-slate-950/70 px-3 py-1.5 text-xs font-semibold text-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.5)] ring-1 ring-white/10 backdrop-blur-sm">
+          <span className={`h-1.5 w-1.5 rounded-full ${AVATAR_DOT[state]}`} />
           {AVATAR_LABEL[state]}
         </span>
       </div>

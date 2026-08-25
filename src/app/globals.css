@@ -13,8 +13,11 @@
 }
 
 body {
-  background: radial-gradient(ellipse 120% 80% at 50% -10%, #1e3a8a33, transparent),
-    linear-gradient(180deg, #05070f 0%, #0a0f1f 50%, #05070f 100%);
+  background:
+    radial-gradient(ellipse 90% 50% at 15% -8%, #3b82f629, transparent 60%),
+    radial-gradient(ellipse 70% 45% at 100% 8%, #7c3aed1f, transparent 55%),
+    radial-gradient(ellipse 100% 60% at 50% 115%, #00000099, transparent 60%),
+    linear-gradient(165deg, #070a14 0%, #05060d 45%, #020204 100%);
   background-attachment: fixed;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
