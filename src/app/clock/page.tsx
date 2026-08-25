@@ -90,6 +90,9 @@ export default async function ClockPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col gap-6 px-4 pt-6 pb-28">
+      {/* 称号・コイン・連続勤務・XP(ページ最上部) */}
+      <GamePanel game={game} />
+
       <CharacterAvatar state={avatarState} staffName={staff.name}>
         {/* 1. 現在日時 */}
         <LiveClock />
@@ -221,8 +224,7 @@ export default async function ClockPage() {
         )}
       </section>
 
-      {/* ゲーミフィケーション(ストリーク・レベル・コイン・スタンプカード) */}
-      <GamePanel game={game} />
+      {/* 今月の勤務スタンプ */}
       <StampCard stamp={game.stamp} />
 
       {/* 7. シフト登録への導線 */}
