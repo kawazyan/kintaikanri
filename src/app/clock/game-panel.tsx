@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Crown, Flame, Coins, ChevronRight, Gem, Plus } from "lucide-react";
+import { Crown, Flame, Coins, ChevronRight, Star, Plus } from "lucide-react";
 import { TITLE_DEFINITIONS } from "@/lib/game-config";
 import type { GameState } from "@/lib/game";
 
@@ -53,35 +53,39 @@ export function GamePanel({ game }: { game: GameState }) {
             />
           </div>
         ) : (
-          <div className="flex flex-1 items-center rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2">
+          <div className="flex flex-1 items-center gap-2.5 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-800/80">
+              <Crown size={16} className="text-slate-600" />
+            </span>
             <p className="text-xs text-slate-500">称号未獲得(連続3勤務で獲得できます)</p>
           </div>
         )}
       </div>
 
-      {/* Streak & coin chips */}
+      {/* Streak & coin chips: white cards read as a bright accent against
+          the dark panel, matching the reference's high-contrast tiles. */}
       <div className="mb-3 grid grid-cols-2 gap-2.5">
-        <div className="flex items-center gap-2.5 rounded-2xl border border-orange-500/15 bg-gradient-to-b from-slate-800 to-slate-900 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_4px_10px_rgba(0,0,0,0.4)]">
+        <div className="flex items-center gap-2.5 rounded-2xl bg-gradient-to-b from-white to-slate-100 px-3 py-2.5 shadow-[0_4px_14px_rgba(0,0,0,0.4)]">
           <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-b from-orange-300 via-orange-500 to-red-600 shadow-[0_0_10px_rgba(249,115,22,0.5)]">
             <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/40 to-transparent" />
             <Flame size={17} className="relative text-white" fill="currentColor" />
           </span>
           <div className="min-w-0">
-            <p className="text-base leading-none font-black text-white">{game.streak}</p>
-            <p className="mt-0.5 truncate text-[10px] text-slate-400">勤務連続</p>
-            <p className="truncate text-[9px] text-orange-300/80">連続シフト達成記録!</p>
+            <p className="text-base leading-none font-black text-slate-900">{game.streak}</p>
+            <p className="mt-0.5 truncate text-[10px] text-slate-500">勤務連続</p>
+            <p className="truncate text-[9px] font-medium text-orange-600">連続シフト達成記録!</p>
           </div>
         </div>
-        <div className="relative flex items-center gap-2.5 rounded-2xl border border-amber-500/15 bg-gradient-to-b from-slate-800 to-slate-900 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_4px_10px_rgba(0,0,0,0.4)]">
+        <div className="relative flex items-center gap-2.5 rounded-2xl bg-gradient-to-b from-white to-slate-100 px-3 py-2.5 shadow-[0_4px_14px_rgba(0,0,0,0.4)]">
           <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-b from-amber-100 via-amber-400 to-amber-600 shadow-[0_0_10px_rgba(245,158,11,0.5)]">
             <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/50 to-transparent" />
             <Coins size={17} className="relative text-amber-950" />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-base leading-none font-black text-white">
+            <p className="truncate text-base leading-none font-black text-slate-900">
               {game.coins.toLocaleString("ja-JP")}
             </p>
-            <p className="mt-0.5 text-[10px] text-slate-400">コイン</p>
+            <p className="mt-0.5 text-[10px] text-slate-500">コイン</p>
           </div>
           <Link
             href="/my-room"
@@ -101,7 +105,7 @@ export function GamePanel({ game }: { game: GameState }) {
       </div>
       <div className="h-2.5 overflow-hidden rounded-full bg-slate-950 shadow-[inset_0_1px_3px_rgba(0,0,0,0.6)]">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-red-600 via-red-500 to-amber-400 shadow-[0_0_8px_rgba(239,68,68,0.6)]"
+          className="h-full rounded-full bg-gradient-to-r from-red-700 via-red-600 to-red-500 shadow-[0_0_8px_rgba(220,38,38,0.7)]"
           style={{ width: `${xpPercent}%` }}
         />
       </div>
@@ -111,13 +115,13 @@ export function GamePanel({ game }: { game: GameState }) {
 
       {/* Next title teaser */}
       {nextTitle && (
-        <div className="mt-3 flex items-center gap-2.5 rounded-2xl border border-indigo-500/20 bg-gradient-to-b from-slate-800/80 to-slate-900/80 px-3 py-2.5">
-          <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-b from-indigo-300 via-violet-500 to-purple-800 shadow-[0_0_10px_rgba(139,92,246,0.5)]">
+        <div className="mt-3 flex items-center gap-2.5 rounded-2xl border border-amber-500/20 bg-gradient-to-b from-slate-800/80 to-slate-900/80 px-3 py-2.5">
+          <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-b from-amber-300 via-orange-500 to-amber-700 shadow-[0_0_10px_rgba(245,158,11,0.5)]">
             <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/40 to-transparent" />
-            <Gem size={16} className="relative text-white" />
+            <Star size={16} className="relative text-white" fill="currentColor" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[9px] font-semibold tracking-wide text-indigo-300/80 uppercase">
+            <p className="text-[9px] font-semibold tracking-wide text-amber-300/80 uppercase">
               Next Title
             </p>
             <p className="truncate text-xs font-bold text-slate-200">{nextTitle.label}</p>
