@@ -10,7 +10,7 @@ import { updateShift } from "../actions";
 type WorkType = "BAND" | "SPOT";
 
 const SELECT_CLASS =
-  "rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none";
+  "rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:outline-none";
 
 export function EditShiftForm({
   shiftId,
@@ -68,8 +68,11 @@ export function EditShiftForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <label className="flex flex-col gap-1 text-sm text-slate-400">
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-4 rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_4px_16px_rgba(0,0,0,0.3)]"
+    >
+      <label className="flex flex-col gap-1 text-sm text-slate-600">
         稼働区分
         <select
           value={workType}
@@ -84,7 +87,7 @@ export function EditShiftForm({
         </select>
       </label>
 
-      <label className="flex flex-col gap-1 text-sm text-slate-400">
+      <label className="flex flex-col gap-1 text-sm text-slate-600">
         キャリア
         <select
           value={carrierSelection}
@@ -110,7 +113,7 @@ export function EditShiftForm({
         />
       )}
 
-      <label className="flex flex-col gap-1 text-sm text-slate-400">
+      <label className="flex flex-col gap-1 text-sm text-slate-600">
         店舗名
         <input
           type="text"
@@ -121,7 +124,7 @@ export function EditShiftForm({
         />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm text-slate-400">
+      <label className="flex flex-col gap-1 text-sm text-slate-600">
         稼働日
         <input
           type="date"
@@ -133,7 +136,7 @@ export function EditShiftForm({
       </label>
 
       <div className="flex items-center gap-3">
-        <label className="flex flex-1 flex-col gap-1 text-sm text-slate-400">
+        <label className="flex flex-1 flex-col gap-1 text-sm text-slate-600">
           開始時間
           <select
             value={startTime}
@@ -147,8 +150,8 @@ export function EditShiftForm({
             ))}
           </select>
         </label>
-        <span className="mt-5 text-slate-500">〜</span>
-        <label className="flex flex-1 flex-col gap-1 text-sm text-slate-400">
+        <span className="mt-5 text-slate-400">〜</span>
+        <label className="flex flex-1 flex-col gap-1 text-sm text-slate-600">
           終業時間
           <select
             value={endTime}
@@ -165,18 +168,18 @@ export function EditShiftForm({
       </div>
 
       {workType === "SPOT" && (
-        <label className="flex flex-col gap-1 text-sm text-slate-400">
+        <label className="flex flex-col gap-1 text-sm text-slate-600">
           単価
           <YenInput value={unitAmount} onChange={setUnitAmount} />
         </label>
       )}
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       <button
         type="submit"
         disabled={pending || !carrier || (workType === "SPOT" && unitAmount === null)}
-        className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-3 text-base font-medium text-white shadow-lg shadow-blue-950/50 active:scale-[0.98] disabled:opacity-50"
+        className="rounded-xl bg-gradient-to-b from-red-400 via-[#e0272e] to-red-800 px-4 py-3 text-base font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_4px_12px_rgba(220,38,38,0.4)] active:scale-[0.98] disabled:opacity-50"
       >
         {pending ? "保存中..." : "保存"}
       </button>

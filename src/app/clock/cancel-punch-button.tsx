@@ -57,7 +57,7 @@ export function CancelPunchButton({
       type="button"
       onClick={handleCancel}
       disabled={pending}
-      className="flex items-center gap-1 text-[11px] font-medium text-red-400 underline decoration-red-400/40 disabled:opacity-50"
+      className="flex items-center gap-1 text-[11px] font-medium text-red-600 underline decoration-red-400/50 disabled:opacity-50"
     >
       <RotateCcw size={11} />
       {pending ? "取り消し中..." : `やり直す(あと${remainingLabel})`}

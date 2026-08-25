@@ -140,7 +140,7 @@ export function GamePanel({ game }: { game: GameState }) {
 
       <Link
         href="/titles"
-        className="mt-3 flex items-center justify-center gap-1 text-[11px] font-semibold text-blue-400"
+        className="mt-3 flex items-center justify-center gap-1 text-[11px] font-semibold text-amber-400"
       >
         称号一覧をすべて見る
         <ChevronRight size={12} />

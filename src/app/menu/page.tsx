@@ -35,8 +35,8 @@ const GAME_MENU_ITEMS: {
     label: "仲間のタウン",
     description: "今日出勤している仲間",
     emoji: "👥",
-    gradient: "from-blue-400 via-blue-600 to-indigo-800",
-    glow: "rgba(59,130,246,0.45)",
+    gradient: "from-yellow-300 via-amber-500 to-yellow-700",
+    glow: "rgba(234,179,8,0.45)",
   },
 ];
 
@@ -51,7 +51,7 @@ export default async function MenuPage() {
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col gap-6 px-4 pt-6 pb-28">
       <div>
         <p className="text-sm text-slate-400">{staff.name} さん</p>
-        <h1 className="mt-1 bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
+        <h1 className="mt-1 bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-xl font-bold text-transparent">
           メニュー
         </h1>
       </div>
@@ -79,16 +79,16 @@ export default async function MenuPage() {
       <div className="flex flex-col gap-2.5">
         <Link
           href="/payment/history"
-          className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-lg shadow-black/40 backdrop-blur-sm transition active:scale-[0.98] active:bg-slate-800/60"
+          className="flex items-center gap-3 rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_4px_16px_rgba(0,0,0,0.35)] transition active:scale-[0.98]"
         >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 shadow-md shadow-blue-950/50">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-red-400 via-[#e0272e] to-red-800 shadow-[0_2px_8px_rgba(220,38,38,0.5)]">
             <Wallet size={20} className="text-white" />
           </span>
           <span className="flex-1">
-            <span className="block text-sm font-semibold text-slate-100">振込申請履歴</span>
+            <span className="block text-sm font-semibold text-slate-900">振込申請履歴</span>
             <span className="block text-xs text-slate-500">これまでの振込申請を確認</span>
           </span>
-          <ChevronRight size={18} className="text-slate-600" />
+          <ChevronRight size={18} className="text-slate-400" />
         </Link>
       </div>
 

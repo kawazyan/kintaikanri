@@ -25,13 +25,13 @@ export function BottomTabBar() {
               key={href}
               href={href}
               className={`flex flex-1 flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 text-[11px] font-medium transition active:scale-95 ${
-                active ? "text-cyan-300" : "text-slate-500"
+                active ? "text-red-500" : "text-slate-500"
               }`}
             >
               <Icon
                 size={22}
                 strokeWidth={active ? 2.4 : 2}
-                className={active ? "drop-shadow-[0_0_6px_rgba(34,211,238,0.55)]" : ""}
+                className={active ? "drop-shadow-[0_0_6px_rgba(239,68,68,0.6)]" : ""}
               />
               {label}
             </Link>

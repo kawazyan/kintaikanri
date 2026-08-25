@@ -17,7 +17,7 @@ export default async function HistoryPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-4 pt-8 pb-28">
-      <h1 className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
+      <h1 className="bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-xl font-bold text-transparent">
         打刻履歴
       </h1>
 
@@ -25,19 +25,19 @@ export default async function HistoryPage() {
         {records.map((r) => (
           <li
             key={r.id}
-            className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2.5 shadow-md shadow-black/30 backdrop-blur-sm"
+            className="flex items-center gap-3 rounded-xl bg-gradient-to-b from-white to-slate-100 px-3 py-2.5 shadow-[0_4px_14px_rgba(0,0,0,0.3)]"
           >
             <span
               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                r.type === "IN" ? "bg-emerald-500/10 text-emerald-400" : "bg-cyan-500/10 text-cyan-400"
+                r.type === "IN" ? "bg-emerald-500/15 text-emerald-600" : "bg-red-500/15 text-red-600"
               }`}
             >
               {r.type === "IN" ? <LogIn size={16} /> : <LogOut size={16} />}
             </span>
-            <span className={r.type === "IN" ? "text-emerald-400" : "text-cyan-400"}>
+            <span className={r.type === "IN" ? "text-emerald-600" : "text-red-600"}>
               {r.type === "IN" ? "出勤" : "退勤"}
             </span>
-            <span className="flex-1 text-right text-slate-200">{formatJst(r.timestamp)}</span>
+            <span className="flex-1 text-right text-slate-800">{formatJst(r.timestamp)}</span>
             <span className="w-20 shrink-0 truncate text-right text-xs text-slate-500">
               {r.storeName ?? "-"}
             </span>

@@ -17,7 +17,7 @@ export default async function PaymentHistoryPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-4 pt-8 pb-28">
-      <h1 className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
+      <h1 className="bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-xl font-bold text-transparent">
         振込申請履歴
       </h1>
 
@@ -25,17 +25,17 @@ export default async function PaymentHistoryPage() {
         {requests.map((r) => (
           <li
             key={r.id}
-            className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 shadow-md shadow-black/30 backdrop-blur-sm"
+            className="rounded-xl bg-gradient-to-b from-white to-slate-100 p-3 shadow-[0_4px_14px_rgba(0,0,0,0.3)]"
           >
             <div className="flex items-center justify-between">
-              <span className="font-medium text-slate-100">
+              <span className="font-semibold text-slate-900">
                 {r.amount.toLocaleString("ja-JP")}円
               </span>
               <span
-                className={`rounded px-2 py-0.5 text-xs font-medium ${
+                className={`rounded px-2 py-0.5 text-xs font-semibold ${
                   r.status === "PAID"
-                    ? "bg-emerald-500/10 text-emerald-400"
-                    : "bg-amber-500/10 text-amber-400"
+                    ? "bg-emerald-500/10 text-emerald-600"
+                    : "bg-amber-500/15 text-amber-700"
                 }`}
               >
                 {r.status === "PAID" ? "振込済み" : "申請中"}

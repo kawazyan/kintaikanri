@@ -15,7 +15,7 @@ export default async function Home() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 px-4">
       <div className="text-center">
-        <h1 className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-2xl font-bold text-transparent">
+        <h1 className="bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-2xl font-bold text-transparent">
           勤怠管理システム
         </h1>
         <p className="mt-1 text-sm text-slate-400">社員コードを入力してください</p>

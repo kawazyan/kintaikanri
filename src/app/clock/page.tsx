@@ -90,8 +90,10 @@ export default async function ClockPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col gap-6 px-4 pt-6 pb-28">
-      {/* 称号・コイン・連続勤務・XP(ページ最上部) */}
-      <GamePanel game={game} />
+      {/* 称号・コイン・連続勤務・XP(ページ最上部、画面幅いっぱい) */}
+      <div className="-mx-4">
+        <GamePanel game={game} />
+      </div>
 
       <CharacterAvatar state={avatarState} staffName={staff.name}>
         {/* 1. 現在日時 */}
@@ -108,20 +110,20 @@ export default async function ClockPage() {
       </CharacterAvatar>
 
       {/* 3. 今日の打刻履歴 */}
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-lg shadow-black/40 backdrop-blur-sm">
-        <h2 className="mb-2 text-xs font-semibold tracking-wide text-blue-400/80 uppercase">
+      <section className="rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_4px_16px_rgba(0,0,0,0.35)]">
+        <h2 className="mb-2 text-xs font-bold tracking-wide text-red-600 uppercase">
           今日の打刻履歴
         </h2>
         <div className="flex justify-between text-sm">
-          <span className="font-medium text-slate-300">
+          <span className="font-medium text-slate-600">
             出勤{" "}
-            <span className="text-slate-100">
+            <span className="text-slate-900">
               {todayIn ? formatJst(todayIn.timestamp).slice(-5) : "未打刻"}
             </span>
           </span>
-          <span className="font-medium text-slate-300">
+          <span className="font-medium text-slate-600">
             退勤{" "}
-            <span className="text-slate-100">
+            <span className="text-slate-900">
               {todayOut ? formatJst(todayOut.timestamp).slice(-5) : "未打刻"}
             </span>
           </span>
@@ -137,11 +139,12 @@ export default async function ClockPage() {
       </section>
 
       {/* 4. 今月の確定受取金額 */}
-      <section className="rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-slate-900 p-5 text-center text-white shadow-lg shadow-blue-950/60 ring-1 ring-blue-500/30">
-        <h2 className="text-xs font-semibold tracking-wide text-blue-200 uppercase">
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-red-700 p-5 text-center text-white shadow-[0_6px_20px_rgba(234,88,12,0.4)] ring-1 ring-amber-300/40">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent" />
+        <h2 className="relative text-xs font-bold tracking-wide text-amber-50 uppercase">
           今月の確定受取金額
         </h2>
-        <p className="mt-1 text-3xl font-bold">
+        <p className="relative mt-1 text-3xl font-black drop-shadow-[0_1px_3px_rgba(0,0,0,0.3)]">
           {earnings.confirmedAmount === null
             ? "－"
             : `${earnings.confirmedAmount.toLocaleString("ja-JP")}円`}
@@ -149,14 +152,14 @@ export default async function ClockPage() {
       </section>
 
       {/* 5. 支払関連情報 */}
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-lg shadow-black/40 backdrop-blur-sm">
-        <h2 className="mb-2 text-xs font-semibold tracking-wide text-blue-400/80 uppercase">
+      <section className="rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_4px_16px_rgba(0,0,0,0.35)]">
+        <h2 className="mb-2 text-xs font-bold tracking-wide text-red-600 uppercase">
           支払情報
         </h2>
         {staff.paymentMethod === "FIXED" ? (
           <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">次回支払予定日</span>
-            <span className="font-semibold text-slate-100">
+            <span className="text-slate-500">次回支払予定日</span>
+            <span className="font-semibold text-slate-900">
               {nextPaymentDate
                 ? new Intl.DateTimeFormat("ja-JP", {
                     timeZone: "Asia/Tokyo",
@@ -171,27 +174,32 @@ export default async function ClockPage() {
           transferBalance && (
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">申請済み</span>
-                <span className="text-slate-100">
+                <span className="text-slate-500">申請済み</span>
+                <span className="text-slate-900">
                   {transferBalance.requestedAmount.toLocaleString("ja-JP")}円
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">振込申請可能額</span>
-                <span className="font-semibold text-slate-100">
+                <span className="text-slate-500">振込申請可能額</span>
+                <span className="font-semibold text-slate-900">
                   {transferBalance.availableAmount.toLocaleString("ja-JP")}円
                 </span>
               </div>
               <Link
                 href="/payment/request"
-                className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 py-2.5 text-center text-sm font-medium text-white shadow-md shadow-blue-950/50 active:scale-[0.98]"
+                style={{
+                  boxShadow:
+                    "inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 12px rgba(220,38,38,0.4), 0 2px 4px rgba(0,0,0,0.3)",
+                }}
+                className="relative mt-1 flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-b from-red-400 via-[#e0272e] to-red-800 py-2.5 text-center text-sm font-semibold text-white active:scale-[0.98]"
               >
-                <Wallet size={16} />
-                振込申請
+                <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/35 to-transparent" />
+                <Wallet size={16} className="relative" />
+                <span className="relative">振込申請</span>
               </Link>
               <Link
                 href="/payment/history"
-                className="flex items-center justify-center gap-1 text-center text-xs text-blue-400"
+                className="flex items-center justify-center gap-1 text-center text-xs font-medium text-red-600"
               >
                 振込申請履歴を見る
                 <ChevronRight size={12} />
@@ -202,8 +210,8 @@ export default async function ClockPage() {
       </section>
 
       {/* 6. 今月の打刻履歴 */}
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-lg shadow-black/40 backdrop-blur-sm">
-        <h2 className="mb-2 text-xs font-semibold tracking-wide text-blue-400/80 uppercase">
+      <section className="rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_4px_16px_rgba(0,0,0,0.35)]">
+        <h2 className="mb-2 text-xs font-bold tracking-wide text-red-600 uppercase">
           今月の打刻履歴({yearMonthLabel(yearMonth)})
         </h2>
         {monthHistory.length === 0 ? (
@@ -213,9 +221,9 @@ export default async function ClockPage() {
             {monthHistory.map((h) => (
               <li
                 key={h.dateKey}
-                className="flex justify-between border-b border-slate-800 py-1 text-slate-300 last:border-0"
+                className="flex justify-between border-b border-slate-200 py-1 text-slate-700 last:border-0"
               >
-                <span className="text-slate-500">{h.label}</span>
+                <span className="text-slate-400">{h.label}</span>
                 <span>出勤 {h.inTime ?? "-"}</span>
                 <span>退勤 {h.outTime ?? "-"}</span>
               </li>
@@ -230,10 +238,15 @@ export default async function ClockPage() {
       {/* 7. シフト登録への導線 */}
       <Link
         href="/shift"
-        className="mt-auto flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-950/50 active:scale-[0.98]"
+        style={{
+          boxShadow:
+            "inset 0 1px 0 rgba(255,255,255,0.35), 0 6px 16px rgba(220,38,38,0.4), 0 3px 6px rgba(0,0,0,0.4)",
+        }}
+        className="relative mt-auto flex items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-b from-red-400 via-[#e0272e] to-red-800 py-3.5 text-sm font-bold text-white active:scale-[0.98]"
       >
-        <CalendarDays size={18} />
-        シフト登録・確認
+        <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/35 to-transparent" />
+        <CalendarDays size={18} className="relative" />
+        <span className="relative">シフト登録・確認</span>
       </Link>
 
       <BottomTabBar />

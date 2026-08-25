@@ -28,13 +28,13 @@ export type WizardInitialValues = {
 const STEP_LABELS = ["対象月", "稼働区分", "キャリア", "店舗名", "稼働時間", "稼働日", "受取単価", "確認"];
 
 const INPUT_CLASS =
-  "rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-3 text-base text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none";
+  "rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:outline-none";
 const SELECT_CLASS =
-  "rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-100 focus:border-blue-500 focus:outline-none";
+  "rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 focus:border-red-500 focus:outline-none";
 const PRIMARY_BUTTON =
-  "flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 py-3 text-sm font-medium text-white shadow-md shadow-blue-950/50 active:scale-[0.98] disabled:opacity-40";
+  "flex-1 rounded-xl bg-gradient-to-b from-red-400 via-[#e0272e] to-red-800 py-3 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_4px_12px_rgba(220,38,38,0.4)] active:scale-[0.98] disabled:opacity-40";
 const OUTLINE_BUTTON =
-  "flex-1 rounded-xl border border-slate-700 py-3 text-sm text-slate-200 active:scale-[0.98] disabled:opacity-40";
+  "flex-1 rounded-xl border border-slate-300 bg-white py-3 text-sm text-slate-700 active:scale-[0.98] disabled:opacity-40";
 
 export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
   const router = useRouter();
@@ -183,7 +183,7 @@ export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
           <span
             key={label}
             className={`flex-1 border-b-2 pb-1 text-center ${
-              i + 1 === step ? "border-blue-500 font-semibold text-blue-400" : "border-slate-800"
+              i + 1 === step ? "border-red-500 font-semibold text-red-500" : "border-slate-700"
             }`}
           >
             {label}
@@ -191,9 +191,10 @@ export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
         ))}
       </div>
 
+      <div className="rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_4px_16px_rgba(0,0,0,0.3)]">
       {step === 1 && (
         <div className="flex flex-col gap-3">
-          <h2 className="text-base font-semibold text-slate-100">登録する月を選択してください</h2>
+          <h2 className="text-base font-semibold text-slate-900">登録する月を選択してください</h2>
           <select
             value={yearMonth}
             onChange={(e) => {
@@ -225,7 +226,7 @@ export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
 
       {step === 2 && (
         <div className="flex flex-col gap-3">
-          <h2 className="text-base font-semibold text-slate-100">稼働区分を選択してください</h2>
+          <h2 className="text-base font-semibold text-slate-900">稼働区分を選択してください</h2>
           <div className="grid grid-cols-2 gap-3">
             {(["BAND", "SPOT"] as const).map((wt) => (
               <button
@@ -237,8 +238,8 @@ export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
                 }}
                 className={`rounded-xl border-2 py-6 text-base font-bold transition ${
                   workType === wt
-                    ? "border-blue-500 bg-blue-500/10 text-blue-300 shadow-md shadow-blue-950/40"
-                    : "border-slate-700 text-slate-300"
+                    ? "border-red-500 bg-red-500/10 text-red-600 shadow-md shadow-red-900/10"
+                    : "border-slate-300 text-slate-600"
                 }`}
               >
                 {WORK_TYPE_LABEL[wt]}
@@ -253,7 +254,7 @@ export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
 
       {step === 3 && (
         <div className="flex flex-col gap-3">
-          <h2 className="text-base font-semibold text-slate-100">稼働キャリアを選択してください</h2>
+          <h2 className="text-base font-semibold text-slate-900">稼働キャリアを選択してください</h2>
           <div className="grid grid-cols-1 gap-2">
             {CARRIERS.map((c) => (
               <button
@@ -262,8 +263,8 @@ export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
                 onClick={() => setCarrierSelection(c)}
                 className={`rounded-xl border-2 py-3 text-sm font-medium transition ${
                   carrierSelection === c
-                    ? "border-blue-500 bg-blue-500/10 text-blue-300 shadow-md shadow-blue-950/40"
-                    : "border-slate-700 text-slate-300"
+                    ? "border-red-500 bg-red-500/10 text-red-600 shadow-md shadow-red-900/10"
+                    : "border-slate-300 text-slate-600"
                 }`}
               >
                 {c}
@@ -292,7 +293,7 @@ export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
 
       {step === 4 && (
         <div className="flex flex-col gap-3">
-          <h2 className="text-base font-semibold text-slate-100">稼働先店舗名を入力してください</h2>
+          <h2 className="text-base font-semibold text-slate-900">稼働先店舗名を入力してください</h2>
           <input
             type="text"
             value={storeName}
@@ -319,9 +320,9 @@ export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
 
       {step === 5 && (
         <div className="flex flex-col gap-3">
-          <h2 className="text-base font-semibold text-slate-100">稼働予定時間を選択してください</h2>
+          <h2 className="text-base font-semibold text-slate-900">稼働予定時間を選択してください</h2>
           <div className="flex items-center gap-3">
-            <label className="flex flex-1 flex-col gap-1 text-sm text-slate-400">
+            <label className="flex flex-1 flex-col gap-1 text-sm text-slate-600">
               開始時間
               <select
                 value={startTime}
@@ -336,7 +337,7 @@ export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
               </select>
             </label>
             <span className="mt-5 text-slate-500">〜</span>
-            <label className="flex flex-1 flex-col gap-1 text-sm text-slate-400">
+            <label className="flex flex-1 flex-col gap-1 text-sm text-slate-600">
               終業時間
               <select
                 value={endTime}
@@ -367,7 +368,7 @@ export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
 
       {step === 6 && (
         <div className="flex flex-col gap-3">
-          <h2 className="text-base font-semibold text-slate-100">
+          <h2 className="text-base font-semibold text-slate-900">
             {yearMonthLabel(yearMonth)}の稼働日を選択してください({totalDayCount}日選択中)
           </h2>
           {workType === "SPOT" && (
@@ -385,7 +386,7 @@ export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
                 : undefined
             }
           />
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-3">
             <button type="button" onClick={goBack} className={OUTLINE_BUTTON}>
               戻る
@@ -404,7 +405,7 @@ export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
 
       {step === 7 && (
         <div className="flex flex-col gap-3">
-          <h2 className="text-base font-semibold text-slate-100">
+          <h2 className="text-base font-semibold text-slate-900">
             {yearMonthLabel(yearMonth)}合計の受取予定単価
           </h2>
           <p className="text-xs text-slate-500">
@@ -424,8 +425,8 @@ export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
 
       {step === 8 && workType && (
         <div className="flex flex-col gap-3">
-          <h2 className="text-base font-semibold text-slate-100">登録内容の確認</h2>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-100 backdrop-blur-sm">
+          <h2 className="text-base font-semibold text-slate-900">登録内容の確認</h2>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 rounded-xl bg-slate-50 p-4 text-sm text-slate-900">
             <dt className="text-slate-500">対象月</dt>
             <dd>{yearMonthLabel(yearMonth)}</dd>
             <dt className="text-slate-500">稼働区分</dt>
@@ -477,7 +478,7 @@ export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
               </>
             )}
           </dl>
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-3">
             <button type="button" onClick={goBack} disabled={pending} className={OUTLINE_BUTTON}>
               修正する
@@ -488,6 +489,7 @@ export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

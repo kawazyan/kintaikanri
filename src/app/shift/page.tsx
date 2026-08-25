@@ -54,15 +54,20 @@ export default async function ShiftListPage({
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-4 pt-8 pb-28">
       <div className="flex items-center justify-between">
-        <h1 className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
+        <h1 className="bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-xl font-bold text-transparent">
           シフト一覧
         </h1>
         <Link
           href="/shift/new"
-          className="flex items-center gap-1 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-3 py-2 text-sm font-medium text-white shadow-md shadow-blue-950/50 active:scale-[0.98]"
+          style={{
+            boxShadow:
+              "inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 12px rgba(220,38,38,0.4), 0 2px 4px rgba(0,0,0,0.3)",
+          }}
+          className="relative flex items-center gap-1 overflow-hidden rounded-xl bg-gradient-to-b from-red-400 via-[#e0272e] to-red-800 px-3 py-2 text-sm font-semibold text-white active:scale-[0.98]"
         >
-          <Plus size={16} />
-          新規登録
+          <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/35 to-transparent" />
+          <Plus size={16} className="relative" />
+          <span className="relative">新規登録</span>
         </Link>
       </div>
 

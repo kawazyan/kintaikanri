@@ -32,10 +32,10 @@ export default async function NewShiftPage({
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-4 py-8">
-      <Link href="/shift" className="text-sm text-blue-400 underline">
+      <Link href="/shift" className="text-sm text-red-600 underline">
         ← シフト一覧へ戻る
       </Link>
-      <h1 className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
+      <h1 className="bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-xl font-bold text-transparent">
         シフト新規登録
       </h1>
       <ShiftWizard initial={initial} />

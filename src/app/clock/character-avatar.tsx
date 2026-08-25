@@ -18,7 +18,7 @@ const AVATAR_LABEL: Record<AvatarState, string> = {
 const AVATAR_DOT: Record<AvatarState, string> = {
   HOME: "bg-slate-400",
   WORK: "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)]",
-  NIGHT: "bg-blue-400",
+  NIGHT: "bg-amber-400",
 };
 
 export function CharacterAvatar({

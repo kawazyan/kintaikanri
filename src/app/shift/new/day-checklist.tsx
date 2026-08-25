@@ -20,7 +20,7 @@ export function DayChecklist({
   onAmountChange?: (dateKey: string, value: number | null) => void;
 }) {
   return (
-    <ul className="flex max-h-96 flex-col divide-y divide-slate-800 overflow-y-auto rounded-xl border border-slate-700 bg-slate-900/60">
+    <ul className="flex max-h-96 flex-col divide-y divide-slate-200 overflow-y-auto rounded-xl border border-slate-300 bg-white">
       {days.map((d) => {
         const isLocked = lockedDates.has(d.dateKey);
         const isChecked = selected.has(d.dateKey) || isLocked;
@@ -31,21 +31,21 @@ export function DayChecklist({
               <span
                 className={
                   d.weekday === 0
-                    ? "text-red-400"
+                    ? "text-red-500"
                     : d.weekday === 6
-                      ? "text-blue-400"
-                      : "text-slate-200"
+                      ? "text-orange-500"
+                      : "text-slate-700"
                 }
               >
                 {d.day}日({d.weekdayLabel})
-                {isLocked && <span className="ml-2 text-xs text-slate-500">登録済み</span>}
+                {isLocked && <span className="ml-2 text-xs text-slate-400">登録済み</span>}
               </span>
               <input
                 type="checkbox"
                 checked={isChecked}
                 disabled={isLocked}
                 onChange={() => onToggle(d.dateKey)}
-                className="h-5 w-5 accent-blue-500"
+                className="h-5 w-5 accent-red-500"
               />
             </label>
             {showAmountInput && (
@@ -59,9 +59,9 @@ export function DayChecklist({
                     onAmountChange?.(d.dateKey, digits === "" ? null : Number(digits));
                   }}
                   placeholder="単価"
-                  className="w-32 rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-right text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
+                  className="w-32 rounded-lg border border-slate-300 bg-slate-50 px-2 py-1 text-right text-sm text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:outline-none"
                 />
-                <span className="ml-1 self-center text-xs text-slate-500">円</span>
+                <span className="ml-1 self-center text-xs text-slate-400">円</span>
               </div>
             )}
           </li>

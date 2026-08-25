@@ -25,7 +25,7 @@ export function DeleteShiftButton({ shiftId }: { shiftId: string }) {
       type="button"
       onClick={handleDelete}
       disabled={pending}
-      className="text-xs text-red-400 underline disabled:opacity-50"
+      className="text-xs text-red-700 underline disabled:opacity-50"
     >
       {pending ? "削除中..." : "削除"}
     </button>
