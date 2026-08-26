@@ -110,7 +110,7 @@ export default async function ClockPage() {
       </CharacterAvatar>
 
       {/* 3. 今日の打刻履歴 */}
-      <section className="rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_4px_16px_rgba(0,0,0,0.35)]">
+      <section className="rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_2px_10px_rgba(0,0,0,0.08)]">
         <h2 className="mb-2 text-xs font-bold tracking-wide text-red-600 uppercase">
           今日の打刻履歴
         </h2>
@@ -152,7 +152,7 @@ export default async function ClockPage() {
       </section>
 
       {/* 5. 支払関連情報 */}
-      <section className="rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_4px_16px_rgba(0,0,0,0.35)]">
+      <section className="rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_2px_10px_rgba(0,0,0,0.08)]">
         <h2 className="mb-2 text-xs font-bold tracking-wide text-red-600 uppercase">
           支払情報
         </h2>
@@ -210,7 +210,7 @@ export default async function ClockPage() {
       </section>
 
       {/* 6. 今月の打刻履歴 */}
-      <section className="rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_4px_16px_rgba(0,0,0,0.35)]">
+      <section className="rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_2px_10px_rgba(0,0,0,0.08)]">
         <h2 className="mb-2 text-xs font-bold tracking-wide text-red-600 uppercase">
           今月の打刻履歴({yearMonthLabel(yearMonth)})
         </h2>

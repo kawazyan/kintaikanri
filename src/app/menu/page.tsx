@@ -79,7 +79,7 @@ export default async function MenuPage() {
       <div className="flex flex-col gap-2.5">
         <Link
           href="/payment/history"
-          className="flex items-center gap-3 rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_4px_16px_rgba(0,0,0,0.35)] transition active:scale-[0.98]"
+          className="flex items-center gap-3 rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_2px_10px_rgba(0,0,0,0.08)] transition active:scale-[0.98]"
         >
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-red-400 via-[#e0272e] to-red-800 shadow-[0_2px_8px_rgba(220,38,38,0.5)]">
             <Wallet size={20} className="text-white" />

@@ -191,7 +191,7 @@ export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
         ))}
       </div>
 
-      <div className="rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_4px_16px_rgba(0,0,0,0.3)]">
+      <div className="rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_2px_10px_rgba(0,0,0,0.08)]">
       {step === 1 && (
         <div className="flex flex-col gap-3">
           <h2 className="text-base font-semibold text-slate-900">登録する月を選択してください</h2>

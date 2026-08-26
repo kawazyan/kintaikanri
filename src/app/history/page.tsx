@@ -25,7 +25,7 @@ export default async function HistoryPage() {
         {records.map((r) => (
           <li
             key={r.id}
-            className="flex items-center gap-3 rounded-xl bg-gradient-to-b from-white to-slate-100 px-3 py-2.5 shadow-[0_4px_14px_rgba(0,0,0,0.3)]"
+            className="flex items-center gap-3 rounded-xl bg-gradient-to-b from-white to-slate-100 px-3 py-2.5 shadow-[0_2px_10px_rgba(0,0,0,0.08)]"
           >
             <span
               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${

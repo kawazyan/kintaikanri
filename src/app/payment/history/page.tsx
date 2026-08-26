@@ -25,7 +25,7 @@ export default async function PaymentHistoryPage() {
         {requests.map((r) => (
           <li
             key={r.id}
-            className="rounded-xl bg-gradient-to-b from-white to-slate-100 p-3 shadow-[0_4px_14px_rgba(0,0,0,0.3)]"
+            className="rounded-xl bg-gradient-to-b from-white to-slate-100 p-3 shadow-[0_2px_10px_rgba(0,0,0,0.08)]"
           >
             <div className="flex items-center justify-between">
               <span className="font-semibold text-slate-900">

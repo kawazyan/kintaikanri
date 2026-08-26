@@ -72,7 +72,7 @@ export function RequestForm({ availableAmount }: { availableAmount: number }) {
           <button
             type="button"
             onClick={() => setAmount(availableAmount)}
-            className="self-start text-sm text-red-600 underline"
+            className="self-start rounded-lg bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-600 transition active:scale-95"
           >
             全額申請する({availableAmount.toLocaleString("ja-JP")}円)
           </button>
@@ -104,7 +104,7 @@ export function RequestForm({ availableAmount }: { availableAmount: number }) {
 
       {step === "confirm" && amount !== null && (
         <>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 text-sm text-slate-900 shadow-[0_4px_16px_rgba(0,0,0,0.3)]">
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 text-sm text-slate-900 shadow-[0_2px_10px_rgba(0,0,0,0.08)]">
             <dt className="text-slate-500">申請金額</dt>
             <dd>{amount.toLocaleString("ja-JP")}円</dd>
             <dt className="text-slate-500">希望振込日</dt>

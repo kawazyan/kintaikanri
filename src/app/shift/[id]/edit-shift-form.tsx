@@ -70,7 +70,7 @@ export function EditShiftForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-4 rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_4px_16px_rgba(0,0,0,0.3)]"
+      className="flex flex-col gap-4 rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_2px_10px_rgba(0,0,0,0.08)]"
     >
       <label className="flex flex-col gap-1 text-sm text-slate-600">
         稼働区分

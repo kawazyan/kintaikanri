@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
 import { deleteShift } from "./actions";
 
 export function DeleteShiftButton({ shiftId }: { shiftId: string }) {
@@ -25,8 +26,9 @@ export function DeleteShiftButton({ shiftId }: { shiftId: string }) {
       type="button"
       onClick={handleDelete}
       disabled={pending}
-      className="text-xs text-red-700 underline disabled:opacity-50"
+      className="flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition active:scale-95 disabled:opacity-50"
     >
+      <Trash2 size={12} />
       {pending ? "削除中..." : "削除"}
     </button>
   );
