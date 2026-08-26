@@ -17,7 +17,7 @@ export function GamePanel({ game }: { game: GameState }) {
   const nextTitle = game.lockedTitles[0];
 
   return (
-    <section className="relative overflow-hidden rounded-3xl border border-amber-500/10 bg-gradient-to-b from-slate-900 to-slate-950 p-4 shadow-[0_8px_28px_rgba(0,0,0,0.55)]">
+    <section className="relative overflow-hidden rounded-t-3xl bg-gradient-to-b from-red-600 via-red-800 to-[#2a0508] p-4 pb-6 shadow-[0_2px_16px_rgba(0,0,0,0.4)]">
       {/* Level badge + current title ribbon */}
       <div className="mb-3 flex items-center gap-3">
         <div className={`relative h-[4.5rem] w-16 shrink-0`}>
@@ -63,7 +63,7 @@ export function GamePanel({ game }: { game: GameState }) {
       </div>
 
       {/* Streak & coin chips: white cards read as a bright accent against
-          the dark panel, matching the reference's high-contrast tiles. */}
+          the red panel, matching the reference's high-contrast tiles. */}
       <div className="mb-3 grid grid-cols-2 gap-2.5">
         <div className="flex items-center gap-2.5 rounded-2xl bg-gradient-to-b from-white to-slate-100 px-3 py-2.5 shadow-[0_4px_14px_rgba(0,0,0,0.4)]">
           <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-b from-orange-300 via-orange-500 to-red-600 shadow-[0_0_10px_rgba(249,115,22,0.5)]">
@@ -109,7 +109,7 @@ export function GamePanel({ game }: { game: GameState }) {
           style={{ width: `${xpPercent}%` }}
         />
       </div>
-      <p className="mt-1 text-center text-[10px] text-slate-500">
+      <p className="mt-1 text-center text-[10px] text-red-100/70">
         レベル{game.level + 1}まであと{game.xpForNextLevel - game.xpIntoLevel}EXP
       </p>
 

@@ -31,7 +31,7 @@ export function CharacterAvatar({
   children?: ReactNode;
 }) {
   return (
-    <div className="relative -mx-4 h-[32rem] overflow-hidden">
+    <div className="relative h-[32rem] overflow-hidden">
       <Image
         src={AVATAR_SRC[state]}
         alt={AVATAR_LABEL[state]}
@@ -41,10 +41,10 @@ export function CharacterAvatar({
         priority
       />
       {/* Darkens the lower portion so the overlaid UI stays legible against
-          the character art (with a warm red tint matching the brand accent),
-          fading out toward the top so the face is clear. */}
+          the character art, fading out toward the top so the face is clear
+          and the photo meets the red GamePanel above it with no dark band
+          at the seam. */}
       <div className="absolute inset-0 bg-gradient-to-t from-[#0a0407] from-15% via-[#05070f]/85 via-55% to-transparent" />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-transparent" />
 
       <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4">
         <span className="rounded-full bg-slate-950/70 px-3 py-1.5 text-xs font-semibold text-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.5)] ring-1 ring-white/10 backdrop-blur-sm">

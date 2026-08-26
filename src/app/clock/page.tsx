@@ -91,10 +91,10 @@ export default async function ClockPage() {
   return (
     <main className="min-h-dvh bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb]">
     <div className="mx-auto flex max-w-sm flex-col gap-6 px-4 pt-6 pb-28">
-      {/* 称号・コイン・連続勤務・XP(ページ最上部、画面幅いっぱい) */}
-      <div className="-mx-4">
-        <GamePanel game={game} />
-      </div>
+      {/* 称号・コイン・連続勤務・XP + キャラクター画像を、継ぎ目なく1枚の
+          赤いパネルとして繋げる(ページ最上部、画面幅いっぱい) */}
+      <div className="-mx-4 flex flex-col">
+      <GamePanel game={game} />
 
       <CharacterAvatar state={avatarState} staffName={staff.name}>
         {/* 1. 現在日時 */}
@@ -109,6 +109,7 @@ export default async function ClockPage() {
           </p>
         )}
       </CharacterAvatar>
+      </div>
 
       {/* 3. 今日の打刻履歴 */}
       <section className="rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_2px_10px_rgba(0,0,0,0.08)]">
