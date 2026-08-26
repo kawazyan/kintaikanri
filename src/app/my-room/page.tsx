@@ -13,7 +13,8 @@ export default async function MyRoomPage() {
   if (!staff || staff.status !== "ACTIVE") redirect("/");
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col gap-6 bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb] px-4 pt-6 pb-28">
+    <main className="min-h-dvh bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb]">
+    <div className="mx-auto flex max-w-sm flex-col gap-6 px-4 pt-6 pb-28">
       <Link href="/menu" className="text-sm text-red-500 underline">
         ← メニューへ戻る
       </Link>
@@ -25,6 +26,7 @@ export default async function MyRoomPage() {
         <h1 className="text-lg font-bold text-slate-800">マイルーム</h1>
         <p className="text-sm text-slate-500">近日公開予定です。お楽しみに!</p>
       </div>
+    </div>
 
       <BottomTabBar />
     </main>

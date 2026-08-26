@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Wallet, LogOut, ChevronRight } from "lucide-react";
+import { Wallet, LogOut, ChevronRight, Menu } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { switchUser } from "../identify-actions";
@@ -48,10 +48,12 @@ export default async function MenuPage() {
   if (!staff || staff.status !== "ACTIVE") redirect("/");
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col gap-6 bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb] px-4 pt-6 pb-28">
+    <main className="min-h-dvh bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb]">
+    <div className="mx-auto flex max-w-sm flex-col gap-6 px-4 pt-6 pb-28">
       <div>
         <p className="text-sm text-slate-600">{staff.name} さん</p>
-        <h1 className="mt-1 bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-xl font-bold text-transparent">
+        <h1 className="mt-1 flex items-center gap-2 bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-xl font-bold text-transparent">
+          <Menu size={20} className="text-red-500" />
           メニュー
         </h1>
       </div>
@@ -103,6 +105,7 @@ export default async function MenuPage() {
           <span className="flex-1 text-sm font-semibold text-red-600">ログアウト</span>
         </button>
       </form>
+    </div>
 
       <BottomTabBar />
     </main>

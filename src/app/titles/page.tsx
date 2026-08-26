@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Crown } from "lucide-react";
+import { Crown, Award } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAllTitlesForStaff, getPerfectAttendanceHistory } from "@/lib/game";
@@ -19,8 +19,10 @@ export default async function TitlesPage() {
   ]);
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col gap-6 bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb] px-4 pt-6 pb-28">
-      <h1 className="bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-xl font-bold text-transparent">
+    <main className="min-h-dvh bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb]">
+    <div className="mx-auto flex max-w-sm flex-col gap-6 px-4 pt-6 pb-28">
+      <h1 className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-xl font-bold text-transparent">
+        <Award size={20} className="text-red-500" />
         称号・バッジ一覧
       </h1>
 
@@ -89,6 +91,7 @@ export default async function TitlesPage() {
           </ul>
         )}
       </section>
+    </div>
 
       <BottomTabBar />
     </main>

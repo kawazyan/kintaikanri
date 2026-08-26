@@ -13,7 +13,8 @@ export default async function Home() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb] px-4">
+    <main className="min-h-dvh bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb]">
+    <div className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 px-4">
       <div className="text-center">
         <h1 className="bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-2xl font-bold text-transparent">
           勤怠管理システム
@@ -21,6 +22,7 @@ export default async function Home() {
         <p className="mt-1 text-sm text-slate-600">社員コードを入力してください</p>
       </div>
       <IdentifyForm />
+    </div>
     </main>
   );
 }

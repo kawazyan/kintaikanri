@@ -31,7 +31,8 @@ export default async function NewShiftPage({
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb] px-4 py-8">
+    <main className="min-h-dvh bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb]">
+    <div className="mx-auto flex max-w-md flex-col gap-6 px-4 py-8">
       <Link href="/shift" className="text-sm text-red-600 underline">
         ← シフト一覧へ戻る
       </Link>
@@ -39,6 +40,7 @@ export default async function NewShiftPage({
         シフト新規登録
       </h1>
       <ShiftWizard initial={initial} />
+    </div>
     </main>
   );
 }

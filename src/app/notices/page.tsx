@@ -12,8 +12,10 @@ export default async function NoticesPage() {
   if (!staff || staff.status !== "ACTIVE") redirect("/");
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col gap-6 bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb] px-4 pt-6 pb-28">
-      <h1 className="bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-xl font-bold text-transparent">
+    <main className="min-h-dvh bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb]">
+    <div className="mx-auto flex max-w-sm flex-col gap-6 px-4 pt-6 pb-28">
+      <h1 className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-xl font-bold text-transparent">
+        <Bell size={20} className="text-red-500" />
         お知らせ
       </h1>
 
@@ -23,6 +25,7 @@ export default async function NoticesPage() {
         </div>
         <p className="text-sm text-slate-500">現在お知らせはありません。</p>
       </div>
+    </div>
 
       <BottomTabBar />
     </main>

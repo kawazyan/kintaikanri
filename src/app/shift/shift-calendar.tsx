@@ -138,13 +138,15 @@ export function ShiftCalendar({
                 <DeleteShiftButton shiftId={s.id} />
               </div>
             </div>
-            <div className="mt-2 flex items-center gap-1.5 font-medium text-slate-900">
-              <Clock size={14} className="text-slate-400" />
-              {s.startTime} 〜 {s.endTime}
-            </div>
-            <div className="mt-1 flex items-center gap-1.5 text-slate-500">
-              <Building2 size={14} className="text-slate-400" />
-              {s.carrier} / {s.storeName}
+            <div className="mt-2 flex flex-col gap-1.5 border-t border-slate-100 pt-2">
+              <div className="flex items-center gap-1.5 font-medium text-slate-900">
+                <Clock size={14} className="text-slate-400" />
+                {s.startTime} 〜 {s.endTime}
+              </div>
+              <div className="flex items-center gap-1.5 text-slate-500">
+                <Building2 size={14} className="text-slate-400" />
+                {s.carrier} / {s.storeName}
+              </div>
             </div>
           </div>
         ))}

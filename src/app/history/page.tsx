@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { LogIn, LogOut } from "lucide-react";
+import { LogIn, LogOut, History } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatJst } from "@/lib/time";
@@ -16,8 +16,10 @@ export default async function HistoryPage() {
   });
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb] px-4 pt-8 pb-28">
-      <h1 className="bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-xl font-bold text-transparent">
+    <main className="min-h-dvh bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb]">
+    <div className="mx-auto flex max-w-md flex-col gap-6 px-4 pt-8 pb-28">
+      <h1 className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-xl font-bold text-transparent">
+        <History size={20} className="text-red-500" />
         打刻履歴
       </h1>
 
@@ -47,6 +49,7 @@ export default async function HistoryPage() {
           <p className="text-sm text-slate-500">打刻履歴はありません。</p>
         )}
       </ul>
+    </div>
 
       <BottomTabBar />
     </main>
