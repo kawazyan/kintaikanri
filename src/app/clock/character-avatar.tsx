@@ -40,20 +40,10 @@ export function CharacterAvatar({
         className="object-cover object-top"
         priority
       />
-      {/* Bridges the seam with GamePanel above: starts at the exact color
-          GamePanel's gradient ends on and fades to transparent, overlapping
-          the top of the photo (not just GamePanel's own box) so the red
-          dissolves into the image instead of cutting off at a hard edge. */}
-      <div
-        className="absolute inset-x-0 top-0 z-10 h-36"
-        style={{
-          background:
-            "linear-gradient(180deg, #2a0508 0%, rgba(42,5,8,0.75) 35%, rgba(42,5,8,0.25) 70%, rgba(42,5,8,0) 100%)",
-        }}
-      />
-
       {/* Darkens the lower portion so the overlaid UI stays legible against
-          the character art, fading out toward the top so the face is clear. */}
+          the character art, fading out toward the top so the face is clear.
+          No gap, border, or shadow separates this from GamePanel above —
+          that's what keeps the seam invisible, not a blended overlay. */}
       <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#0a0407] from-15% via-[#05070f]/85 via-55% to-transparent" />
 
       <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between p-4">
