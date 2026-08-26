@@ -40,13 +40,23 @@ export function CharacterAvatar({
         className="object-cover object-top"
         priority
       />
-      {/* Darkens the lower portion so the overlaid UI stays legible against
-          the character art, fading out toward the top so the face is clear
-          and the photo meets the red GamePanel above it with no dark band
-          at the seam. */}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0407] from-15% via-[#05070f]/85 via-55% to-transparent" />
+      {/* Bridges the seam with GamePanel above: starts at the exact color
+          GamePanel's gradient ends on and fades to transparent, overlapping
+          the top of the photo (not just GamePanel's own box) so the red
+          dissolves into the image instead of cutting off at a hard edge. */}
+      <div
+        className="absolute inset-x-0 top-0 z-10 h-36"
+        style={{
+          background:
+            "linear-gradient(180deg, #2a0508 0%, rgba(42,5,8,0.75) 35%, rgba(42,5,8,0.25) 70%, rgba(42,5,8,0) 100%)",
+        }}
+      />
 
-      <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4">
+      {/* Darkens the lower portion so the overlaid UI stays legible against
+          the character art, fading out toward the top so the face is clear. */}
+      <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#0a0407] from-15% via-[#05070f]/85 via-55% to-transparent" />
+
+      <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between p-4">
         <span className="rounded-full bg-slate-950/70 px-3 py-1.5 text-xs font-semibold text-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.5)] ring-1 ring-white/10 backdrop-blur-sm">
           {staffName} さん
         </span>

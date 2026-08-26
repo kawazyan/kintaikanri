@@ -53,9 +53,9 @@ export function GamePanel({ game }: { game: GameState }) {
             />
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 rounded-full bg-black/30 px-3 py-1.5">
-            <Crown size={12} className="text-white/50" />
-            <p className="text-[11px] text-white/60">称号未獲得</p>
+          <div className="flex items-center gap-1.5 rounded-full bg-black/55 px-3 py-1.5">
+            <Crown size={12} className="text-slate-300" />
+            <p className="text-[11px] text-slate-300">称号未獲得</p>
           </div>
         )}
       </div>
