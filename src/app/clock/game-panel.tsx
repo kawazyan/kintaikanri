@@ -17,7 +17,7 @@ export function GamePanel({ game }: { game: GameState }) {
   const nextTitle = game.lockedTitles[0];
 
   return (
-    <section className="relative overflow-hidden rounded-t-3xl bg-gradient-to-b from-red-600 via-red-800 to-[#2a0508] p-4 pb-6 shadow-[0_2px_16px_rgba(0,0,0,0.4)]">
+    <section className="relative overflow-hidden rounded-t-3xl bg-gradient-to-b from-red-600 via-red-800 to-[#2a0508] p-4 pb-6">
       {/* Level badge + current title ribbon */}
       <div className="mb-3 flex items-center gap-3">
         <div className={`relative h-[4.5rem] w-16 shrink-0`}>
@@ -53,11 +53,9 @@ export function GamePanel({ game }: { game: GameState }) {
             />
           </div>
         ) : (
-          <div className="flex flex-1 items-center gap-2.5 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-800/80">
-              <Crown size={16} className="text-slate-600" />
-            </span>
-            <p className="text-xs text-slate-500">称号未獲得(連続3勤務で獲得できます)</p>
+          <div className="flex items-center gap-1.5 rounded-full bg-black/30 px-3 py-1.5">
+            <Crown size={12} className="text-white/50" />
+            <p className="text-[11px] text-white/60">称号未獲得</p>
           </div>
         )}
       </div>
@@ -115,7 +113,7 @@ export function GamePanel({ game }: { game: GameState }) {
 
       {/* Next title teaser */}
       {nextTitle && (
-        <div className="mt-3 flex items-center gap-2.5 rounded-2xl border border-amber-500/20 bg-gradient-to-b from-slate-800/80 to-slate-900/80 px-3 py-2.5">
+        <div className="mt-3 flex items-center gap-2.5 rounded-2xl bg-black/25 px-3 py-2.5">
           <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-b from-amber-300 via-orange-500 to-amber-700 shadow-[0_0_10px_rgba(245,158,11,0.5)]">
             <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/40 to-transparent" />
             <Star size={16} className="relative text-white" fill="currentColor" />
