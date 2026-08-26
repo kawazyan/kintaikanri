@@ -48,9 +48,9 @@ export default async function MenuPage() {
   if (!staff || staff.status !== "ACTIVE") redirect("/");
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col gap-6 px-4 pt-6 pb-28">
+    <main className="mx-auto flex min-h-dvh max-w-sm flex-col gap-6 bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb] px-4 pt-6 pb-28">
       <div>
-        <p className="text-sm text-slate-400">{staff.name} さん</p>
+        <p className="text-sm text-slate-600">{staff.name} さん</p>
         <h1 className="mt-1 bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-xl font-bold text-transparent">
           メニュー
         </h1>
@@ -95,12 +95,12 @@ export default async function MenuPage() {
       <form action={switchUser}>
         <button
           type="submit"
-          className="flex w-full items-center gap-3 rounded-2xl border border-red-500/20 bg-red-500/5 p-4 text-left shadow-md shadow-black/30 backdrop-blur-sm transition active:scale-[0.98] active:bg-red-500/10"
+          className="flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-[0_4px_16px_rgba(0,0,0,0.15)] transition active:scale-[0.98]"
         >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-500/10">
-            <LogOut size={20} className="text-red-400" />
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50">
+            <LogOut size={20} className="text-red-600" />
           </span>
-          <span className="flex-1 text-sm font-semibold text-red-400">ログアウト</span>
+          <span className="flex-1 text-sm font-semibold text-red-600">ログアウト</span>
         </button>
       </form>
 

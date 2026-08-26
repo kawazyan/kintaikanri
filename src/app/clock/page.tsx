@@ -89,7 +89,7 @@ export default async function ClockPage() {
     });
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col gap-6 px-4 pt-6 pb-28">
+    <main className="mx-auto flex min-h-dvh max-w-sm flex-col gap-6 bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb] px-4 pt-6 pb-28">
       {/* 称号・コイン・連続勤務・XP(ページ最上部、画面幅いっぱい) */}
       <div className="-mx-4">
         <GamePanel game={game} />

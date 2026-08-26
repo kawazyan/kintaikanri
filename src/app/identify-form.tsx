@@ -14,9 +14,9 @@ export function IdentifyForm() {
         required
         autoFocus
         placeholder="社員コード"
-        className="rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-3 text-base text-slate-100 placeholder:text-slate-500 focus:border-red-500 focus:outline-none"
+        className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:outline-none"
       />
-      {state?.error && <p className="text-sm text-red-400">{state.error}</p>}
+      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       <button
         type="submit"
         disabled={pending}
