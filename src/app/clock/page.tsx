@@ -104,7 +104,7 @@ export default async function ClockPage() {
         <ClockButtons canClockOut={canClockOut} finishedToday={finishedToday} />
 
         {!todayHasShift && (todayIn || todayOut) && (
-          <p className="text-center text-sm font-medium text-red-400">
+          <p className="text-center text-sm font-medium text-red-600">
             本日のシフトが登録されていません
           </p>
         )}

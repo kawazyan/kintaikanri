@@ -41,8 +41,8 @@ export function LiveClock() {
 
   return (
     <div className="text-center">
-      <p className="text-sm font-medium text-slate-300">{dateLabel}</p>
-      <p className="bg-gradient-to-r from-amber-300 to-red-400 bg-clip-text font-mono text-4xl font-bold tracking-wide text-transparent tabular-nums">
+      <p className="text-sm font-medium text-slate-600">{dateLabel}</p>
+      <p className="bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text font-mono text-4xl font-bold tracking-wide text-transparent tabular-nums">
         {timeLabel}
       </p>
     </div>

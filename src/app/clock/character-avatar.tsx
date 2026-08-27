@@ -40,11 +40,12 @@ export function CharacterAvatar({
         className="object-cover object-top"
         priority
       />
-      {/* Darkens the lower portion so the overlaid UI stays legible against
-          the character art, fading out toward the top so the face is clear.
-          No gap, border, or shadow separates this from GamePanel above —
-          that's what keeps the seam invisible, not a blended overlay. */}
-      <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#0a0407] from-15% via-[#05070f]/85 via-55% to-transparent" />
+      {/* Fades to white toward the bottom so the clock/buttons sit on a
+          light backdrop (instead of a dark band that swallowed the time)
+          and the photo blends straight into the white page content below
+          with no hard edge. No gap, border, or shadow separates this from
+          GamePanel above — that's what keeps that seam invisible. */}
+      <div className="absolute inset-0 z-10 bg-gradient-to-t from-white from-8% via-white/85 via-42% to-transparent" />
 
       <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between p-4">
         <span className="rounded-full bg-slate-950/70 px-3 py-1.5 text-xs font-semibold text-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.5)] ring-1 ring-white/10 backdrop-blur-sm">

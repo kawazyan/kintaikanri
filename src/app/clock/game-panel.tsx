@@ -18,8 +18,7 @@ export function GamePanel({ game }: { game: GameState }) {
     <section
       className="relative overflow-hidden rounded-t-3xl px-3 pt-2.5 pb-2"
       style={{
-        background:
-          "linear-gradient(180deg, rgba(0,0,0,.15) 0%, rgba(0,0,0,.9) 100%), #9C2B24",
+        background: "linear-gradient(180deg, rgba(0,0,0,.15) 0%, rgba(0,0,0,.9) 100%), #9C2B24",
       }}
     >
       {/* Level badge + current title */}
@@ -49,10 +48,10 @@ export function GamePanel({ game }: { game: GameState }) {
           <p className="text-[9px] text-white/55">現在の称号</p>
           {highestTitle ? (
             <div className="flex items-center gap-1.5">
-              <span className="text-[21px] font-extrabold tracking-[0.01em] text-[#D8D5D2]">
+              <span className="truncate text-[21px] font-extrabold tracking-[0.01em] text-[#D8D5D2]">
                 {highestTitle.label}
               </span>
-              <Crown size={15} className="text-amber-300/80" fill="currentColor" />
+              <Crown size={15} className="shrink-0 text-amber-300/80" fill="currentColor" />
             </div>
           ) : (
             <div className="flex items-center gap-1.5 opacity-60">
@@ -65,8 +64,14 @@ export function GamePanel({ game }: { game: GameState }) {
 
       {/* Streak & coin cards */}
       <div className="mb-2 grid grid-cols-2 gap-2">
-        <div className="relative flex items-center gap-2 overflow-hidden rounded-[10px] bg-gradient-to-b from-[#9C2B24] from-25% to-[rgba(0,0,0,0.92)] px-2.5 py-[7px]">
-          <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-[radial-gradient(circle_at_35%_30%,#FFB067,#E7302E)]">
+        <div
+          className="relative flex items-center gap-2 overflow-hidden rounded-[10px] px-2.5 py-[7px]"
+          style={{ background: "linear-gradient(180deg, #9C2B24 0%, #9C2B24 25%, rgba(0,0,0,.92) 100%)" }}
+        >
+          <span
+            className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full"
+            style={{ background: "radial-gradient(circle at 35% 30%, #FFB067, #E7302E)" }}
+          >
             <Flame size={12} className="text-white" fill="currentColor" />
           </span>
           <div className="min-w-0">
@@ -76,8 +81,14 @@ export function GamePanel({ game }: { game: GameState }) {
           </div>
         </div>
 
-        <div className="relative flex items-center gap-2 overflow-hidden rounded-[10px] bg-gradient-to-b from-white from-55% to-[rgba(0,0,0,0.15)] px-2.5 py-[7px]">
-          <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-[radial-gradient(circle_at_35%_30%,#FFE59A,#F2B84B)]">
+        <div
+          className="relative flex items-center gap-2 overflow-hidden rounded-[10px] px-2.5 py-[7px]"
+          style={{ background: "linear-gradient(180deg, #fff 0%, #fff 55%, rgba(0,0,0,.15) 100%)" }}
+        >
+          <span
+            className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full"
+            style={{ background: "radial-gradient(circle at 35% 30%, #FFE59A, #F2B84B)" }}
+          >
             <Coins size={12} className="text-amber-950" />
           </span>
           <div className="min-w-0">

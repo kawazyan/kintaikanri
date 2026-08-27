@@ -93,9 +93,9 @@ export function ClockButtons({
 
   if (finishedToday) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-2xl bg-slate-950/70 py-6 shadow-[0_4px_16px_rgba(0,0,0,0.5)] ring-1 ring-slate-700/60 backdrop-blur-sm">
-        <CheckCircle2 size={26} className="text-emerald-400" />
-        <p className="text-sm font-semibold text-slate-200">本日の勤務は終了しました</p>
+      <div className="flex flex-col items-center gap-2 rounded-2xl bg-white/90 py-6 shadow-[0_4px_16px_rgba(0,0,0,0.08)] ring-1 ring-slate-200 backdrop-blur-sm">
+        <CheckCircle2 size={26} className="text-emerald-500" />
+        <p className="text-sm font-semibold text-slate-700">本日の勤務は終了しました</p>
       </div>
     );
   }
@@ -125,10 +125,10 @@ export function ClockButtons({
       </button>
       {message && (
         <div className="flex flex-col items-center gap-1">
-          <p className={`text-sm ${message.ok ? "text-emerald-400" : "text-red-400"}`}>
+          <p className={`text-sm ${message.ok ? "text-emerald-600" : "text-red-600"}`}>
             {message.text}
           </p>
-          {message.warning && <p className="text-sm font-medium text-red-400">{message.warning}</p>}
+          {message.warning && <p className="text-sm font-medium text-red-600">{message.warning}</p>}
         </div>
       )}
     </div>
