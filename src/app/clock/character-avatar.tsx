@@ -15,18 +15,6 @@ const AVATAR_LABEL: Record<AvatarState, string> = {
   NIGHT: "退勤済み",
 };
 
-const AVATAR_MESSAGE: Record<AvatarState, string> = {
-  HOME: "今日もよろしくお願いします!",
-  WORK: "おつかれさまです!",
-  NIGHT: "今日もおつかれさまでした!",
-};
-
-const AVATAR_DOT: Record<AvatarState, string> = {
-  HOME: "bg-slate-400",
-  WORK: "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,.65)]",
-  NIGHT: "bg-amber-500",
-};
-
 export function CharacterAvatar({
   state,
   staffName,
@@ -52,16 +40,6 @@ export function CharacterAvatar({
 
       <div className="absolute left-3 top-3 rounded-full bg-black/65 px-3 py-1.5 text-[12px] font-bold text-white shadow-lg backdrop-blur-md">
         {staffName} さん
-      </div>
-
-      <div className="absolute right-3 top-4 min-w-[138px] rounded-[18px] bg-white/95 px-4 py-3 text-center text-slate-800 shadow-[0_5px_18px_rgba(0,0,0,.16)] ring-1 ring-black/5 backdrop-blur-sm">
-        <p className="flex items-center justify-center gap-2 text-[17px] font-black">
-          <span className={`h-3 w-3 rounded-full ${AVATAR_DOT[state]}`} />
-          <span className={state === "WORK" ? "text-emerald-600" : state === "NIGHT" ? "text-amber-600" : "text-slate-700"}>
-            {AVATAR_LABEL[state]}
-          </span>
-        </p>
-        <p className="mt-1 text-[11px] font-semibold text-slate-500">{AVATAR_MESSAGE[state]}</p>
       </div>
 
       {children && (
