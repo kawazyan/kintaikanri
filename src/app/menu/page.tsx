@@ -1,112 +1,102 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Wallet, LogOut, ChevronRight, Menu } from "lucide-react";
+import { Award, ChevronRight, Menu, Sofa, Users, Wallet, Sparkles, ShieldCheck } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { switchUser } from "../identify-actions";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
+import { PageHeader } from "@/components/page-header";
+import { LogoutButton } from "./logout-button";
 
-const GAME_MENU_ITEMS: {
-  href: string;
-  label: string;
-  description: string;
-  emoji: string;
-  gradient: string;
-  glow: string;
-}[] = [
+const GAME_MENU_ITEMS = [
   {
     href: "/titles",
-    label: "称号コレクション",
-    description: "獲得した称号を確認",
-    emoji: "🏆",
-    gradient: "from-red-400 via-red-600 to-red-800",
-    glow: "rgba(220,38,38,0.45)",
+    label: "獲得した称号",
+    icon: Award,
+    card: "from-[#ef4444] via-[#dc2626] to-[#b91c1c]",
+    glow: "bg-red-300/30",
   },
   {
     href: "/my-room",
     label: "マイルーム",
-    description: "コインでアイテム購入",
-    emoji: "🛋️",
-    gradient: "from-amber-300 via-orange-500 to-orange-700",
-    glow: "rgba(249,115,22,0.45)",
+    icon: Sofa,
+    card: "from-[#f6c85f] via-[#f59e0b] to-[#d97706]",
+    glow: "bg-amber-200/40",
   },
   {
     href: "/town",
-    label: "仲間のタウン",
-    description: "今日出勤している仲間",
-    emoji: "👥",
-    gradient: "from-yellow-300 via-amber-500 to-yellow-700",
-    glow: "rgba(234,179,8,0.45)",
+    label: "今日の出勤メンバー",
+    icon: Users,
+    card: "from-[#34d399] via-[#10b981] to-[#047857]",
+    glow: "bg-emerald-200/35",
   },
-];
+] as const;
 
 export default async function MenuPage() {
   const staffId = await getStaffId();
   if (!staffId) redirect("/");
-
   const staff = await prisma.staff.findUnique({ where: { id: staffId } });
   if (!staff || staff.status !== "ACTIVE") redirect("/");
 
   return (
-    <main className="min-h-dvh bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb]">
-    <div className="mx-auto flex max-w-sm flex-col gap-6 px-4 pt-6 pb-28">
-      <div>
-        <p className="text-sm text-slate-600">{staff.name} さん</p>
-        <h1 className="mt-1 flex items-center gap-2 bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-xl font-bold text-transparent">
-          <Menu size={20} className="text-red-500" />
-          メニュー
-        </h1>
+    <main className="min-h-dvh bg-gradient-to-b from-[#fffdfb] via-[#fdf9f4] to-[#f7f0e7] text-slate-900">
+      <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28">
+        <PageHeader icon={Menu} title="メニュー" eyebrow={`${staff.name} さん`} />
+
+        <section>
+          <div className="mb-2 flex items-center gap-2 px-1">
+            <Sparkles size={13} className="text-red-500" />
+            <p className="text-[11px] font-black tracking-[.08em] text-slate-400">MY K.J</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2.5">
+            {GAME_MENU_ITEMS.map(({ href, label, icon: Icon, card, glow }) => (
+              <Link
+                key={href}
+                href={href}
+                className={`group relative flex min-h-[112px] min-w-0 flex-col items-center justify-center overflow-hidden rounded-[24px] bg-gradient-to-br ${card} px-1.5 py-4 text-center text-white shadow-[0_10px_24px_rgba(15,23,42,.16)] ring-1 ring-white/25 transition active:scale-[.965]`}
+              >
+                <span className={`pointer-events-none absolute -right-5 -top-6 h-20 w-20 rounded-full ${glow} blur-xl`} />
+                <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/24 to-transparent" />
+                <span className="relative flex h-11 w-11 items-center justify-center rounded-[15px] bg-white/16 ring-1 ring-white/20 backdrop-blur-sm">
+                  <Icon size={24} strokeWidth={2.4} />
+                </span>
+                <span className="relative mt-2 w-full whitespace-nowrap text-[clamp(9px,2.7vw,12px)] font-black tracking-[-.03em]">
+                  {label}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section>
+          <p className="mb-2 px-1 text-[11px] font-black tracking-[.08em] text-slate-400">支払い・アカウント</p>
+          <div className="overflow-hidden rounded-[24px] bg-white shadow-[0_8px_24px_rgba(15,23,42,.07)] ring-1 ring-black/[.04]">
+            <Link href="/payment/history" className="flex items-center gap-3 p-4 transition active:bg-slate-50">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] bg-gradient-to-br from-red-50 to-orange-50 ring-1 ring-red-100">
+                <Wallet size={21} className="text-red-600" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-black text-slate-900">振込申請履歴</span>
+                <span className="mt-0.5 block text-[11px] font-semibold text-slate-400">申請済みの振込状況を確認</span>
+              </span>
+              <ChevronRight size={19} className="shrink-0 text-slate-300" />
+            </Link>
+
+            <div className="mx-4 h-px bg-slate-100" />
+
+            <div className="flex items-center gap-3 p-4">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] bg-slate-50 ring-1 ring-slate-100">
+                <ShieldCheck size={21} className="text-slate-500" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-black text-slate-900">ログイン中</span>
+                <span className="mt-0.5 block truncate text-[11px] font-semibold text-slate-400">{staff.name} さん</span>
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <LogoutButton />
       </div>
-
-      <div className="grid grid-cols-3 gap-2.5">
-        {GAME_MENU_ITEMS.map(({ href, label, description, emoji, gradient, glow }) => (
-          <Link
-            key={href}
-            href={href}
-            style={{
-              boxShadow: `inset 0 1px 0 rgba(255,255,255,0.3), 0 6px 16px ${glow}, 0 3px 6px rgba(0,0,0,0.4)`,
-            }}
-            className={`relative flex flex-col items-center gap-1 overflow-hidden rounded-2xl bg-gradient-to-b ${gradient} px-2 py-4 text-center transition active:scale-[0.96]`}
-          >
-            <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent" />
-            <span className="relative text-3xl drop-shadow-[0_2px_3px_rgba(0,0,0,0.35)]">
-              {emoji}
-            </span>
-            <span className="relative text-xs font-bold text-white">{label}</span>
-            <span className="relative text-[9px] leading-tight text-white/80">{description}</span>
-          </Link>
-        ))}
-      </div>
-
-      <div className="flex flex-col gap-2.5">
-        <Link
-          href="/payment/history"
-          className="flex items-center gap-3 rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_2px_10px_rgba(0,0,0,0.08)] transition active:scale-[0.98]"
-        >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-red-400 via-[#e0272e] to-red-800 shadow-[0_2px_8px_rgba(220,38,38,0.5)]">
-            <Wallet size={20} className="text-white" />
-          </span>
-          <span className="flex-1">
-            <span className="block text-sm font-semibold text-slate-900">振込申請履歴</span>
-            <span className="block text-xs text-slate-500">これまでの振込申請を確認</span>
-          </span>
-          <ChevronRight size={18} className="text-slate-400" />
-        </Link>
-      </div>
-
-      <form action={switchUser}>
-        <button
-          type="submit"
-          className="flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-[0_4px_16px_rgba(0,0,0,0.15)] transition active:scale-[0.98]"
-        >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50">
-            <LogOut size={20} className="text-red-600" />
-          </span>
-          <span className="flex-1 text-sm font-semibold text-red-600">ログアウト</span>
-        </button>
-      </form>
-    </div>
-
       <BottomTabBar />
     </main>
   );

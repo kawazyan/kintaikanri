@@ -8,6 +8,7 @@ import {
   Sofa,
   Trophy,
   Users,
+  CheckCircle2,
   Wallet,
 } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
@@ -123,7 +124,7 @@ export default async function ClockPage() {
 
           {game.perfectAttendanceThisMonth && (
             <p className="rounded-2xl bg-gradient-to-r from-amber-100 to-amber-200 px-4 py-2.5 text-center text-sm font-black text-amber-800 shadow-[0_3px_10px_rgba(217,119,6,.15)]">
-              🏆 今月の皆勤賞を達成しました!
+              <span className="inline-flex items-center justify-center gap-2"><CheckCircle2 size={16} />今月の皆勤賞を達成しました!</span>
             </p>
           )}
 
@@ -163,18 +164,15 @@ export default async function ClockPage() {
           <section className="grid grid-cols-3 gap-2">
             <Link href="/titles" className="flex min-h-[105px] flex-col items-center justify-center rounded-[20px] bg-gradient-to-b from-red-500 to-red-700 px-2 py-3 text-center text-white shadow-[0_5px_15px_rgba(220,38,38,.25)] active:scale-[.98]">
               <Trophy size={30} className="mb-1.5" />
-              <span className="text-[13px] font-black">称号コレクション</span>
-              <span className="mt-0.5 text-[9px] font-semibold text-white/80">獲得した称号を確認</span>
+              <span className="whitespace-nowrap text-[clamp(10px,2.9vw,13px)] font-black">獲得した称号</span>
             </Link>
             <Link href="/my-room" className="flex min-h-[105px] flex-col items-center justify-center rounded-[20px] bg-gradient-to-b from-amber-300 to-amber-500 px-2 py-3 text-center text-amber-950 shadow-[0_5px_15px_rgba(245,158,11,.24)] active:scale-[.98]">
               <Sofa size={30} className="mb-1.5" />
-              <span className="text-[13px] font-black">マイルーム</span>
-              <span className="mt-0.5 text-[9px] font-semibold text-amber-900/80">コインでアイテム購入</span>
+              <span className="whitespace-nowrap text-[clamp(10px,2.9vw,13px)] font-black">マイルーム</span>
             </Link>
             <Link href="/town" className="flex min-h-[105px] flex-col items-center justify-center rounded-[20px] bg-gradient-to-b from-emerald-400 to-emerald-600 px-2 py-3 text-center text-white shadow-[0_5px_15px_rgba(5,150,105,.24)] active:scale-[.98]">
               <Users size={30} className="mb-1.5" />
-              <span className="text-[13px] font-black">仲間のタウン</span>
-              <span className="mt-0.5 text-[9px] font-semibold text-white/80">今日出勤している仲間</span>
+              <span className="whitespace-nowrap text-[clamp(9px,2.65vw,12px)] font-black tracking-tight">今日の出勤メンバー</span>
             </Link>
           </section>
 

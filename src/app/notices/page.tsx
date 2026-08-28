@@ -1,32 +1,35 @@
 import { redirect } from "next/navigation";
-import { Bell } from "lucide-react";
+import { Bell, BellRing, CheckCircle2 } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
+import { PageHeader } from "@/components/page-header";
 
 export default async function NoticesPage() {
   const staffId = await getStaffId();
   if (!staffId) redirect("/");
-
   const staff = await prisma.staff.findUnique({ where: { id: staffId } });
   if (!staff || staff.status !== "ACTIVE") redirect("/");
 
   return (
-    <main className="min-h-dvh bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb]">
-    <div className="mx-auto flex max-w-sm flex-col gap-6 px-4 pt-6 pb-28">
-      <h1 className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-xl font-bold text-transparent">
-        <Bell size={20} className="text-red-500" />
-        お知らせ
-      </h1>
+    <main className="min-h-dvh bg-gradient-to-b from-[#fffdfb] via-[#fdf9f4] to-[#f7f0e7] text-slate-900">
+      <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28">
+        <PageHeader icon={Bell} title="お知らせ" />
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-50 shadow-[0_4px_14px_rgba(0,0,0,0.1)]">
-          <Bell size={28} className="text-red-400" />
-        </div>
-        <p className="text-sm text-slate-500">現在お知らせはありません。</p>
+        <section className="relative overflow-hidden rounded-[26px] bg-white px-6 py-12 text-center shadow-[0_9px_26px_rgba(15,23,42,.07)] ring-1 ring-black/[.04]">
+          <span className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-red-100/70 blur-2xl" />
+          <span className="relative mx-auto flex h-[68px] w-[68px] items-center justify-center rounded-[22px] bg-gradient-to-br from-red-50 to-orange-50 ring-1 ring-red-100">
+            <BellRing size={29} className="text-red-500" />
+          </span>
+          <h2 className="relative mt-4 text-[15px] font-black text-slate-900">お知らせはありません</h2>
+          <p className="relative mx-auto mt-1.5 max-w-[250px] text-xs font-semibold leading-relaxed text-slate-400">
+            新しい連絡やシフトに関するお知らせが届くと、この画面に表示されます。
+          </p>
+          <div className="relative mx-auto mt-5 flex w-fit items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-black text-emerald-700 ring-1 ring-emerald-100">
+            <CheckCircle2 size={12} /> 現在、確認が必要なお知らせはありません
+          </div>
+        </section>
       </div>
-    </div>
-
       <BottomTabBar />
     </main>
   );

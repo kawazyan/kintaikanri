@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Plus, CalendarDays } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -52,26 +53,21 @@ export default async function ShiftListPage({
   }
 
   return (
-    <main className="min-h-dvh bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb]">
-    <div className="mx-auto flex max-w-md flex-col gap-6 px-4 pt-8 pb-28">
-      <div className="flex items-center justify-between">
-        <h1 className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-xl font-bold text-transparent">
-          <CalendarDays size={20} className="text-red-500" />
-          シフト一覧
-        </h1>
-        <Link
-          href="/shift/new"
-          style={{
-            boxShadow:
-              "inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 12px rgba(220,38,38,0.4), 0 2px 4px rgba(0,0,0,0.3)",
-          }}
-          className="relative flex items-center gap-1 overflow-hidden rounded-xl bg-gradient-to-b from-red-400 via-[#e0272e] to-red-800 px-3 py-2 text-sm font-semibold text-white active:scale-[0.98]"
-        >
-          <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/35 to-transparent" />
-          <Plus size={16} className="relative" />
-          <span className="relative">新規登録</span>
-        </Link>
-      </div>
+    <main className="min-h-dvh bg-gradient-to-b from-[#fffdfb] via-[#fdf9f4] to-[#f7f0e7] text-slate-900">
+      <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28">
+      <PageHeader
+        icon={CalendarDays}
+        title="シフト一覧"
+        eyebrow={yearMonthLabel(yearMonth)}
+        action={
+          <Link
+            href="/shift/new"
+            className="flex items-center gap-1.5 rounded-[14px] bg-gradient-to-b from-red-500 to-red-700 px-3 py-2.5 text-xs font-black text-white shadow-[0_6px_14px_rgba(220,38,38,.22)] transition active:scale-[.97]"
+          >
+            <Plus size={15} /> 新規登録
+          </Link>
+        }
+      />
 
       <ShiftCalendar
         days={listDaysInJstYearMonth(yearMonth)}
@@ -81,7 +77,7 @@ export default async function ShiftListPage({
         nextMonth={shiftYearMonth(yearMonth, 1)}
         monthLabel={yearMonthLabel(yearMonth)}
       />
-    </div>
+      </div>
 
       <BottomTabBar />
     </main>
