@@ -1,6 +1,15 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { CalendarDays, Wallet, ChevronRight } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronRight,
+  Clock3,
+  Medal,
+  Sofa,
+  Trophy,
+  Users,
+  Wallet,
+} from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -49,208 +58,204 @@ export default async function ClockPage() {
     syncAndGetGameState(staffId),
   ]);
 
-  const nextPaymentDate =
-    staff.paymentMethod === "FIXED" ? nextFixedPaymentDate(staff) : null;
-
-  // Current punch state: whether the last action today was an IN without a
-  // matching OUT yet, used to drive which single button (出勤/退勤) shows.
+  const nextPaymentDate = staff.paymentMethod === "FIXED" ? nextFixedPaymentDate(staff) : null;
   const lastToday = todaysRecords[todaysRecords.length - 1];
   const canClockOut = !!lastToday && lastToday.type === "IN";
-
   const avatarState: AvatarState = !lastToday ? "HOME" : lastToday.type === "IN" ? "WORK" : "NIGHT";
   const finishedToday = avatarState === "NIGHT";
-
-  const todayIn = todaysRecords.find((r) => r.type === "IN");
-  const todayOut = [...todaysRecords].reverse().find((r) => r.type === "OUT");
-  const todayHasShift = todaysRecords.some((r) => r.shiftId);
+  const todayIn = todaysRecords.find((record) => record.type === "IN");
+  const todayOut = [...todaysRecords].reverse().find((record) => record.type === "OUT");
+  const todayHasShift = todaysRecords.some((record) => record.shiftId);
+  const nextTitle = game.lockedTitles[0];
 
   const byDate = new Map<string, { in?: Date; out?: Date }>();
-  for (const r of monthRecords) {
-    const key = toJstDateValue(r.timestamp);
+  for (const record of monthRecords) {
+    const key = toJstDateValue(record.timestamp);
     const entry = byDate.get(key) ?? {};
-    if (r.type === "IN" && !entry.in) entry.in = r.timestamp;
-    if (r.type === "OUT") entry.out = r.timestamp;
+    if (record.type === "IN" && !entry.in) entry.in = record.timestamp;
+    if (record.type === "OUT") entry.out = record.timestamp;
     byDate.set(key, entry);
   }
+
   const monthHistory = [...byDate.entries()]
     .sort((a, b) => (a[0] < b[0] ? 1 : -1))
-    .map(([dateKey, v]) => {
-      const [y, m, d] = dateKey.split("-").map(Number);
-      // A calendar date's weekday doesn't depend on timezone, so compute it
-      // directly from the Y/M/D — going through a JST-offset instant (as
-      // before) shifted it back by one UTC day and showed the wrong weekday.
-      const weekday = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+    .map(([dateKey, value]) => {
+      const [year, month, day] = dateKey.split("-").map(Number);
+      const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
       return {
         dateKey,
-        label: `${m}/${d}(${WEEKDAY_LABELS[weekday]})`,
-        inTime: v.in ? formatJst(v.in).slice(-5) : null,
-        outTime: v.out ? formatJst(v.out).slice(-5) : null,
+        label: `${month}/${day}(${WEEKDAY_LABELS[weekday]})`,
+        inTime: value.in ? formatJst(value.in).slice(-5) : null,
+        outTime: value.out ? formatJst(value.out).slice(-5) : null,
       };
     });
 
   return (
-    <main className="min-h-dvh bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb]">
-    <div className="mx-auto flex max-w-sm flex-col gap-6 px-4 pt-6 pb-28">
-      {/* 称号・コイン・連続勤務・XP + キャラクター画像を、継ぎ目なく1枚の
-          赤いパネルとして繋げる(ページ最上部、画面幅いっぱい) */}
-      <div className="-mx-4 flex flex-col">
-      <GamePanel game={game} />
+    <main className="min-h-dvh bg-[#efe7dc] text-slate-900">
+      <div className="mx-auto w-full max-w-[430px] pb-24">
+        <div className="px-2 pt-2">
+          <GamePanel game={game} />
 
-      <CharacterAvatar state={avatarState} staffName={staff.name}>
-        {/* 1. 現在日時 */}
-        <LiveClock />
-
-        {/* 2. 出退勤ボタン */}
-        <ClockButtons canClockOut={canClockOut} finishedToday={finishedToday} />
-
-        {!todayHasShift && (todayIn || todayOut) && (
-          <p className="text-center text-sm font-medium text-red-600">
-            本日のシフトが登録されていません
-          </p>
-        )}
-      </CharacterAvatar>
-      </div>
-
-      {/* 3. 今日の打刻履歴 */}
-      <section className="rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_2px_10px_rgba(0,0,0,0.08)]">
-        <h2 className="mb-2 text-xs font-bold tracking-wide text-red-600 uppercase">
-          今日の打刻履歴
-        </h2>
-        <div className="flex justify-between text-sm">
-          <span className="font-medium text-slate-600">
-            出勤{" "}
-            <span className="text-slate-900">
-              {todayIn ? formatJst(todayIn.timestamp).slice(-5) : "未打刻"}
-            </span>
-          </span>
-          <span className="font-medium text-slate-600">
-            退勤{" "}
-            <span className="text-slate-900">
-              {todayOut ? formatJst(todayOut.timestamp).slice(-5) : "未打刻"}
-            </span>
-          </span>
+          <CharacterAvatar state={avatarState} staffName={staff.name}>
+            <LiveClock />
+            <ClockButtons canClockOut={canClockOut} finishedToday={finishedToday} />
+            <p className="rounded-full bg-white/80 px-3 py-1 text-[12px] font-bold text-slate-700 shadow-sm backdrop-blur-sm">
+              {canClockOut
+                ? `出勤時刻 ${todayIn ? formatJst(todayIn.timestamp).slice(-5) : "--:--"}`
+                : finishedToday
+                  ? `退勤時刻 ${todayOut ? formatJst(todayOut.timestamp).slice(-5) : "--:--"}`
+                  : "本日の打刻はまだありません"}
+            </p>
+            {!todayHasShift && (todayIn || todayOut) && (
+              <p className="rounded-full bg-red-50/95 px-3 py-1 text-[11px] font-bold text-red-600 shadow-sm">
+                本日のシフトが登録されていません
+              </p>
+            )}
+          </CharacterAvatar>
         </div>
-        {lastToday && (
-          <div className="mt-2 flex justify-end">
-            <CancelPunchButton
-              recordId={lastToday.id}
-              timestamp={lastToday.timestamp.toISOString()}
-            />
-          </div>
-        )}
-      </section>
 
-      {/* 4. 今月の確定受取金額 */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-red-700 p-5 text-center text-white shadow-[0_6px_20px_rgba(234,88,12,0.4)] ring-1 ring-amber-300/40">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent" />
-        <h2 className="relative text-xs font-bold tracking-wide text-amber-50 uppercase">
-          今月の確定受取金額
-        </h2>
-        <p className="relative mt-1 text-3xl font-black drop-shadow-[0_1px_3px_rgba(0,0,0,0.3)]">
-          {earnings.confirmedAmount === null
-            ? "－"
-            : `${earnings.confirmedAmount.toLocaleString("ja-JP")}円`}
-        </p>
-      </section>
+        <div className="-mt-px flex flex-col gap-3 px-3 pb-4 pt-3">
+          <StampCard stamp={game.stamp} />
 
-      {/* 5. 支払関連情報 */}
-      <section className="rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_2px_10px_rgba(0,0,0,0.08)]">
-        <h2 className="mb-2 text-xs font-bold tracking-wide text-red-600 uppercase">
-          支払情報
-        </h2>
-        {staff.paymentMethod === "FIXED" ? (
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-500">次回支払予定日</span>
-            <span className="font-semibold text-slate-900">
-              {nextPaymentDate
-                ? new Intl.DateTimeFormat("ja-JP", {
-                    timeZone: "Asia/Tokyo",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  }).format(nextPaymentDate)
-                : "未設定"}
-            </span>
-          </div>
-        ) : (
-          transferBalance && (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-500">申請済み</span>
-                <span className="text-slate-900">
-                  {transferBalance.requestedAmount.toLocaleString("ja-JP")}円
-                </span>
+          {game.perfectAttendanceThisMonth && (
+            <p className="rounded-2xl bg-gradient-to-r from-amber-100 to-amber-200 px-4 py-2.5 text-center text-sm font-black text-amber-800 shadow-[0_3px_10px_rgba(217,119,6,.15)]">
+              🏆 今月の皆勤賞を達成しました!
+            </p>
+          )}
+
+          <section className="flex min-h-[112px] items-center overflow-hidden rounded-[22px] bg-white shadow-[0_5px_18px_rgba(64,40,30,.12)] ring-1 ring-black/5">
+            <div className="flex w-[31%] items-center justify-center self-stretch bg-gradient-to-br from-amber-50 via-orange-50 to-red-50">
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 via-orange-500 to-red-600 shadow-[0_6px_16px_rgba(220,38,38,.28)] ring-4 ring-white">
+                <Medal size={36} className="text-white" />
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-500">振込申請可能額</span>
-                <span className="font-semibold text-slate-900">
-                  {transferBalance.availableAmount.toLocaleString("ja-JP")}円
-                </span>
-              </div>
-              <Link
-                href="/payment/request"
-                style={{
-                  boxShadow:
-                    "inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 12px rgba(220,38,38,0.4), 0 2px 4px rgba(0,0,0,0.3)",
-                }}
-                className="relative mt-1 flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-b from-red-400 via-[#e0272e] to-red-800 py-2.5 text-center text-sm font-semibold text-white active:scale-[0.98]"
-              >
-                <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/35 to-transparent" />
-                <Wallet size={16} className="relative" />
-                <span className="relative">振込申請</span>
-              </Link>
-              <Link
-                href="/payment/history"
-                className="flex items-center justify-center gap-1 text-center text-xs font-medium text-red-600"
-              >
-                振込申請履歴を見る
-                <ChevronRight size={12} />
-              </Link>
             </div>
-          )
-        )}
-      </section>
+            <div className="min-w-0 flex-1 px-4 py-3">
+              <span className="inline-flex rounded-md bg-slate-800 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-white">Next Title</span>
+              {nextTitle ? (
+                <>
+                  <p className="mt-1 truncate text-[18px] font-black tracking-tight text-red-700">{nextTitle.label}</p>
+                  <p className="text-[11px] font-bold text-slate-500">連続{nextTitle.minStreak}勤務で獲得!</p>
+                </>
+              ) : (
+                <>
+                  <p className="mt-1 text-[18px] font-black text-amber-600">ALL TITLES COMPLETE</p>
+                  <p className="text-[11px] font-bold text-slate-500">すべての称号を獲得済み</p>
+                </>
+              )}
+            </div>
+            <div className="border-l border-slate-200 px-4 text-center">
+              {nextTitle ? (
+                <>
+                  <p className="text-[11px] font-bold text-slate-600">あと</p>
+                  <p className="text-[31px] font-black leading-none text-red-600">{Math.max(0, nextTitle.minStreak - game.streak)}</p>
+                  <p className="text-[11px] font-black text-slate-700">勤務</p>
+                </>
+              ) : (
+                <Trophy size={34} className="text-amber-500" />
+              )}
+            </div>
+          </section>
 
-      {/* 6. 今月の打刻履歴 */}
-      <section className="rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_2px_10px_rgba(0,0,0,0.08)]">
-        <h2 className="mb-2 text-xs font-bold tracking-wide text-red-600 uppercase">
-          今月の打刻履歴({yearMonthLabel(yearMonth)})
-        </h2>
-        {monthHistory.length === 0 ? (
-          <p className="text-sm text-slate-500">打刻記録がありません。</p>
-        ) : (
-          <ul className="flex flex-col gap-1 text-sm">
-            {monthHistory.map((h) => (
-              <li
-                key={h.dateKey}
-                className="flex justify-between border-b border-slate-200 py-1 text-slate-700 last:border-0"
-              >
-                <span className="text-slate-400">{h.label}</span>
-                <span>出勤 {h.inTime ?? "-"}</span>
-                <span>退勤 {h.outTime ?? "-"}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+          <section className="grid grid-cols-3 gap-2">
+            <Link href="/titles" className="flex min-h-[105px] flex-col items-center justify-center rounded-[20px] bg-gradient-to-b from-red-500 to-red-700 px-2 py-3 text-center text-white shadow-[0_5px_15px_rgba(220,38,38,.25)] active:scale-[.98]">
+              <Trophy size={30} className="mb-1.5" />
+              <span className="text-[13px] font-black">称号コレクション</span>
+              <span className="mt-0.5 text-[9px] font-semibold text-white/80">獲得した称号を確認</span>
+            </Link>
+            <Link href="/my-room" className="flex min-h-[105px] flex-col items-center justify-center rounded-[20px] bg-gradient-to-b from-amber-300 to-amber-500 px-2 py-3 text-center text-amber-950 shadow-[0_5px_15px_rgba(245,158,11,.24)] active:scale-[.98]">
+              <Sofa size={30} className="mb-1.5" />
+              <span className="text-[13px] font-black">マイルーム</span>
+              <span className="mt-0.5 text-[9px] font-semibold text-amber-900/80">コインでアイテム購入</span>
+            </Link>
+            <Link href="/town" className="flex min-h-[105px] flex-col items-center justify-center rounded-[20px] bg-gradient-to-b from-emerald-400 to-emerald-600 px-2 py-3 text-center text-white shadow-[0_5px_15px_rgba(5,150,105,.24)] active:scale-[.98]">
+              <Users size={30} className="mb-1.5" />
+              <span className="text-[13px] font-black">仲間のタウン</span>
+              <span className="mt-0.5 text-[9px] font-semibold text-white/80">今日出勤している仲間</span>
+            </Link>
+          </section>
 
-      {/* 今月の勤務スタンプ */}
-      <StampCard stamp={game.stamp} />
+          <section className="rounded-[22px] bg-white p-4 shadow-[0_4px_14px_rgba(64,40,30,.1)] ring-1 ring-black/5">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-[14px] font-black text-slate-900">
+                <Clock3 size={18} className="text-red-600" /> 今日の打刻履歴
+              </h2>
+              {lastToday && (
+                <CancelPunchButton recordId={lastToday.id} timestamp={lastToday.timestamp.toISOString()} />
+              )}
+            </div>
+            <div className="grid grid-cols-2 divide-x divide-slate-200 rounded-2xl bg-slate-50 py-3 text-center">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400">出勤</p>
+                <p className="mt-0.5 text-[18px] font-black tabular-nums">{todayIn ? formatJst(todayIn.timestamp).slice(-5) : "--:--"}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400">退勤</p>
+                <p className="mt-0.5 text-[18px] font-black tabular-nums">{todayOut ? formatJst(todayOut.timestamp).slice(-5) : "--:--"}</p>
+              </div>
+            </div>
+          </section>
 
-      {/* 7. シフト登録への導線 */}
-      <Link
-        href="/shift"
-        style={{
-          boxShadow:
-            "inset 0 1px 0 rgba(255,255,255,0.35), 0 6px 16px rgba(220,38,38,0.4), 0 3px 6px rgba(0,0,0,0.4)",
-        }}
-        className="relative mt-auto flex items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-b from-red-400 via-[#e0272e] to-red-800 py-3.5 text-sm font-bold text-white active:scale-[0.98]"
-      >
-        <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/35 to-transparent" />
-        <CalendarDays size={18} className="relative" />
-        <span className="relative">シフト登録・確認</span>
-      </Link>
-    </div>
+          <section className="relative overflow-hidden rounded-[22px] bg-gradient-to-br from-amber-400 via-orange-500 to-red-600 p-5 text-center text-white shadow-[0_5px_18px_rgba(234,88,12,.25)]">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent" />
+            <h2 className="relative text-[12px] font-black tracking-wide">今月の確定受取金額</h2>
+            <p className="relative mt-1 text-[32px] font-black drop-shadow-sm">
+              {earnings.confirmedAmount === null ? "－" : `${earnings.confirmedAmount.toLocaleString("ja-JP")}円`}
+            </p>
+          </section>
+
+          <section className="rounded-[22px] bg-white p-4 shadow-[0_4px_14px_rgba(64,40,30,.1)] ring-1 ring-black/5">
+            <h2 className="mb-3 text-[13px] font-black text-red-600">支払情報</h2>
+            {staff.paymentMethod === "FIXED" ? (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-500">次回支払予定日</span>
+                <span className="font-black text-slate-900">
+                  {nextPaymentDate
+                    ? new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "long", day: "numeric" }).format(nextPaymentDate)
+                    : "未設定"}
+                </span>
+              </div>
+            ) : transferBalance ? (
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-500">申請済み</span>
+                  <span className="font-bold">{transferBalance.requestedAmount.toLocaleString("ja-JP")}円</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-500">振込申請可能額</span>
+                  <span className="font-black">{transferBalance.availableAmount.toLocaleString("ja-JP")}円</span>
+                </div>
+                <Link href="/payment/request" className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-red-600 py-2.5 text-sm font-black text-white active:scale-[.98]">
+                  <Wallet size={16} /> 振込申請
+                </Link>
+                <Link href="/payment/history" className="flex items-center justify-center gap-1 text-xs font-bold text-red-600">
+                  振込申請履歴を見る <ChevronRight size={13} />
+                </Link>
+              </div>
+            ) : null}
+          </section>
+
+          <section className="rounded-[22px] bg-white p-4 shadow-[0_4px_14px_rgba(64,40,30,.1)] ring-1 ring-black/5">
+            <h2 className="mb-2 text-[13px] font-black text-red-600">今月の打刻履歴（{yearMonthLabel(yearMonth)}）</h2>
+            {monthHistory.length === 0 ? (
+              <p className="text-sm text-slate-500">打刻記録がありません。</p>
+            ) : (
+              <ul className="flex flex-col text-sm">
+                {monthHistory.map((history) => (
+                  <li key={history.dateKey} className="grid grid-cols-[1fr_auto_auto] gap-3 border-b border-slate-100 py-2 text-slate-700 last:border-0">
+                    <span className="text-slate-400">{history.label}</span>
+                    <span>出勤 {history.inTime ?? "-"}</span>
+                    <span>退勤 {history.outTime ?? "-"}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <Link href="/shift" className="flex items-center justify-center gap-2 rounded-[18px] bg-gradient-to-b from-red-500 to-red-700 py-3.5 text-sm font-black text-white shadow-[0_5px_14px_rgba(220,38,38,.22)] active:scale-[.98]">
+            <CalendarDays size={18} /> シフト登録・確認
+          </Link>
+        </div>
+      </div>
 
       <BottomTabBar />
     </main>

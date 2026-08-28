@@ -21,7 +21,7 @@ export function LiveClock() {
   }, []);
 
   if (!now) {
-    return <div className="h-[52px]" />;
+    return <div className="h-[46px]" />;
   }
 
   const dateLabel = new Intl.DateTimeFormat("ja-JP", {
@@ -40,9 +40,9 @@ export function LiveClock() {
   }).format(now);
 
   return (
-    <div className="text-center">
-      <p className="text-sm font-medium text-slate-600">{dateLabel}</p>
-      <p className="bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text font-mono text-4xl font-bold tracking-wide text-transparent tabular-nums">
+    <div className="rounded-full bg-white/85 px-4 py-1.5 text-center shadow-sm backdrop-blur-sm">
+      <p className="text-[10px] font-semibold text-slate-500">{dateLabel}</p>
+      <p className="bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text font-mono text-2xl font-black tracking-wide text-transparent tabular-nums">
         {timeLabel}
       </p>
     </div>

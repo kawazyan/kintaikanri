@@ -16,23 +16,18 @@ export function BottomTabBar() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-800 bg-slate-950/90 shadow-[0_-4px_20px_rgba(0,0,0,0.45)] backdrop-blur-md">
-      <div className="mx-auto flex max-w-sm items-stretch justify-between px-2 pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 shadow-[0_-4px_18px_rgba(0,0,0,.08)] backdrop-blur-xl">
+      <div className="mx-auto flex max-w-[430px] items-stretch justify-between px-1 pb-[calc(.35rem+env(safe-area-inset-bottom))] pt-1.5">
         {TABS.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link
               key={href}
               href={href}
-              className={`flex flex-1 flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 text-[11px] font-medium transition active:scale-95 ${
-                active ? "text-red-500" : "text-slate-500"
-              }`}
+              className={`relative flex flex-1 flex-col items-center gap-0.5 rounded-xl px-1 py-1 text-[10px] font-bold transition active:scale-95 ${active ? "text-red-600" : "text-slate-500"}`}
             >
-              <Icon
-                size={22}
-                strokeWidth={active ? 2.4 : 2}
-                className={active ? "drop-shadow-[0_0_6px_rgba(239,68,68,0.6)]" : ""}
-              />
+              {href === "/notices" && <span className="absolute right-[25%] top-0.5 h-2 w-2 rounded-full bg-red-600" />}
+              <Icon size={23} strokeWidth={active ? 2.7 : 2.1} />
               {label}
             </Link>
           );

@@ -1,161 +1,102 @@
-import Link from "next/link";
-import { Crown, Flame, Coins, ChevronRight, Star, Plus } from "lucide-react";
-import { TITLE_DEFINITIONS } from "@/lib/game-config";
+import { Crown, Flame, Coins, Plus } from "lucide-react";
 import type { GameState } from "@/lib/game";
+import { TITLE_DEFINITIONS } from "@/lib/game-config";
 
 export function GamePanel({ game }: { game: GameState }) {
-  const xpPercent =
-    game.xpForNextLevel > 0 ? Math.round((game.xpIntoLevel / game.xpForNextLevel) * 100) : 0;
+  const xpPercent = game.xpForNextLevel > 0
+    ? Math.min(100, Math.round((game.xpIntoLevel / game.xpForNextLevel) * 100))
+    : 0;
 
-  const achievedCodes = new Set(game.titles.map((t) => t.code));
-  const highestTitleDef = [...TITLE_DEFINITIONS].reverse().find((d) => achievedCodes.has(d.code));
-  const highestTitle = highestTitleDef
-    ? game.titles.find((t) => t.code === highestTitleDef.code)
+  const achievedCodes = new Set(game.titles.map((title) => title.code));
+  const highestDefinition = [...TITLE_DEFINITIONS]
+    .reverse()
+    .find((definition) => achievedCodes.has(definition.code));
+  const highestTitle = highestDefinition
+    ? game.titles.find((title) => title.code === highestDefinition.code)
     : null;
-  const nextTitle = game.lockedTitles[0];
 
   return (
     <section
-      className="relative overflow-hidden rounded-t-3xl px-3 pt-2.5 pb-2"
+      className="relative overflow-hidden rounded-t-[28px] px-3 pb-3 pt-3"
       style={{
         background: "linear-gradient(180deg, rgba(0,0,0,.15) 0%, rgba(0,0,0,.9) 100%), #9C2B24",
       }}
     >
-      {/* Level badge + current title */}
-      <div className="mb-1.5 flex items-center gap-2">
-        <div className="relative flex h-[58px] w-[54px] shrink-0 items-center justify-center">
-          <svg viewBox="0 0 100 108" className="absolute inset-0 h-full w-full">
-            <polygon
-              points="50,2 95,27 95,81 50,106 5,81 5,27"
-              fill="#14181f"
-              stroke="url(#lvGoldGrad)"
-              strokeWidth={2.5}
-            />
-            <defs>
-              <linearGradient id="lvGoldGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#FBE3A4" />
-                <stop offset="100%" stopColor="#C98A2E" />
-              </linearGradient>
-            </defs>
+
+      <div className="relative flex items-center gap-3">
+        <div className="relative flex h-[74px] w-[70px] shrink-0 items-center justify-center">
+          <svg viewBox="0 0 100 108" className="absolute inset-0 h-full w-full drop-shadow-[0_4px_7px_rgba(0,0,0,.45)]">
+            <polygon points="50,2 95,27 95,81 50,106 5,81 5,27" fill="#171a22" stroke="#e0b76a" strokeWidth="3" />
           </svg>
           <div className="relative text-center text-white">
-            <div className="text-[8px] tracking-wide opacity-85">Lv.</div>
-            <div className="text-[18px] leading-none font-bold">{game.level}</div>
+            <div className="text-[10px] font-semibold tracking-wide text-white/70">Lv.</div>
+            <div className="text-[27px] font-black leading-none">{game.level}</div>
           </div>
         </div>
 
-        <div className="flex-1 pt-0.5">
-          <p className="text-[9px] text-white/55">現在の称号</p>
+        <div className="min-w-0 flex-1 text-center">
+          <p className="mb-0.5 text-[10px] font-semibold tracking-[.12em] text-white/45">現在の称号</p>
           {highestTitle ? (
-            <div className="flex items-center gap-1.5">
-              <span className="truncate text-[21px] font-extrabold tracking-[0.01em] text-[#D8D5D2]">
-                {highestTitle.label}
-              </span>
-              <Crown size={15} className="shrink-0 text-amber-300/80" fill="currentColor" />
-            </div>
+            <>
+              <div className="flex items-center justify-center gap-2">
+                <p className="truncate text-[24px] font-black tracking-[.025em] text-[#f2d9d2] drop-shadow-sm">
+                  {highestTitle.label}
+                </p>
+                <Crown size={18} className="shrink-0 text-amber-300" fill="currentColor" />
+              </div>
+              <p className="mt-0.5 text-[10px] font-medium text-white/50">獲得済みタイトル</p>
+            </>
           ) : (
-            <div className="flex items-center gap-1.5 opacity-60">
-              <Crown size={15} className="text-white/40" />
-              <span className="text-[13px] font-semibold text-white/40">称号未獲得</span>
+            <div className="mt-1 flex items-center justify-center gap-1.5 rounded-full bg-black/55 px-3 py-1.5">
+              <Crown size={12} className="text-slate-300" />
+              <p className="text-[11px] text-slate-300">称号未獲得</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Streak & coin cards */}
-      <div className="mb-2 grid grid-cols-2 gap-2">
-        <div
-          className="relative flex items-center gap-2 overflow-hidden rounded-[10px] px-2.5 py-[7px]"
-          style={{ background: "linear-gradient(180deg, #9C2B24 0%, #9C2B24 25%, rgba(0,0,0,.92) 100%)" }}
-        >
-          <span
-            className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full"
-            style={{ background: "radial-gradient(circle at 35% 30%, #FFB067, #E7302E)" }}
-          >
-            <Flame size={12} className="text-white" fill="currentColor" />
+      <div className="relative mt-2 grid grid-cols-2 gap-2">
+        <div className="flex min-h-[70px] items-center gap-2.5 rounded-[18px] bg-white px-3 py-2.5 text-slate-950 shadow-[inset_0_0_0_1px_rgba(255,255,255,.5),0_3px_10px_rgba(0,0,0,.2)]">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-300 via-orange-500 to-red-600 shadow-[0_4px_12px_rgba(239,68,68,.3)]">
+            <Flame size={22} className="text-white" fill="currentColor" />
           </span>
           <div className="min-w-0">
-            <p className="text-[14px] leading-[1.1] font-extrabold text-white">{game.streak}</p>
-            <p className="text-[9.5px] text-white">勤務連続</p>
-            <p className="truncate text-[8px] text-white/75">連続シフト達成記録!</p>
+            <p className="text-[22px] font-black leading-none">{game.streak} <span className="text-sm">勤務連続</span></p>
+            <p className="mt-1 text-[10px] font-medium text-slate-500">連続シフト達成記録!</p>
           </div>
         </div>
 
-        <div
-          className="relative flex items-center gap-2 overflow-hidden rounded-[10px] px-2.5 py-[7px]"
-          style={{ background: "linear-gradient(180deg, #fff 0%, #fff 55%, rgba(0,0,0,.15) 100%)" }}
-        >
-          <span
-            className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full"
-            style={{ background: "radial-gradient(circle at 35% 30%, #FFE59A, #F2B84B)" }}
-          >
-            <Coins size={12} className="text-amber-950" />
+        <div className="relative flex min-h-[70px] items-center gap-2.5 rounded-[18px] bg-white px-3 py-2.5 text-slate-950 shadow-[inset_0_0_0_1px_rgba(255,255,255,.5),0_3px_10px_rgba(0,0,0,.2)]">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-yellow-100 via-amber-300 to-amber-500 shadow-[0_4px_12px_rgba(245,158,11,.25)]">
+            <Coins size={21} className="text-amber-800" />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-[14px] leading-[1.1] font-extrabold text-[#1c1e26]">
-              {game.coins.toLocaleString("ja-JP")}
-            </p>
-            <p className="text-[9.5px] text-[#7a7f8c]">コイン</p>
+            <p className="truncate text-[22px] font-black leading-none">{game.coins.toLocaleString("ja-JP")}</p>
+            <p className="mt-1 text-[11px] font-semibold text-slate-500">コイン</p>
           </div>
-          <Link
-            href="/my-room"
-            className="ml-auto flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-full bg-[#F2B84B] text-white"
-          >
-            <Plus size={10} strokeWidth={3} />
-          </Link>
+          <span className="absolute right-2.5 top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-white shadow-sm">
+            <Plus size={13} strokeWidth={3} />
+          </span>
         </div>
       </div>
 
-      {/* EXP bar */}
-      <div className="flex items-center gap-3 rounded-lg bg-black/60 px-3 py-1.5">
-        <span className="shrink-0 text-[12px] font-extrabold text-white">EXP</span>
-        <div className="flex-1">
-          <div className="h-[6px] overflow-hidden rounded-full bg-white/15">
+      <div className="relative mt-2 rounded-[17px] border border-white/10 bg-[#171821] px-3 py-2.5 shadow-[inset_0_2px_5px_rgba(0,0,0,.55)]">
+        <div className="flex items-center gap-3">
+          <span className="text-[15px] font-black text-white">EXP</span>
+          <div className="h-3 flex-1 overflow-hidden rounded-full border border-white/15 bg-[#2a2b34] shadow-inner">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-[#FF6B5B] to-[#E7302E]"
+              className="h-full rounded-full bg-gradient-to-r from-red-500 to-red-600 shadow-[0_0_10px_rgba(239,68,68,.45)]"
               style={{ width: `${xpPercent}%` }}
             />
           </div>
-        </div>
-        <span className="shrink-0 text-[14px] font-extrabold text-white">
-          {game.xpIntoLevel} / {game.xpForNextLevel}
-        </span>
-      </div>
-      <p className="mt-[5px] text-center text-[9px] text-white/50">
-        レベル{game.level + 1}まであと{game.xpForNextLevel - game.xpIntoLevel}EXP
-      </p>
-
-      {/* Next title teaser */}
-      {nextTitle && (
-        <div className="mt-2 flex items-center gap-2.5 rounded-lg bg-black/40 px-3 py-2">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-b from-amber-300 via-orange-500 to-amber-700">
-            <Star size={14} className="text-white" fill="currentColor" />
+          <span className="min-w-[68px] text-right text-[14px] font-black tabular-nums text-white">
+            {game.xpIntoLevel} / {game.xpForNextLevel}
           </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-[9px] font-semibold tracking-wide text-white/50 uppercase">
-              Next Title
-            </p>
-            <p className="truncate text-xs font-bold text-white/80">{nextTitle.label}</p>
-          </div>
-          <p className="shrink-0 rounded-full bg-white/10 px-2 py-1 text-[11px] font-bold text-amber-300">
-            あと{Math.max(0, nextTitle.minStreak - game.streak)}勤務
-          </p>
         </div>
-      )}
-
-      {game.perfectAttendanceThisMonth && (
-        <p className="mt-2 rounded-lg bg-black/40 px-3 py-1.5 text-center text-xs font-semibold text-amber-300">
-          🏆 今月の皆勤賞を達成しました!
+        <p className="mt-1 text-center text-[10px] font-medium text-white/50">
+          レベル{game.level + 1}まであと{Math.max(0, game.xpForNextLevel - game.xpIntoLevel)}EXP
         </p>
-      )}
-
-      <Link
-        href="/titles"
-        className="mt-2 flex items-center justify-center gap-1 text-[11px] font-semibold text-white/50"
-      >
-        称号一覧をすべて見る
-        <ChevronRight size={12} />
-      </Link>
+      </div>
     </section>
   );
 }
