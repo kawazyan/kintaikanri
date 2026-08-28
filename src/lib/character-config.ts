@@ -15,6 +15,8 @@ export const CHARACTER_DEFINITIONS: CharacterDefinition[] = [
   { id: "default", label: "デフォルト" },
   { id: "vice-boy", label: "ViceBoy" },
   { id: "vice-girl", label: "ViceGirl" },
+  { id: "boss-boy", label: "BossBoy" },
+  { id: "boss-girl", label: "BossGirl" },
 ];
 
 export const DEFAULT_CHARACTER_ID = "default";
