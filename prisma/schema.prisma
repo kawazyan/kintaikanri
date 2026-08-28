@@ -61,6 +61,10 @@ model Staff {
   // インボイス登録番号(任意, item 4)
   invoiceRegistrationNumber String?
 
+  // ホーム画面に表示するキャラクター(public/characters/<id>/ 配下の画像を参照)。
+  // 選択肢は src/lib/character-config.ts で管理。無料でいつでも切り替え可能。
+  selectedCharacterId String @default("default")
+
   // 支払方法(item 6)
   paymentMethod PaymentMethod @default(REQUEST)
 

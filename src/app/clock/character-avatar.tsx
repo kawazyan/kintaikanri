@@ -1,13 +1,8 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
+import { avatarImagePath, DEFAULT_CHARACTER_ID, type AvatarState } from "@/lib/character-config";
 
-export type AvatarState = "HOME" | "WORK" | "NIGHT";
-
-const AVATAR_SRC: Record<AvatarState, string> = {
-  HOME: "/characters/avatar-home.png",
-  WORK: "/characters/avatar-work.png",
-  NIGHT: "/characters/avatar-night.png",
-};
+export type { AvatarState };
 
 const AVATAR_LABEL: Record<AvatarState, string> = {
   HOME: "未出勤",
@@ -17,17 +12,19 @@ const AVATAR_LABEL: Record<AvatarState, string> = {
 
 export function CharacterAvatar({
   state,
+  characterId = DEFAULT_CHARACTER_ID,
   staffName,
   children,
 }: {
   state: AvatarState;
+  characterId?: string;
   staffName: string;
   children?: ReactNode;
 }) {
   return (
     <section className="relative h-[390px] overflow-hidden border-x border-white/10 bg-[#eadfd2] shadow-[0_12px_28px_rgba(65,35,24,.16)] sm:h-[410px]">
       <Image
-        src={AVATAR_SRC[state]}
+        src={avatarImagePath(characterId, state)}
         alt={AVATAR_LABEL[state]}
         fill
         sizes="(max-width: 430px) 100vw, 430px"

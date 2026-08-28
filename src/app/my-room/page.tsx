@@ -4,6 +4,7 @@ import { Sofa } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
+import { CharacterPicker } from "./character-picker";
 
 export default async function MyRoomPage() {
   const staffId = await getStaffId();
@@ -19,13 +20,22 @@ export default async function MyRoomPage() {
         ← メニューへ戻る
       </Link>
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-orange-50 shadow-[0_4px_14px_rgba(0,0,0,0.1)]">
-          <Sofa size={28} className="text-orange-500" />
+      <div className="flex items-center gap-3">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-50 shadow-[0_4px_14px_rgba(0,0,0,0.1)]">
+          <Sofa size={22} className="text-orange-500" />
         </div>
-        <h1 className="text-lg font-bold text-slate-800">マイルーム</h1>
-        <p className="text-sm text-slate-500">近日公開予定です。お楽しみに!</p>
+        <div>
+          <h1 className="text-lg font-bold text-slate-800">マイルーム</h1>
+          <p className="text-sm text-slate-500">ホーム画面のキャラクターを選べます</p>
+        </div>
       </div>
+
+      <section className="rounded-2xl bg-gradient-to-b from-white to-slate-100 p-4 shadow-[0_2px_10px_rgba(0,0,0,0.08)]">
+        <h2 className="mb-3 text-xs font-bold tracking-wide text-red-600 uppercase">
+          キャラクター変更
+        </h2>
+        <CharacterPicker selectedCharacterId={staff.selectedCharacterId} />
+      </section>
     </div>
 
       <BottomTabBar />

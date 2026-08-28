@@ -96,7 +96,11 @@ export default async function ClockPage() {
         <div className="px-2 pt-2">
           <GamePanel game={game} />
 
-          <CharacterAvatar state={avatarState} staffName={staff.name}>
+          <CharacterAvatar
+            state={avatarState}
+            characterId={staff.selectedCharacterId}
+            staffName={staff.name}
+          >
             <LiveClock />
             <ClockButtons canClockOut={canClockOut} finishedToday={finishedToday} />
             <p className="rounded-full bg-white/80 px-3 py-1 text-[12px] font-bold text-slate-700 shadow-sm backdrop-blur-sm">
