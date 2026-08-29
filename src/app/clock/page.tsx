@@ -30,6 +30,7 @@ import { CancelPunchButton } from "./cancel-punch-button";
 import { GamePanel } from "./game-panel";
 import { StampCard } from "./stamp-card";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
+import { HexIcon } from "@/components/hex-icon";
 
 const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -157,14 +158,14 @@ export default async function ClockPage() {
 
                 <div className="min-w-0 flex-1 px-4">
                   <p className="text-[11px] font-black tracking-[.06em] text-[#e3342d]">NEXT TITLE</p>
-                  <p className="mt-1 truncate text-[28px] font-black tracking-[-.05em] text-[#e9e9e6] [text-shadow:0_2px_0_#333,0_4px_6px_#000]">{nextTitle.label}</p>
+                  <p className="mt-1 line-clamp-2 text-[19px] font-black leading-tight tracking-[-.03em] text-[#e9e9e6] [text-shadow:0_2px_0_#333,0_4px_6px_#000]">{nextTitle.label}</p>
                   <div className="mt-3 h-px bg-[linear-gradient(90deg,#8d8d88,rgba(141,141,136,.1))]" />
                   <p className="mt-3 whitespace-nowrap text-[14px] font-bold text-[#c8c5c1]">連続{nextTitle.minStreak}勤務で獲得！</p>
                 </div>
 
                 <div className="flex h-[112px] w-[74px] shrink-0 flex-col items-center justify-center border-l border-[#4b4f51] text-center">
                   <span className="text-[14px] font-bold text-[#d8d6d2]">あと</span>
-                  <span className="font-serif text-[48px] font-black leading-none text-[#b51e19] [text-shadow:0_2px_0_#3b0505,0_0_8px_rgba(181,30,25,.28)]">{Math.max(0, nextTitle.minStreak - game.streak)}</span>
+                  <span className="text-[48px] font-black leading-none text-[#b51e19] [text-shadow:0_2px_0_#3b0505,0_0_8px_rgba(181,30,25,.28)]">{Math.max(0, nextTitle.minStreak - game.streak)}</span>
                   <span className="mt-1 text-[13px] font-black text-[#d8d6d2]">勤務</span>
                 </div>
               </div>
@@ -173,15 +174,18 @@ export default async function ClockPage() {
 
           <section className="grid grid-cols-3 gap-2.5">
             {[
-              { href: "/titles", label: "称号", sub: `${game.titles.length}個 獲得中`, Icon: Trophy, tone: "red" },
-              { href: "/my-room", label: "マイルーム", sub: "キャラ・設定", Icon: Sofa, tone: "silver" },
-              { href: "/town", label: "出勤メンバー", sub: `${memberCount}人 予定`, Icon: Users, tone: "green" },
+              { href: "/titles", label: "称号", sub: `${game.titles.length}個 獲得中`, Icon: Trophy, tone: "red" as const },
+              { href: "/my-room", label: "マイルーム", sub: "キャラ・設定", Icon: Sofa, tone: "blue" as const },
+              { href: "/town", label: "出勤メンバー", sub: `${memberCount}人 予定`, Icon: Users, tone: "green" as const },
             ].map(({ href, label, sub, Icon, tone }) => (
-              <Link key={href} href={href} className={`feature-metal-card feature-metal-card--${tone}`}>
-                <span className="feature-metal-icon"><Icon size={43} strokeWidth={2.4} /></span>
-                <span className="feature-metal-divider" />
-                <span className="feature-metal-title">{label}</span>
-                <span className="feature-metal-sub">{sub}</span>
+              <Link
+                key={href}
+                href={href}
+                className="flex flex-col items-center gap-1.5 rounded-[20px] border border-white/10 bg-[linear-gradient(160deg,#14171b,#07090a)] px-2 py-4 text-center text-white active:scale-[.97]"
+              >
+                <HexIcon icon={Icon} tone={tone} size={26} />
+                <span className="mt-1 whitespace-nowrap text-[12px] font-black">{label}</span>
+                <span className="whitespace-nowrap text-[9px] text-slate-400">{sub}</span>
               </Link>
             ))}
           </section>

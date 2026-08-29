@@ -10,8 +10,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  /* ゲームHUDの見出し・数字用。日本語グリフが無いため文字ごとに serif へ自動フォールバックする。 */
-  --font-serif: var(--font-cinzel), serif;
 }
 
 body {
@@ -183,7 +181,7 @@ body {
     radial-gradient(60% 30% at 100% 15%, rgba(177,31,39,.08), transparent 64%),
     linear-gradient(180deg,var(--hud-bg-1) 0%,var(--hud-bg-0) 100%) !important;
   color:#f8fafc !important;
-  font-family:var(--font-geist-sans),"Noto Sans JP","Hiragino Sans","Yu Gothic",sans-serif !important;
+  font-family:var(--font-noto-jp),var(--font-geist-sans),"Hiragino Sans","Yu Gothic",sans-serif !important;
   font-weight:600;
   letter-spacing:-.025em;
 }
@@ -271,6 +269,29 @@ body {
   background-size:auto,auto,240px 240px,auto;
   background-blend-mode:normal,normal,overlay,normal;
 }
+
+/* v18: hexagon neon-frame icon badge, per the supplied reference design */
+.hex-icon{
+  --hex-color:#d9e0e6; --hex-glow:rgba(217,224,230,.55);
+  position:relative; display:flex; align-items:center; justify-content:center;
+  width:64px; height:64px; flex:none;
+  clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);
+  background:linear-gradient(160deg,#1c1d1f 0%,#0a0a0b 100%);
+  border:1.5px solid var(--hex-color);
+  box-shadow:0 0 10px var(--hex-glow),0 0 22px var(--hex-glow),inset 0 0 14px rgba(0,0,0,.7);
+}
+.hex-icon:before{
+  content:""; position:absolute; inset:3px; pointer-events:none;
+  clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);
+  border:1px solid rgba(255,255,255,.14);
+}
+.hex-icon svg{ color:var(--hex-color); filter:drop-shadow(0 0 5px var(--hex-glow)); }
+.hex-icon--red{ --hex-color:#ff4b47; --hex-glow:rgba(255,75,71,.55); }
+.hex-icon--blue{ --hex-color:#4b9eff; --hex-glow:rgba(75,158,255,.55); }
+.hex-icon--green{ --hex-color:#3ddc84; --hex-glow:rgba(61,220,132,.5); }
+.hex-icon--gold{ --hex-color:#e8c368; --hex-glow:rgba(232,195,104,.55); }
+.hex-icon--silver{ --hex-color:#d9e0e6; --hex-glow:rgba(217,224,230,.45); }
+.hex-icon-sm{ width:52px; height:52px; }
 
 /* v8 cinematic HUD — based on the approved supplied references */
 .staff-screen{--gold:#d7b36a;--silver:#d9e0e6;--red:#ef302f;--green:#28c77a;background:radial-gradient(70% 35% at 50% -5%,rgba(30,63,88,.25),transparent 70%),linear-gradient(180deg,#071019,#020609 70%)!important}

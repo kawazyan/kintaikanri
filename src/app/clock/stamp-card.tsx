@@ -16,7 +16,7 @@ export function StampCard({ stamp }: { stamp: GameState["stamp"] }) {
       <div className="pointer-events-none absolute bottom-0 right-0 h-20 w-40 bg-[radial-gradient(circle_at_100%_100%,rgba(162,107,30,.10),transparent_70%)]" />
 
       <div className="relative flex items-start justify-between gap-2.5 px-1">
-        <h2 className="flex min-w-0 items-center gap-2.5 font-serif text-[18px] font-black tracking-[-.045em] text-[#f0ece4] [text-shadow:0_2px_0_#000,0_0_7px_rgba(255,255,255,.13)]">
+        <h2 className="flex min-w-0 items-center gap-2.5 text-[18px] font-black tracking-[-.045em] text-[#f0ece4] [text-shadow:0_2px_0_#000,0_0_7px_rgba(255,255,255,.13)]">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] border border-[#8e8780] bg-[linear-gradient(145deg,#292c2f,#080a0b)] shadow-[inset_0_1px_0_rgba(255,255,255,.22),0_2px_4px_rgba(0,0,0,.75)]">
             <CalendarDays size={21} strokeWidth={2.4} className="text-[#eee9df]" />
           </span>
@@ -24,7 +24,7 @@ export function StampCard({ stamp }: { stamp: GameState["stamp"] }) {
         </h2>
         <div className="shrink-0 text-right text-[9px] font-bold leading-[1.55] text-[#aaa39a]">
           <div>今月の目標：{stamp.targetDays}勤務</div>
-          <div className="mt-0.5 flex items-center justify-end gap-1 font-serif text-[11px] font-black text-[#e23a30]"><Gift size={12} />達成で {stamp.bonusCoins}コイン</div>
+          <div className="mt-0.5 flex items-center justify-end gap-1 text-[11px] font-black text-[#e23a30]"><Gift size={12} />達成で {stamp.bonusCoins}コイン</div>
         </div>
       </div>
 
@@ -74,11 +74,11 @@ export function StampCard({ stamp }: { stamp: GameState["stamp"] }) {
       </div>
 
       <div className="relative flex items-end justify-between gap-2 px-1 pt-1">
-        <p className="whitespace-nowrap font-serif text-[29px] font-black leading-none text-[#b92720] [text-shadow:0_2px_0_#000,0_0_7px_rgba(190,37,29,.22)]">
+        <p className="whitespace-nowrap text-[29px] font-black leading-none text-[#b92720] [text-shadow:0_2px_0_#000,0_0_7px_rgba(190,37,29,.22)]">
           {stamp.completedDays}<span className="ml-1.5 font-sans text-[14px] text-[#e9e4db]">/ {stamp.targetDays} 勤務達成</span>
         </p>
         <p className="text-right text-[13px] font-black text-[#e8e2d9] [text-shadow:0_1px_0_#000]">
-          {stamp.bonusAwarded ? "目標達成！" : <>あと <span className="font-serif text-[22px] text-[#c92a22]">{remaining}</span> 勤務でボーナス！</>}
+          {stamp.bonusAwarded ? "目標達成！" : <>あと <span className="text-[22px] text-[#c92a22]">{remaining}</span> 勤務でボーナス！</>}
         </p>
       </div>
 
@@ -86,7 +86,7 @@ export function StampCard({ stamp }: { stamp: GameState["stamp"] }) {
         <div className="h-[15px] flex-1 overflow-hidden rounded-full border border-[#756a5c] bg-[#030405] p-[2px] shadow-[inset_0_2px_7px_#000,inset_0_0_0_1px_rgba(255,255,255,.02)]">
           <div className="h-full rounded-full bg-[linear-gradient(90deg,#7e1511,#d72d24)] shadow-[0_0_8px_rgba(215,45,36,.58)]" style={{ width: `${percent}%` }} />
         </div>
-        <span className="min-w-[34px] text-right font-serif text-[15px] font-black text-[#ddd7ce]">{percent}%</span>
+        <span className="min-w-[34px] text-right text-[15px] font-black text-[#ddd7ce]">{percent}%</span>
       </div>
 
       {stamp.bonusAwarded && (

@@ -4,32 +4,14 @@ import { Award, ChevronRight, Menu, Sofa, Users, Wallet, Sparkles, ShieldCheck, 
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
-import { MetalIcon } from "@/components/metal-icon";
+import { HexIcon } from "@/components/hex-icon";
 import { PageHeader } from "@/components/page-header";
 import { LogoutButton } from "./logout-button";
 
 const GAME_MENU_ITEMS = [
-  {
-    href: "/titles",
-    label: "獲得した称号",
-    icon: Award,
-    card: "from-[#491416] via-[#271a22] to-[#111827]",
-    glow: "bg-red-500/10", tone: "gold" as const,
-  },
-  {
-    href: "/my-room",
-    label: "マイルーム",
-    icon: Sofa,
-    card: "from-[#253547] via-[#18283a] to-[#101a26]",
-    glow: "bg-slate-300/10", tone: "silver" as const,
-  },
-  {
-    href: "/town",
-    label: "今日の出勤メンバー",
-    icon: Users,
-    card: "from-[#203b3a] via-[#183231] to-[#102526]",
-    glow: "bg-emerald-300/10", tone: "green" as const,
-  },
+  { href: "/titles", label: "獲得した称号", icon: Award, tone: "red" as const },
+  { href: "/my-room", label: "マイルーム", icon: Sofa, tone: "blue" as const },
+  { href: "/town", label: "今日の出勤メンバー", icon: Users, tone: "green" as const },
 ] as const;
 
 export default async function MenuPage() {
@@ -49,16 +31,14 @@ export default async function MenuPage() {
             <p className="text-[11px] font-black tracking-[.08em] text-slate-400">MY K.J</p>
           </div>
           <div className="grid grid-cols-3 gap-2.5">
-            {GAME_MENU_ITEMS.map(({ href, label, icon: Icon, card, glow, tone }) => (
+            {GAME_MENU_ITEMS.map(({ href, label, icon: Icon, tone }) => (
               <Link
                 key={href}
                 href={href}
-                className={`game-cut-card group relative flex min-h-[112px] min-w-0 flex-col items-center justify-center overflow-hidden rounded-[24px] bg-gradient-to-br ${card} px-1.5 py-4 text-center text-white shadow-[0_10px_24px_rgba(15,23,42,.16)] ring-1 ring-white/25 transition active:scale-[.965]`}
+                className="flex min-h-[112px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-[20px] border border-white/10 bg-[linear-gradient(160deg,#14171b,#07090a)] px-1.5 py-4 text-center text-white transition active:scale-[.965]"
               >
-                <span className={`pointer-events-none absolute -right-5 -top-6 h-20 w-20 rounded-full ${glow} blur-xl`} />
-                <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/24 to-transparent" />
-                <span className="relative"><MetalIcon icon={Icon} tone={tone} size={25} /></span>
-                <span className="relative mt-2 w-full whitespace-nowrap text-[clamp(9px,2.7vw,12px)] font-black tracking-[-.03em]">
+                <HexIcon icon={Icon} tone={tone} size={25} />
+                <span className="mt-1 w-full whitespace-nowrap text-[clamp(9px,2.7vw,12px)] font-black tracking-[-.03em]">
                   {label}
                 </span>
               </Link>

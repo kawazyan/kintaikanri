@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Cinzel } from "next/font/google";
+import { Geist, Geist_Mono, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,12 +12,11 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// 勤務スタンプ/ゲームHUD系の見出し・数字専用の装飾フォント(ラテン文字・数字のみ、
-// 日本語はグリフを持たないため自動的に serif フォールバックへ委譲される)。
-const cinzel = Cinzel({
-  variable: "--font-cinzel",
+// スタッフ画面のメインフォント。日本語と欧文数字の両方をカバーする。
+const notoSansJP = Noto_Sans_JP({
+  variable: "--font-noto-jp",
   subsets: ["latin"],
-  weight: ["600", "700", "900"],
+  weight: ["400", "500", "700", "900"],
 });
 
 export const metadata: Metadata = {
@@ -29,7 +28,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="ja"
-      className={`${geistSans.variable} ${geistMono.variable} ${cinzel.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${notoSansJP.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
