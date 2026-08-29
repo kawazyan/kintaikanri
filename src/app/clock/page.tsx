@@ -30,6 +30,7 @@ import { CancelPunchButton } from "./cancel-punch-button";
 import { GamePanel } from "./game-panel";
 import { StampCard } from "./stamp-card";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
+import { MetalIcon } from "@/components/metal-icon";
 
 const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -175,7 +176,7 @@ export default async function ClockPage() {
               href="/titles"
               className="game-cut-card group relative overflow-hidden rounded-[22px] bg-gradient-to-br from-[#491416] via-[#271a22] to-[#111827] p-4 text-center text-white shadow-[0_10px_24px_rgba(15,23,42,.16)] active:translate-y-0.5"
             >
-              <Trophy size={34} className="mx-auto" />
+              <span className="mx-auto flex justify-center"><MetalIcon icon={Trophy} tone="gold" size={27}/></span>
               <p className="mt-4 whitespace-nowrap text-[12px] font-black">称号</p>
               <p className="mt-1 whitespace-nowrap text-[9px] text-slate-300">{game.titles.length}個 獲得中</p>
             </Link>
@@ -183,7 +184,7 @@ export default async function ClockPage() {
               href="/my-room"
               className="game-cut-card rounded-[22px] bg-gradient-to-br from-[#253547] to-[#101a26] p-4 text-center text-white shadow-[0_10px_24px_rgba(15,23,42,.16)] active:translate-y-0.5"
             >
-              <Sofa size={35} className="mx-auto" />
+              <span className="mx-auto flex justify-center"><MetalIcon icon={Sofa} tone="silver" size={27}/></span>
               <p className="mt-4 whitespace-nowrap text-[12px] font-black">マイルーム</p>
               <p className="mt-1 whitespace-nowrap text-[9px] text-slate-300">キャラ・設定</p>
             </Link>
@@ -191,7 +192,7 @@ export default async function ClockPage() {
               href="/town"
               className="game-cut-card rounded-[22px] bg-gradient-to-br from-[#203b3a] to-[#102526] p-4 text-center text-white shadow-[0_10px_24px_rgba(15,23,42,.16)] active:translate-y-0.5"
             >
-              <Users size={36} className="mx-auto" />
+              <span className="mx-auto flex justify-center"><MetalIcon icon={Users} tone="green" size={27}/></span>
               <p className="mt-4 whitespace-nowrap text-[11px] font-black">出勤メンバー</p>
               <p className="mt-1 whitespace-nowrap text-[9px] text-slate-300">{memberCount}人 予定</p>
             </Link>

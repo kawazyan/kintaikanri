@@ -9,7 +9,7 @@ export function StampCard({ stamp }: { stamp: GameState["stamp"] }) {
     : 0;
 
   return (
-    <section className="rounded-[24px] bg-white px-4 py-4 text-slate-900 shadow-[0_5px_18px_rgba(64,40,30,.14)] ring-1 ring-black/5">
+    <section className="game-hud-frame game-cut-card rounded-[24px] px-4 py-4 text-white">
       <div className="flex items-start justify-between gap-2">
         <div>
           <h2 className="flex items-center gap-2 text-[17px] font-black">
@@ -66,18 +66,18 @@ export function StampCard({ stamp }: { stamp: GameState["stamp"] }) {
       <div className="flex items-end justify-between gap-2">
         <p className="text-[26px] font-black leading-none text-red-600">
           {stamp.completedDays}
-          <span className="ml-1 text-[14px] font-black text-slate-900">/ {stamp.targetDays} 勤務達成</span>
+          <span className="ml-1 text-[14px] font-black text-white">/ {stamp.targetDays} 勤務達成</span>
         </p>
-        <p className="text-right text-[12px] font-black text-slate-700">
+        <p className="text-right text-[12px] font-black text-slate-200">
           {stamp.bonusAwarded ? "目標達成!" : `あと ${remaining} 勤務でボーナス!`}
         </p>
       </div>
 
       <div className="mt-3 flex items-center gap-2">
-        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-200">
+        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-black/50">
           <div className="h-full rounded-full bg-gradient-to-r from-red-500 to-red-600" style={{ width: `${percent}%` }} />
         </div>
-        <span className="text-[11px] font-black text-slate-700">{percent}%</span>
+        <span className="text-[11px] font-black text-slate-200">{percent}%</span>
       </div>
 
       {stamp.bonusAwarded && (
