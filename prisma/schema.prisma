@@ -253,6 +253,17 @@ enum ContractType {
   MONTHLY
   DAILY
 }
+
+enum WorkRequestType {
+  CATCH
+  CLOSER
+  BAND
+}
+
+enum SchedulePattern {
+  FIXED
+  VARIES
+}
 enum AbsenceDeductionRule {
   YES
   NO
@@ -290,6 +301,7 @@ model Client {
   name String
   clientCode String @unique
   contactName String?
+  contactDepartment String?
   phone String?
   email String?
   active Boolean @default(true)
@@ -318,9 +330,15 @@ model WorkOrder {
   yearMonth String
   plannedDays Int
   defaultStoreName String
+  requestedCarrier String?
+  requestType WorkRequestType @default(BAND)
+  schedulePattern SchedulePattern @default(FIXED)
+  fixedStartTime String?
+  fixedEndTime String?
   notes String?
   status WorkOrderStatus @default(PENDING_APPROVAL)
   clientContactName String
+  clientContactDepartment String?
   clientContactPhone String?
   clientContactEmail String?
   clientConfirmedAt DateTime @default(now())
@@ -336,6 +354,7 @@ model WorkOrder {
   updatedAt DateTime @updatedAt
   staffAssignments WorkOrderStaff[]
   sites WorkOrderSite[]
+  scheduleDays WorkOrderScheduleDay[]
   histories WorkOrderChangeHistory[]
   invoices InvoiceWorkOrder[]
   accessTokens WorkOrderAccessToken[]
@@ -376,6 +395,20 @@ model WorkOrderStaff {
   expenses Expense[]
   @@index([workOrderId, requestedName])
   @@index([staffId])
+}
+
+
+model WorkOrderScheduleDay {
+  id String @id @default(cuid())
+  workOrderId String
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  workDate DateTime
+  startTime String?
+  endTime String?
+  storeName String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([workOrderId, workDate])
 }
 
 model WorkOrderSite {
