@@ -23,7 +23,7 @@ const links = [
   { href: "/admin/shifts", label: "シフト", icon: CalendarDays },
   { href: "/admin/records", label: "打刻記録", icon: Clock3 },
   { href: "/admin/payments", label: "振込申請", icon: Banknote },
-  { href: "/admin/clients", label: "取引先", icon: Building2 },
+  { href: "/admin/clients", label: "取引先窓口", icon: Building2 },
   { href: "/admin/requests", label: "稼働依頼", icon: ClipboardCheck },
   { href: "/admin/expenses", label: "経費", icon: ReceiptText },
   { href: "/admin/invoices", label: "請求", icon: FileText },
