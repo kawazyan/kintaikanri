@@ -1,4 +1,4 @@
-import { CalendarDays, Gift } from "lucide-react";
+import { CalendarDays, Gift, Check, Star } from "lucide-react";
 import { yearMonthLabel } from "@/lib/time";
 import type { GameState } from "@/lib/game";
 
@@ -24,19 +24,43 @@ export function StampCard({ stamp }: { stamp: GameState["stamp"] }) {
       </div>
 
       <div className="my-4 grid grid-cols-10 gap-x-2 gap-y-2.5">
-        {stamp.cells.map((cell) => (
-          <div
-            key={cell.index}
-            aria-label={`${cell.index + 1}勤務目`}
-            className={
-              cell.state === "stamped"
-                ? "aspect-square rounded-full bg-gradient-to-b from-red-400 to-red-600 shadow-[inset_0_1px_1px_rgba(255,255,255,.5),0_2px_5px_rgba(239,68,68,.24)]"
-                : cell.state === "today"
-                  ? "aspect-square rounded-full border-2 border-dashed border-red-500 bg-[#111b24]"
+        {stamp.cells.map((cell) => {
+          const isMilestone = (cell.index + 1) % 5 === 0;
+          if (cell.state === "stamped") {
+            return (
+              <div
+                key={cell.index}
+                aria-label={`${cell.index + 1}勤務目・達成`}
+                className={
+                  isMilestone
+                    ? "relative aspect-square rounded-full bg-gradient-to-b from-amber-200 via-amber-400 to-amber-600 shadow-[inset_0_1px_2px_rgba(255,255,255,.7),inset_0_-2px_3px_rgba(146,64,14,.35),0_0_9px_rgba(245,158,11,.55)] ring-2 ring-amber-200/60"
+                    : "relative aspect-square rounded-full bg-gradient-to-b from-red-400 via-red-500 to-red-700 shadow-[inset_0_1px_2px_rgba(255,255,255,.55),inset_0_-2px_3px_rgba(127,29,29,.4),0_2px_7px_rgba(239,68,68,.4)] ring-2 ring-red-300/40"
+                }
+              >
+                {isMilestone ? (
+                  <Star size={12} strokeWidth={2.5} fill="currentColor" className="absolute inset-0 m-auto text-white drop-shadow-[0_1px_1px_rgba(0,0,0,.35)]" />
+                ) : (
+                  <Check size={12} strokeWidth={3.5} className="absolute inset-0 m-auto text-white drop-shadow-[0_1px_1px_rgba(0,0,0,.35)]" />
+                )}
+              </div>
+            );
+          }
+          return (
+            <div
+              key={cell.index}
+              aria-label={`${cell.index + 1}勤務目`}
+              className={
+                cell.state === "today"
+                  ? "relative aspect-square rounded-full border-2 border-dashed border-red-500 bg-[#111b24] shadow-[0_0_6px_rgba(239,68,68,.35)]"
                   : "aspect-square rounded-full border-2 border-slate-600 bg-[#0c151e]"
-            }
-          />
-        ))}
+              }
+            >
+              {cell.state === "today" && (
+                <span className="absolute inset-0 m-auto h-1.5 w-1.5 rounded-full bg-red-500 shadow-[0_0_5px_rgba(239,68,68,.8)]" />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div className="flex items-end justify-between gap-2">
