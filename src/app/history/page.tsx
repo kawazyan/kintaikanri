@@ -84,14 +84,14 @@ export default async function HistoryPage() {
         <PageHeader icon={History} title="打刻履歴" eyebrow={yearMonthLabel(yearMonth)} />
 
         <section className="grid grid-cols-2 gap-3">
-          <div className="relative overflow-hidden rounded-[22px] bg-white p-4 shadow-[0_8px_22px_rgba(15,23,42,.07)] ring-1 ring-black/[.04]">
+          <div className="game-hud-frame game-cut-card relative overflow-hidden rounded-[20px] p-4 shadow-[0_8px_22px_rgba(15,23,42,.07)] ring-1 ring-black/[.04]">
             <CalendarCheck2 size={18} className="text-red-500" />
             <p className="mt-3 text-[10px] font-black tracking-wide text-slate-400">今月の勤務日数</p>
             <p className="mt-0.5 text-[28px] font-black leading-none tabular-nums text-slate-950">
               {workDays}<span className="ml-1 text-xs text-slate-400">日</span>
             </p>
           </div>
-          <div className="relative overflow-hidden rounded-[22px] bg-gradient-to-br from-red-500 via-red-600 to-red-700 p-4 text-white shadow-[0_10px_22px_rgba(220,38,38,.20)] ring-1 ring-red-400/20">
+          <div className="game-cut-card relative overflow-hidden rounded-[20px] bg-gradient-to-br from-[#7b151b] via-[#a71922] to-[#4c0c12] p-4 text-white shadow-[0_10px_22px_rgba(220,38,38,.20)] ring-1 ring-red-400/20">
             <span className="pointer-events-none absolute -right-5 -top-6 h-20 w-20 rounded-full bg-white/15 blur-xl" />
             <Clock3 size={18} className="relative text-white/90" />
             <p className="relative mt-3 text-[10px] font-black tracking-wide text-white/70">記録済み勤務時間</p>
@@ -101,7 +101,7 @@ export default async function HistoryPage() {
 
         <section className="flex flex-col gap-3">
           {days.map((day) => (
-            <article key={day.dateKey} className="overflow-hidden rounded-[24px] bg-white shadow-[0_8px_24px_rgba(15,23,42,.07)] ring-1 ring-black/[.04]">
+            <article key={day.dateKey} className="game-hud-frame game-cut-card overflow-hidden rounded-[20px] shadow-[0_8px_24px_rgba(15,23,42,.07)] ring-1 ring-black/[.04]">
               <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3.5">
                 <div className="min-w-0">
                   <p className="text-[15px] font-black text-slate-950">{dayLabel(day.dateKey)}</p>
@@ -146,7 +146,7 @@ export default async function HistoryPage() {
           ))}
 
           {days.length === 0 ? (
-            <div className="rounded-[24px] bg-white px-5 py-12 text-center shadow-[0_8px_24px_rgba(15,23,42,.07)] ring-1 ring-black/[.04]">
+            <div className="game-hud-frame game-cut-card rounded-[20px] px-5 py-12 text-center shadow-[0_8px_24px_rgba(15,23,42,.07)] ring-1 ring-black/[.04]">
               <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-[20px] bg-slate-50 ring-1 ring-slate-100"><History size={26} className="text-slate-300" /></span>
               <p className="mt-4 text-sm font-black text-slate-700">今月の打刻履歴はありません</p>
               <p className="mt-1 text-xs font-semibold text-slate-400">出勤・退勤を打刻するとここに表示されます</p>
