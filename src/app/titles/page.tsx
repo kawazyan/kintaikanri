@@ -22,7 +22,7 @@ export default async function TitlesPage() {
   const achievedCount = titles.filter((title) => title.achievedAt).length;
 
   return (
-    <main className="min-h-dvh bg-gradient-to-b from-[#fffdfb] via-[#fdf9f4] to-[#f7f0e7] text-slate-900">
+    <main className="min-h-dvh bg-gradient-to-b from-[#fbfbfc] via-[#f7f8fa] to-[#f1f3f6] text-slate-900">
       <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28">
         <PageHeader icon={Award} title="獲得した称号" eyebrow="TITLE COLLECTION" />
 

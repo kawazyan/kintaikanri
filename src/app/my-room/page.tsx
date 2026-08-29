@@ -13,7 +13,7 @@ export default async function MyRoomPage() {
   if (!staff || staff.status !== "ACTIVE") redirect("/");
 
   return (
-    <main className="min-h-dvh bg-gradient-to-b from-[#fffdfb] via-[#fff8ef] to-[#f7efe4] text-slate-900">
+    <main className="min-h-dvh bg-gradient-to-b from-[#fbfbfc] via-[#f7f8fa] to-[#f1f3f6] text-slate-900">
       <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28">
         <PageHeader icon={Sofa} title="マイルーム" eyebrow={`${staff.name} さん`} />
 

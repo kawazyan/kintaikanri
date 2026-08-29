@@ -36,7 +36,7 @@ export default async function NewShiftPage({
       <Link href="/shift" className="text-sm text-red-600 underline">
         ← シフト一覧へ戻る
       </Link>
-      <h1 className="bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-xl font-bold text-transparent">
+      <h1 className="bg-gradient-to-r from-red-600 to-slate-700 bg-clip-text text-xl font-bold text-transparent">
         シフト新規登録
       </h1>
       <ShiftWizard initial={initial} />

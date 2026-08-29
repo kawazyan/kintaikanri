@@ -29,7 +29,7 @@ export async function computeMonthlyEarnings(
       where: { staffId_yearMonth: { staffId, yearMonth } },
     }),
     prisma.shift.findMany({
-      where: { staffId, startTime: { gte: start, lt: end } },
+      where: { staffId, cancelledAt: null, startTime: { gte: start, lt: end } },
       include: { clockRecords: true },
     }),
   ]);
@@ -66,7 +66,7 @@ export async function computeMonthlyEarnings(
 // only that specific month's own display shows "－").
 export async function computeCumulativeConfirmedAmount(staffId: string): Promise<number> {
   const shifts = await prisma.shift.findMany({
-    where: { staffId },
+    where: { staffId, cancelledAt: null },
     select: { startTime: true },
   });
   const yearMonths = new Set(shifts.map((s) => toJstDateValue(s.startTime).slice(0, 7)));

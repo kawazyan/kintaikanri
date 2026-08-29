@@ -19,7 +19,7 @@ export default async function PaymentHistoryPage() {
   return (
     <main className="min-h-dvh bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb]">
     <div className="mx-auto flex max-w-md flex-col gap-6 px-4 pt-8 pb-28">
-      <h1 className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-xl font-bold text-transparent">
+      <h1 className="flex items-center gap-2 bg-gradient-to-r from-red-600 to-slate-700 bg-clip-text text-xl font-bold text-transparent">
         <Wallet size={20} className="text-red-500" />
         振込申請履歴
       </h1>

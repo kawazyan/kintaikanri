@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Award, ChevronRight, Menu, Sofa, Users, Wallet, Sparkles, ShieldCheck } from "lucide-react";
+import { Award, ChevronRight, Menu, Sofa, Users, Wallet, Sparkles, ShieldCheck, ReceiptText } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
@@ -12,22 +12,22 @@ const GAME_MENU_ITEMS = [
     href: "/titles",
     label: "獲得した称号",
     icon: Award,
-    card: "from-[#ef4444] via-[#dc2626] to-[#b91c1c]",
-    glow: "bg-red-300/30",
+    card: "from-[#491416] via-[#271a22] to-[#111827]",
+    glow: "bg-red-500/10",
   },
   {
     href: "/my-room",
     label: "マイルーム",
     icon: Sofa,
-    card: "from-[#f6c85f] via-[#f59e0b] to-[#d97706]",
-    glow: "bg-amber-200/40",
+    card: "from-[#253547] via-[#18283a] to-[#101a26]",
+    glow: "bg-slate-300/10",
   },
   {
     href: "/town",
     label: "今日の出勤メンバー",
     icon: Users,
-    card: "from-[#34d399] via-[#10b981] to-[#047857]",
-    glow: "bg-emerald-200/35",
+    card: "from-[#203b3a] via-[#183231] to-[#102526]",
+    glow: "bg-emerald-300/10",
   },
 ] as const;
 
@@ -38,7 +38,7 @@ export default async function MenuPage() {
   if (!staff || staff.status !== "ACTIVE") redirect("/");
 
   return (
-    <main className="min-h-dvh bg-gradient-to-b from-[#fffdfb] via-[#fdf9f4] to-[#f7f0e7] text-slate-900">
+    <main className="min-h-dvh bg-gradient-to-b from-[#fbfbfc] via-[#f7f8fa] to-[#f1f3f6] text-slate-900">
       <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28">
         <PageHeader icon={Menu} title="メニュー" eyebrow={`${staff.name} さん`} />
 
@@ -71,12 +71,25 @@ export default async function MenuPage() {
           <p className="mb-2 px-1 text-[11px] font-black tracking-[.08em] text-slate-400">支払い・アカウント</p>
           <div className="overflow-hidden rounded-[24px] bg-white shadow-[0_8px_24px_rgba(15,23,42,.07)] ring-1 ring-black/[.04]">
             <Link href="/payment/history" className="flex items-center gap-3 p-4 transition active:bg-slate-50">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] bg-gradient-to-br from-red-50 to-orange-50 ring-1 ring-red-100">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] bg-gradient-to-br from-red-50 to-slate-50 ring-1 ring-red-100">
                 <Wallet size={21} className="text-red-600" />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-black text-slate-900">振込申請履歴</span>
                 <span className="mt-0.5 block text-[11px] font-semibold text-slate-400">申請済みの振込状況を確認</span>
+              </span>
+              <ChevronRight size={19} className="shrink-0 text-slate-300" />
+            </Link>
+
+            <div className="mx-4 h-px bg-slate-100" />
+
+            <Link href="/expenses" className="flex items-center gap-3 p-4 transition active:bg-slate-50">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] bg-slate-50 ring-1 ring-slate-100">
+                <ReceiptText size={21} className="text-slate-700" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-black text-slate-900">経費申請</span>
+                <span className="mt-0.5 block text-[11px] font-semibold text-slate-400">交通費・宿泊費・その他経費</span>
               </span>
               <ChevronRight size={19} className="shrink-0 text-slate-300" />
             </Link>

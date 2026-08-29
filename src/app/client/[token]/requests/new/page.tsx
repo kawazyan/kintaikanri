@@ -1,0 +1,19 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import { createWorkOrder } from "./actions";
+
+export default async function NewRequestPage({params}:{params:Promise<{token:string}>}) {
+  const {token}=await params; const access=await prisma.clientAccessToken.findUnique({where:{token},include:{client:true}}); if(!access?.active||!access.client.active) notFound();
+  const a=createWorkOrder.bind(null,token);
+  return <main className="min-h-dvh bg-[#f4f5f7] text-slate-900"><div className="mx-auto max-w-2xl px-4 py-8"><Link href={`/client/${token}`} className="text-sm font-bold text-slate-500">← 戻る</Link><h1 className="mt-3 text-2xl font-black">稼働依頼を作成</h1><p className="mt-1 text-sm text-slate-500">{access.client.name}</p>
+  <form action={a} className="mt-6 space-y-5 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-black/5">
+    <div className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-bold">対象月<input name="yearMonth" type="month" required className="mt-1 w-full rounded-xl border p-3"/></label><label className="text-sm font-bold">稼働予定日数<input name="plannedDays" type="number" min="1" required className="mt-1 w-full rounded-xl border p-3"/></label></div>
+    <label className="block text-sm font-bold">稼働先店舗・現場<input name="defaultStoreName" required className="mt-1 w-full rounded-xl border p-3"/></label>
+    <fieldset><legend className="text-sm font-bold">依頼するスタッフ名</legend><p className="mt-1 text-xs text-slate-400">複数名の場合は1名ずつ入力してください。</p><div className="mt-2 grid gap-2 sm:grid-cols-2"><input name="requestedNames" required placeholder="スタッフ名 1" className="rounded-xl border p-3 text-sm"/><input name="requestedNames" placeholder="スタッフ名 2" className="rounded-xl border p-3 text-sm"/><input name="requestedNames" placeholder="スタッフ名 3" className="rounded-xl border p-3 text-sm"/><input name="requestedNames" placeholder="スタッフ名 4" className="rounded-xl border p-3 text-sm"/><input name="requestedNames" placeholder="スタッフ名 5" className="rounded-xl border p-3 text-sm"/></div></fieldset>
+    <div className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-bold">契約区分<select name="contractType" className="mt-1 w-full rounded-xl border p-3"><option value="MONTHLY">月単価</option><option value="DAILY">日単価</option></select></label><label className="text-sm font-bold">単価（税抜）<input name="rateAmountExTax" type="number" min="0" required className="mt-1 w-full rounded-xl border p-3"/></label></div>
+    <div className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-bold">欠勤時の減算<select name="absenceDeduction" className="mt-1 w-full rounded-xl border p-3"><option value="YES">あり</option><option value="NO">なし</option><option value="CONSULT">要相談</option></select></label><label className="text-sm font-bold">交通費<select name="travelExpense" className="mt-1 w-full rounded-xl border p-3"><option value="INCLUDED">込み</option><option value="SEPARATE">別</option><option value="CONSULT">要相談</option></select></label></div>
+    <div className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-bold">ご担当者名<input name="clientContactName" required defaultValue={access.client.contactName||""} className="mt-1 w-full rounded-xl border p-3"/></label><label className="text-sm font-bold">電話番号<input name="clientContactPhone" defaultValue={access.client.phone||""} className="mt-1 w-full rounded-xl border p-3"/></label></div><label className="block text-sm font-bold">メールアドレス<input type="email" name="clientContactEmail" defaultValue={access.client.email||""} className="mt-1 w-full rounded-xl border p-3"/></label><label className="block text-sm font-bold">備考<textarea name="notes" rows={3} className="mt-1 w-full rounded-xl border p-3"/></label>
+    <button className="w-full rounded-2xl bg-[#b91c1c] px-4 py-4 font-black text-white shadow-[0_5px_0_#7f1d1d] active:translate-y-1 active:shadow-none">業務委託内容を確定して依頼する</button>
+  </form></div></main>;
+}
