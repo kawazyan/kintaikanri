@@ -147,7 +147,7 @@ export default async function ClockPage() {
           )}
 
           {nextTitle && (
-            <section className="flex min-h-[100px] items-center gap-3 overflow-hidden rounded-[22px] bg-white p-4 shadow-[0_5px_18px_rgba(64,40,30,.12)] ring-1 ring-black/5">
+            <section className="game-hud-frame game-cut-card flex min-h-[100px] items-center gap-3 overflow-hidden rounded-[20px] p-4 shadow-[0_5px_18px_rgba(64,40,30,.12)] ring-1 ring-black/5">
               <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 via-orange-500 to-amber-700 shadow-[0_6px_16px_rgba(245,158,11,.3)]">
                 <Star size={26} className="text-white" fill="currentColor" />
               </span>
@@ -173,7 +173,7 @@ export default async function ClockPage() {
           <section className="grid grid-cols-3 gap-2.5">
             <Link
               href="/titles"
-              className="group relative overflow-hidden rounded-[22px] bg-gradient-to-br from-[#491416] via-[#271a22] to-[#111827] p-4 text-center text-white shadow-[0_10px_24px_rgba(15,23,42,.16)] active:translate-y-0.5"
+              className="game-cut-card group relative overflow-hidden rounded-[22px] bg-gradient-to-br from-[#491416] via-[#271a22] to-[#111827] p-4 text-center text-white shadow-[0_10px_24px_rgba(15,23,42,.16)] active:translate-y-0.5"
             >
               <Trophy size={34} className="mx-auto" />
               <p className="mt-4 whitespace-nowrap text-[12px] font-black">称号</p>
@@ -181,7 +181,7 @@ export default async function ClockPage() {
             </Link>
             <Link
               href="/my-room"
-              className="rounded-[22px] bg-gradient-to-br from-[#253547] to-[#101a26] p-4 text-center text-white shadow-[0_10px_24px_rgba(15,23,42,.16)] active:translate-y-0.5"
+              className="game-cut-card rounded-[22px] bg-gradient-to-br from-[#253547] to-[#101a26] p-4 text-center text-white shadow-[0_10px_24px_rgba(15,23,42,.16)] active:translate-y-0.5"
             >
               <Sofa size={35} className="mx-auto" />
               <p className="mt-4 whitespace-nowrap text-[12px] font-black">マイルーム</p>
@@ -189,7 +189,7 @@ export default async function ClockPage() {
             </Link>
             <Link
               href="/town"
-              className="rounded-[22px] bg-gradient-to-br from-[#203b3a] to-[#102526] p-4 text-center text-white shadow-[0_10px_24px_rgba(15,23,42,.16)] active:translate-y-0.5"
+              className="game-cut-card rounded-[22px] bg-gradient-to-br from-[#203b3a] to-[#102526] p-4 text-center text-white shadow-[0_10px_24px_rgba(15,23,42,.16)] active:translate-y-0.5"
             >
               <Users size={36} className="mx-auto" />
               <p className="mt-4 whitespace-nowrap text-[11px] font-black">出勤メンバー</p>
@@ -197,7 +197,7 @@ export default async function ClockPage() {
             </Link>
           </section>
 
-          <section className="overflow-hidden rounded-[24px] bg-white shadow-[0_10px_24px_rgba(15,23,42,.08)] ring-1 ring-black/5">
+          <section className="game-hud-frame game-cut-card overflow-hidden rounded-[20px] shadow-[0_10px_24px_rgba(15,23,42,.08)] ring-1 ring-black/5">
             <div className="flex items-center justify-between px-5 py-4">
               <h2 className="flex items-center gap-2 font-black">
                 <Clock3 size={19} className="text-red-600" />
@@ -242,7 +242,7 @@ export default async function ClockPage() {
                 <ChevronRight size={18} className="text-slate-400" />
               </div>
             </div>
-            <div className="rounded-[24px] bg-white p-5 shadow-[0_10px_24px_rgba(15,23,42,.08)] ring-1 ring-black/5">
+            <div className="game-hud-frame game-cut-card rounded-[20px] p-5 shadow-[0_10px_24px_rgba(15,23,42,.08)] ring-1 ring-black/5">
               <div className="flex items-center justify-between">
                 <h2 className="flex items-center gap-2 font-black">
                   <CalendarDays size={22} />
@@ -285,7 +285,7 @@ export default async function ClockPage() {
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-[24px] bg-white shadow-[0_10px_24px_rgba(15,23,42,.08)] ring-1 ring-black/5">
+          <section className="game-hud-frame game-cut-card overflow-hidden rounded-[20px] shadow-[0_10px_24px_rgba(15,23,42,.08)] ring-1 ring-black/5">
             <div className="flex items-center justify-between px-5 py-4">
               <h2 className="flex items-center gap-2 font-black">
                 <Clock3 size={19} />

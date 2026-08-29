@@ -52,7 +52,7 @@ export default async function MenuPage() {
               <Link
                 key={href}
                 href={href}
-                className={`group relative flex min-h-[112px] min-w-0 flex-col items-center justify-center overflow-hidden rounded-[24px] bg-gradient-to-br ${card} px-1.5 py-4 text-center text-white shadow-[0_10px_24px_rgba(15,23,42,.16)] ring-1 ring-white/25 transition active:scale-[.965]`}
+                className={`game-cut-card group relative flex min-h-[112px] min-w-0 flex-col items-center justify-center overflow-hidden rounded-[24px] bg-gradient-to-br ${card} px-1.5 py-4 text-center text-white shadow-[0_10px_24px_rgba(15,23,42,.16)] ring-1 ring-white/25 transition active:scale-[.965]`}
               >
                 <span className={`pointer-events-none absolute -right-5 -top-6 h-20 w-20 rounded-full ${glow} blur-xl`} />
                 <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/24 to-transparent" />
@@ -69,7 +69,7 @@ export default async function MenuPage() {
 
         <section>
           <p className="mb-2 px-1 text-[11px] font-black tracking-[.08em] text-slate-400">支払い・アカウント</p>
-          <div className="overflow-hidden rounded-[24px] bg-white shadow-[0_8px_24px_rgba(15,23,42,.07)] ring-1 ring-black/[.04]">
+          <div className="game-hud-frame game-cut-card overflow-hidden rounded-[20px] shadow-[0_8px_24px_rgba(15,23,42,.07)] ring-1 ring-black/[.04]">
             <Link href="/payment/history" className="flex items-center gap-3 p-4 transition active:bg-slate-50">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] bg-gradient-to-br from-red-50 to-slate-50 ring-1 ring-red-100">
                 <Wallet size={21} className="text-red-600" />

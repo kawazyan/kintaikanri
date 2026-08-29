@@ -32,8 +32,8 @@ export function StampCard({ stamp }: { stamp: GameState["stamp"] }) {
               cell.state === "stamped"
                 ? "aspect-square rounded-full bg-gradient-to-b from-red-400 to-red-600 shadow-[inset_0_1px_1px_rgba(255,255,255,.5),0_2px_5px_rgba(239,68,68,.24)]"
                 : cell.state === "today"
-                  ? "aspect-square rounded-full border-2 border-dashed border-red-500 bg-white"
-                  : "aspect-square rounded-full border-2 border-slate-300 bg-white"
+                  ? "aspect-square rounded-full border-2 border-dashed border-red-500 bg-[#111b24]"
+                  : "aspect-square rounded-full border-2 border-slate-600 bg-[#0c151e]"
             }
           />
         ))}

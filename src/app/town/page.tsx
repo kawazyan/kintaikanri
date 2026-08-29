@@ -64,7 +64,7 @@ export default async function TownPage() {
             {attending.map((member) => {
               const isMe = member.id === staffId;
               return (
-                <article key={member.id} className="relative flex items-center gap-3 overflow-hidden rounded-[24px] bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,.07)] ring-1 ring-black/[.04]">
+                <article key={member.id} className="game-hud-frame game-cut-card relative flex items-center gap-3 overflow-hidden rounded-[20px] p-4 shadow-[0_8px_24px_rgba(15,23,42,.07)] ring-1 ring-black/[.04]">
                   {isMe ? <span className="absolute inset-y-0 left-0 w-1 bg-emerald-500" /> : null}
                   <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[18px] bg-gradient-to-br from-emerald-50 to-teal-50 text-[17px] font-black text-emerald-700 ring-1 ring-emerald-100">
                     {member.name.slice(0, 1)}
@@ -87,7 +87,7 @@ export default async function TownPage() {
             })}
           </section>
         ) : (
-          <section className="rounded-[26px] bg-white px-6 py-12 text-center shadow-[0_9px_26px_rgba(15,23,42,.07)] ring-1 ring-black/[.04]">
+          <section className="game-hud-frame game-cut-card rounded-[20px] px-6 py-12 text-center shadow-[0_9px_26px_rgba(15,23,42,.07)] ring-1 ring-black/[.04]">
             <span className="mx-auto flex h-[68px] w-[68px] items-center justify-center rounded-[22px] bg-emerald-50 ring-1 ring-emerald-100"><UserRoundCheck size={29} className="text-emerald-400" /></span>
             <h2 className="mt-4 text-sm font-black text-slate-800">現在出勤中のメンバーはいません</h2>
             <p className="mt-1 text-xs font-semibold text-slate-400">出勤打刻したメンバーがここに表示されます</p>
