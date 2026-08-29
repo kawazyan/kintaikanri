@@ -95,7 +95,7 @@ async function loadDailyStatusMap(staffId: string, now: Date): Promise<Map<strin
   const { end: rangeEnd } = jstDayRange(now);
 
   const shifts = await prisma.shift.findMany({
-    where: { staffId, startTime: { gte: rangeStart, lt: rangeEnd } },
+    where: { staffId, cancelledAt: null, startTime: { gte: rangeStart, lt: rangeEnd } },
     select: { startTime: true, endTime: true, clockRecords: { select: { type: true } } },
   });
 
@@ -207,7 +207,7 @@ async function isMonthFullyPunched(
   if (effectiveStart >= end) return false;
 
   const shifts = await prisma.shift.findMany({
-    where: { staffId, startTime: { gte: effectiveStart, lt: end } },
+    where: { staffId, cancelledAt: null, startTime: { gte: effectiveStart, lt: end } },
     select: { startTime: true },
   });
   if (shifts.length === 0) return false;

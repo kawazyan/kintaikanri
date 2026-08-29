@@ -85,6 +85,8 @@ model Staff {
   clockRecordHistories  ClockRecordHistory[]
   gameTitles            GameTitle[]
   perfectAttendances    PerfectAttendance[]
+  workOrderAssignments  WorkOrderStaff[]
+  expenses              Expense[]
 }
 
 model MonthlyEarningTarget {
@@ -115,8 +117,14 @@ model Shift {
   histories    ShiftHistory[]
   clockRecords ClockRecord[]
   noShowAlert  NoShowAlert?
+  workOrderStaffId String?
+  workOrderStaff WorkOrderStaff? @relation(fields: [workOrderStaffId], references: [id], onDelete: SetNull)
+  cancelledAt DateTime?
+  cancellationReason String?
+  cancelledBy String?
 
   @@index([staffId, startTime])
+  @@index([workOrderStaffId])
 }
 
 model ShiftHistory {
@@ -230,4 +238,268 @@ model PerfectAttendance {
   achievedAt DateTime @default(now())
 
   @@unique([staffId, yearMonth])
+}
+
+
+// ===== 取引先・稼働依頼・経費・請求（第2段階） =====
+enum WorkOrderStatus {
+  PENDING_APPROVAL
+  APPROVED
+  CHANGES_PENDING
+  CANCELLED
+  TERMINATED
+}
+enum ContractType {
+  MONTHLY
+  DAILY
+}
+enum AbsenceDeductionRule {
+  YES
+  NO
+  CONSULT
+}
+enum TravelExpenseRule {
+  INCLUDED
+  SEPARATE
+  CONSULT
+}
+enum OverrideApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+enum ExpenseCategory {
+  TRAVEL
+  LODGING
+  OTHER
+}
+enum ExpenseStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+enum InvoiceStatus {
+  DRAFT
+  FINALIZED
+  REISSUED
+}
+
+model Client {
+  id String @id @default(cuid())
+  name String
+  clientCode String @unique
+  contactName String?
+  phone String?
+  email String?
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  accessTokens ClientAccessToken[]
+  workOrders WorkOrder[]
+  invoices Invoice[]
+}
+
+model ClientAccessToken {
+  id String @id @default(cuid())
+  clientId String
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  token String @unique
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+  @@index([clientId, active])
+}
+
+model WorkOrder {
+  id String @id @default(cuid())
+  clientId String
+  client Client @relation(fields: [clientId], references: [id])
+  yearMonth String
+  plannedDays Int
+  defaultStoreName String
+  notes String?
+  status WorkOrderStatus @default(PENDING_APPROVAL)
+  clientContactName String
+  clientContactPhone String?
+  clientContactEmail String?
+  clientConfirmedAt DateTime @default(now())
+  approvedAt DateTime?
+  approverName String?
+  approverPhone String?
+  approverEmail String?
+  cancelledAt DateTime?
+  cancellationReason String?
+  terminatedAt DateTime?
+  terminationReason String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  staffAssignments WorkOrderStaff[]
+  sites WorkOrderSite[]
+  histories WorkOrderChangeHistory[]
+  invoices InvoiceWorkOrder[]
+  accessTokens WorkOrderAccessToken[]
+  @@index([clientId, yearMonth])
+  @@index([status])
+}
+
+
+model WorkOrderAccessToken {
+  id String @id @default(cuid())
+  workOrderId String
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  token String @unique
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+  @@index([workOrderId, active])
+}
+
+model WorkOrderStaff {
+  id String @id @default(cuid())
+  workOrderId String
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  staffId String?
+  staff Staff? @relation(fields: [staffId], references: [id])
+  requestedName String
+  contractType ContractType
+  rateAmountExTax Int
+  absenceDeduction AbsenceDeductionRule
+  travelExpense TravelExpenseRule
+  active Boolean @default(true)
+  cancelledAt DateTime?
+  cancellationReason String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  shifts Shift[]
+  dailyOverrides DailyWorkOverride[]
+  expenses Expense[]
+  @@index([workOrderId, requestedName])
+  @@index([staffId])
+}
+
+model WorkOrderSite {
+  id String @id @default(cuid())
+  workOrderId String
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  storeName String
+  startDate DateTime?
+  endDate DateTime?
+  rateOverrideExTax Int?
+  travelExpense TravelExpenseRule?
+  notes String?
+  cancelledAt DateTime?
+  cancellationReason String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([workOrderId])
+}
+
+model DailyWorkOverride {
+  id String @id @default(cuid())
+  workOrderStaffId String
+  workOrderStaff WorkOrderStaff @relation(fields: [workOrderStaffId], references: [id], onDelete: Cascade)
+  workDate DateTime
+  originalStoreName String?
+  changedStoreName String?
+  originalRateExTax Int?
+  changedRateExTax Int?
+  originalTravelExpense TravelExpenseRule?
+  changedTravelExpense TravelExpenseRule?
+  lodgingOccurred Boolean @default(false)
+  otherExpenseNote String?
+  reason String
+  approvalStatus OverrideApprovalStatus @default(PENDING)
+  changedByRole String
+  changedByName String
+  createdAt DateTime @default(now())
+  approvedAt DateTime?
+  approvedByName String?
+  @@index([workOrderStaffId, workDate])
+}
+
+model WorkOrderChangeHistory {
+  id String @id @default(cuid())
+  workOrderId String
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  entityType String
+  entityId String?
+  changeType String
+  before Json?
+  after Json?
+  actorRole String
+  actorName String
+  reason String?
+  changedAt DateTime @default(now())
+  @@index([workOrderId, changedAt])
+}
+
+model Expense {
+  id String @id @default(cuid())
+  staffId String
+  staff Staff @relation(fields: [staffId], references: [id])
+  workOrderStaffId String?
+  workOrderStaff WorkOrderStaff? @relation(fields: [workOrderStaffId], references: [id], onDelete: SetNull)
+  yearMonth String
+  expenseDate DateTime
+  category ExpenseCategory
+  description String?
+  amountTaxInclusive Int
+  amountExTax Int
+  taxAmount Int
+  taxRate Int @default(10)
+  status ExpenseStatus @default(DRAFT)
+  submittedAt DateTime?
+  reviewedAt DateTime?
+  reviewerName String?
+  reviewNote String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([staffId, yearMonth])
+  @@index([status])
+}
+
+model Invoice {
+  id String @id @default(cuid())
+  clientId String
+  client Client @relation(fields: [clientId], references: [id])
+  yearMonth String
+  invoiceNumber String @unique
+  revision Int @default(1)
+  status InvoiceStatus @default(DRAFT)
+  subtotalExTax Int @default(0)
+  taxAmount Int @default(0)
+  totalInclTax Int @default(0)
+  finalizedAt DateTime?
+  finalizedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lines InvoiceLine[]
+  workOrders InvoiceWorkOrder[]
+  @@index([clientId, yearMonth])
+}
+
+model InvoiceWorkOrder {
+  id String @id @default(cuid())
+  invoiceId String
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  workOrderId String
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id])
+  @@unique([invoiceId, workOrderId])
+}
+
+model InvoiceLine {
+  id String @id @default(cuid())
+  invoiceId String
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  sortOrder Int
+  itemType String
+  label String
+  description String?
+  unitPriceExTax Int
+  quantity Int @default(1)
+  subtotalExTax Int
+  taxAmount Int
+  totalInclTax Int
+  @@index([invoiceId, sortOrder])
 }

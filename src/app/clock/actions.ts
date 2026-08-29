@@ -26,7 +26,7 @@ export async function clockAction(
 
   const { start, end } = jstDayRange();
   const todaysShifts = await prisma.shift.findMany({
-    where: { staffId, startTime: { gte: start, lt: end } },
+    where: { staffId, cancelledAt: null, startTime: { gte: start, lt: end } },
     orderBy: { startTime: "asc" },
   });
 

@@ -84,7 +84,7 @@ export function ClockButtons({
 
   if (finishedToday) {
     return (
-      <div className="flex w-full max-w-[310px] items-center justify-center gap-2 rounded-full border-[4px] border-white bg-gradient-to-b from-slate-400 to-slate-600 px-5 py-3.5 text-white shadow-[0_5px_14px_rgba(0,0,0,.2)]">
+      <div className="flex w-full items-center justify-center gap-2 rounded-[16px] border border-white/10 bg-white/[.06] px-4 py-3 text-white shadow-[0_4px_0_rgba(0,0,0,.22)]">
         <CheckCircle2 size={23} />
         <span className="text-[18px] font-black">本日の勤務完了</span>
       </div>
@@ -94,8 +94,8 @@ export function ClockButtons({
   const label = mode === "IN" ? "出勤する" : "退勤する";
   const Icon = mode === "IN" ? LogIn : LogOut;
   const gradient = mode === "IN"
-    ? "from-emerald-400 via-emerald-500 to-emerald-700"
-    : "from-red-400 via-[#ee3737] to-red-700";
+    ? "from-[#d72d2d] via-[#c51f26] to-[#9f1720]"
+    : "from-[#34465a] via-[#26384b] to-[#1a2938]";
 
   return (
     <div className="flex w-full flex-col items-center gap-1.5">
@@ -103,9 +103,9 @@ export function ClockButtons({
         type="button"
         disabled={isBusy}
         onClick={handleClock}
-        className={`relative flex w-full max-w-[310px] items-center justify-center gap-3 overflow-hidden rounded-full border-[4px] border-white bg-gradient-to-b ${gradient} px-5 py-3.5 text-[20px] font-black text-white shadow-[0_6px_18px_rgba(0,0,0,.25)] transition active:scale-[0.97] disabled:opacity-60`}
+        className={`relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-[16px] border border-white/15 bg-gradient-to-b ${gradient} px-4 py-3 text-[16px] font-black text-white shadow-[0_4px_0_rgba(0,0,0,.25)] transition active:translate-y-1 active:shadow-none disabled:opacity-60`}
       >
-        <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/28 to-transparent" />
+        <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/16 to-transparent" />
         <Icon size={27} className="relative" />
         <span className="relative">{isBusy ? "記録中..." : label}</span>
       </button>

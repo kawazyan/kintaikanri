@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
 
   const overdueShifts = await prisma.shift.findMany({
     where: {
+      cancelledAt: null,
       startTime: { gte: earliest, lte: deadline },
       noShowAlert: null,
       clockRecords: { none: { type: "IN" } },
