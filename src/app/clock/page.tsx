@@ -108,7 +108,7 @@ export default async function ClockPage() {
   const payDate = staff.paymentMethod === "FIXED" ? nextFixedPaymentDate(staff) : null;
 
   return (
-    <main className="min-h-dvh bg-gradient-to-b from-[#fbfbfc] via-[#f7f8fa] to-[#f1f3f6] text-slate-950">
+    <main className="staff-screen">
       <div className="mx-auto max-w-[430px] pb-28">
         <div className="flex flex-col">
           <GamePanel game={game} />
@@ -176,24 +176,24 @@ export default async function ClockPage() {
               className="group relative overflow-hidden rounded-[22px] bg-gradient-to-br from-[#491416] via-[#271a22] to-[#111827] p-4 text-center text-white shadow-[0_10px_24px_rgba(15,23,42,.16)] active:translate-y-0.5"
             >
               <Trophy size={34} className="mx-auto" />
-              <p className="mt-4 text-[15px] font-black">獲得した称号</p>
-              <p className="mt-2 text-[11px] text-slate-300">{game.titles.length}個の称号を獲得中</p>
+              <p className="mt-4 whitespace-nowrap text-[12px] font-black">称号</p>
+              <p className="mt-1 whitespace-nowrap text-[9px] text-slate-300">{game.titles.length}個 獲得中</p>
             </Link>
             <Link
               href="/my-room"
               className="rounded-[22px] bg-gradient-to-br from-[#253547] to-[#101a26] p-4 text-center text-white shadow-[0_10px_24px_rgba(15,23,42,.16)] active:translate-y-0.5"
             >
               <Sofa size={35} className="mx-auto" />
-              <p className="mt-4 text-[15px] font-black">マイルーム</p>
-              <p className="mt-2 text-[11px] text-slate-300">キャラクター・設定</p>
+              <p className="mt-4 whitespace-nowrap text-[12px] font-black">マイルーム</p>
+              <p className="mt-1 whitespace-nowrap text-[9px] text-slate-300">キャラ・設定</p>
             </Link>
             <Link
               href="/town"
               className="rounded-[22px] bg-gradient-to-br from-[#203b3a] to-[#102526] p-4 text-center text-white shadow-[0_10px_24px_rgba(15,23,42,.16)] active:translate-y-0.5"
             >
               <Users size={36} className="mx-auto" />
-              <p className="mt-4 text-[14px] font-black">今日の出勤メンバー</p>
-              <p className="mt-2 text-[11px] text-slate-300">{memberCount}人が出勤予定</p>
+              <p className="mt-4 whitespace-nowrap text-[11px] font-black">出勤メンバー</p>
+              <p className="mt-1 whitespace-nowrap text-[9px] text-slate-300">{memberCount}人 予定</p>
             </Link>
           </section>
 
