@@ -77,8 +77,8 @@ export function StampCard({ stamp }: { stamp: GameState["stamp"] }) {
         <p className="whitespace-nowrap font-serif text-[29px] font-black leading-none text-[#b92720] [text-shadow:0_2px_0_#000,0_0_7px_rgba(190,37,29,.22)]">
           {stamp.completedDays}<span className="ml-1.5 font-sans text-[14px] text-[#e9e4db]">/ {stamp.targetDays} 勤務達成</span>
         </p>
-        <p className="text-right font-serif text-[13px] font-black text-[#e8e2d9] [text-shadow:0_1px_0_#000]">
-          {stamp.bonusAwarded ? "目標達成！" : <>あと <span className="text-[22px] text-[#c92a22]">{remaining}</span> 勤務でボーナス！</>}
+        <p className="text-right text-[13px] font-black text-[#e8e2d9] [text-shadow:0_1px_0_#000]">
+          {stamp.bonusAwarded ? "目標達成！" : <>あと <span className="font-serif text-[22px] text-[#c92a22]">{remaining}</span> 勤務でボーナス！</>}
         </p>
       </div>
 

@@ -10,6 +10,8 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* ゲームHUDの見出し・数字用。日本語グリフが無いため文字ごとに serif へ自動フォールバックする。 */
+  --font-serif: var(--font-cinzel), serif;
 }
 
 body {
@@ -257,6 +259,18 @@ body {
   background:linear-gradient(115deg,rgba(255,255,255,.06),transparent 26%,transparent 75%,rgba(239,43,53,.035));
 }
 .staff-screen .game-cut-card { clip-path:polygon(9px 0,calc(100% - 9px) 0,100% 9px,100% calc(100% - 9px),calc(100% - 9px) 100%,9px 100%,0 calc(100% - 9px),0 9px); }
+
+/* v17: quarried-stone slab texture — grain layer blended over a charcoal/graphite base with a hint of warm mineral veining */
+.stone-texture{
+  background-color:#14161a;
+  background-image:
+    radial-gradient(120% 60% at 12% 0%,rgba(196,166,120,.06),transparent 55%),
+    radial-gradient(90% 55% at 92% 100%,rgba(150,30,25,.07),transparent 55%),
+    url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScyNDAnIGhlaWdodD0nMjQwJz48ZmlsdGVyIGlkPSduJz48ZmVUdXJidWxlbmNlIHR5cGU9J2ZyYWN0YWxOb2lzZScgYmFzZUZyZXF1ZW5jeT0nMC43JyBudW1PY3RhdmVzPSczJyBzdGl0Y2hUaWxlcz0nc3RpdGNoJyByZXN1bHQ9J3QnLz48ZmVDb2xvck1hdHJpeCBpbj0ndCcgdHlwZT0nbWF0cml4JyB2YWx1ZXM9JzAgMCAwIDAgMCAgMCAwIDAgMCAwICAwIDAgMCAwIDAgIDAgMCAwIDAuODUgMCcvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPScxMDAlJyBoZWlnaHQ9JzEwMCUnIGZpbHRlcj0ndXJsKCUyM24pJy8+PC9zdmc+"),
+    linear-gradient(145deg,#1c1f23 0%,#0a0c0e 55%,#111214 100%);
+  background-size:auto,auto,240px 240px,auto;
+  background-blend-mode:normal,normal,overlay,normal;
+}
 
 /* v8 cinematic HUD — based on the approved supplied references */
 .staff-screen{--gold:#d7b36a;--silver:#d9e0e6;--red:#ef302f;--green:#28c77a;background:radial-gradient(70% 35% at 50% -5%,rgba(30,63,88,.25),transparent 70%),linear-gradient(180deg,#071019,#020609 70%)!important}
