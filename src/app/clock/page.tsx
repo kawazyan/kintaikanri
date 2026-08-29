@@ -30,7 +30,6 @@ import { CancelPunchButton } from "./cancel-punch-button";
 import { GamePanel } from "./game-panel";
 import { StampCard } from "./stamp-card";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
-import { MetalIcon } from "@/components/metal-icon";
 
 const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -148,179 +147,146 @@ export default async function ClockPage() {
           )}
 
           {nextTitle && (
-            <section className="game-hud-frame game-cut-card flex min-h-[100px] items-center gap-3 overflow-hidden rounded-[20px] p-4 shadow-[0_5px_18px_rgba(64,40,30,.12)] ring-1 ring-black/5">
-              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 via-orange-500 to-amber-700 shadow-[0_6px_16px_rgba(245,158,11,.3)]">
-                <Star size={26} className="text-white" fill="currentColor" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[9px] font-black tracking-wide text-amber-600 uppercase">
-                  Next Title
-                </p>
-                <p className="truncate text-[16px] font-black text-slate-900">{nextTitle.label}</p>
-                <p className="text-[11px] font-bold text-slate-500">
-                  連続{nextTitle.minStreak}勤務で獲得！
-                </p>
+            <section className="relative overflow-hidden rounded-[24px] border border-[#7f8589] bg-[linear-gradient(115deg,#15090b_0%,#080a0d_42%,#030608_100%)] p-[6px] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,.08),0_14px_30px_rgba(0,0,0,.5)]">
+              <div className="pointer-events-none absolute inset-0 opacity-60 [background-image:radial-gradient(circle_at_13%_45%,rgba(145,18,18,.25),transparent_28%),linear-gradient(90deg,transparent_0_68%,rgba(6,10,13,.15)_73%,rgba(2,5,7,.92)_100%)]" />
+              <div className="pointer-events-none absolute right-[13%] top-0 h-full w-[27%] opacity-35 [background-image:repeating-linear-gradient(90deg,transparent_0_14px,rgba(164,179,188,.11)_15px_16px,transparent_17px_30px),linear-gradient(0deg,rgba(0,0,0,.05),rgba(0,0,0,.8))]" />
+              <div className="relative flex min-h-[146px] items-center rounded-[19px] border border-[#30363a] px-3 py-3 shadow-[inset_0_0_28px_rgba(0,0,0,.78)]">
+                <div className="flex h-[102px] w-[102px] shrink-0 items-center justify-center rounded-[24px] border-2 border-[#d8d9d7] bg-[radial-gradient(circle_at_50%_45%,#351011,#12090b_58%,#050607)] shadow-[inset_0_0_0_4px_rgba(255,255,255,.04),inset_0_0_24px_rgba(170,20,20,.28),0_0_14px_rgba(177,20,20,.25)]">
+                  <Star size={58} strokeWidth={1.5} className="text-[#d8d8d5] drop-shadow-[0_4px_2px_rgba(0,0,0,.9)]" fill="currentColor" />
+                </div>
+
+                <div className="min-w-0 flex-1 px-4">
+                  <p className="text-[11px] font-black tracking-[.06em] text-[#e3342d]">NEXT TITLE</p>
+                  <p className="mt-1 truncate text-[28px] font-black tracking-[-.05em] text-[#e9e9e6] [text-shadow:0_2px_0_#333,0_4px_6px_#000]">{nextTitle.label}</p>
+                  <div className="mt-3 h-px bg-[linear-gradient(90deg,#8d8d88,rgba(141,141,136,.1))]" />
+                  <p className="mt-3 whitespace-nowrap text-[14px] font-bold text-[#c8c5c1]">連続{nextTitle.minStreak}勤務で獲得！</p>
+                </div>
+
+                <div className="flex h-[112px] w-[74px] shrink-0 flex-col items-center justify-center border-l border-[#4b4f51] text-center">
+                  <span className="text-[14px] font-bold text-[#d8d6d2]">あと</span>
+                  <span className="font-serif text-[48px] font-black leading-none text-[#b51e19] [text-shadow:0_2px_0_#3b0505,0_0_8px_rgba(181,30,25,.28)]">{Math.max(0, nextTitle.minStreak - game.streak)}</span>
+                  <span className="mt-1 text-[13px] font-black text-[#d8d6d2]">勤務</span>
+                </div>
               </div>
-              <p className="shrink-0 text-center">
-                <span className="block text-[10px] font-bold text-slate-500">あと</span>
-                <span className="block text-[26px] font-black leading-none text-red-600">
-                  {Math.max(0, nextTitle.minStreak - game.streak)}
-                </span>
-                <span className="block text-[10px] font-black text-slate-700">勤務</span>
-              </p>
             </section>
           )}
 
           <section className="grid grid-cols-3 gap-2.5">
-            <Link
-              href="/titles"
-              className="game-cut-card group relative overflow-hidden rounded-[22px] bg-gradient-to-br from-[#491416] via-[#271a22] to-[#111827] p-4 text-center text-white shadow-[0_10px_24px_rgba(15,23,42,.16)] active:translate-y-0.5"
-            >
-              <span className="mx-auto flex justify-center"><MetalIcon icon={Trophy} tone="gold" size={27}/></span>
-              <p className="mt-4 whitespace-nowrap text-[12px] font-black">称号</p>
-              <p className="mt-1 whitespace-nowrap text-[9px] text-slate-300">{game.titles.length}個 獲得中</p>
-            </Link>
-            <Link
-              href="/my-room"
-              className="game-cut-card rounded-[22px] bg-gradient-to-br from-[#253547] to-[#101a26] p-4 text-center text-white shadow-[0_10px_24px_rgba(15,23,42,.16)] active:translate-y-0.5"
-            >
-              <span className="mx-auto flex justify-center"><MetalIcon icon={Sofa} tone="silver" size={27}/></span>
-              <p className="mt-4 whitespace-nowrap text-[12px] font-black">マイルーム</p>
-              <p className="mt-1 whitespace-nowrap text-[9px] text-slate-300">キャラ・設定</p>
-            </Link>
-            <Link
-              href="/town"
-              className="game-cut-card rounded-[22px] bg-gradient-to-br from-[#203b3a] to-[#102526] p-4 text-center text-white shadow-[0_10px_24px_rgba(15,23,42,.16)] active:translate-y-0.5"
-            >
-              <span className="mx-auto flex justify-center"><MetalIcon icon={Users} tone="green" size={27}/></span>
-              <p className="mt-4 whitespace-nowrap text-[11px] font-black">出勤メンバー</p>
-              <p className="mt-1 whitespace-nowrap text-[9px] text-slate-300">{memberCount}人 予定</p>
-            </Link>
+            {[
+              { href: "/titles", label: "称号", sub: `${game.titles.length}個 獲得中`, Icon: Trophy, tone: "red" },
+              { href: "/my-room", label: "マイルーム", sub: "キャラ・設定", Icon: Sofa, tone: "silver" },
+              { href: "/town", label: "出勤メンバー", sub: `${memberCount}人 予定`, Icon: Users, tone: "green" },
+            ].map(({ href, label, sub, Icon, tone }) => (
+              <Link key={href} href={href} className={`feature-metal-card feature-metal-card--${tone}`}>
+                <span className="feature-metal-icon"><Icon size={43} strokeWidth={2.4} /></span>
+                <span className="feature-metal-divider" />
+                <span className="feature-metal-title">{label}</span>
+                <span className="feature-metal-sub">{sub}</span>
+              </Link>
+            ))}
           </section>
 
-          <section className="game-hud-frame game-cut-card overflow-hidden rounded-[20px] shadow-[0_10px_24px_rgba(15,23,42,.08)] ring-1 ring-black/5">
-            <div className="flex items-center justify-between px-5 py-4">
-              <h2 className="flex items-center gap-2 font-black">
-                <Clock3 size={19} className="text-red-600" />
-                今日の打刻履歴
-              </h2>
+          <section className="today-punch-panel">
+            <div className="today-punch-head">
+              <div className="today-punch-clock"><Clock3 size={42} strokeWidth={1.55} /></div>
+              <div className="min-w-0 flex-1">
+                <h2 className="today-punch-title">今日の打刻履歴</h2>
+                <p className="today-punch-note">5分経過後は管理者に修正を依頼してください</p>
+              </div>
               {last && (
-                <CancelPunchButton recordId={last.id} timestamp={last.timestamp.toISOString()} />
+                <div className="today-punch-cancel">
+                  <CancelPunchButton recordId={last.id} timestamp={last.timestamp.toISOString()} />
+                </div>
               )}
             </div>
-            <div className="grid grid-cols-2 divide-x divide-slate-200 border-t border-slate-100 py-4 text-center">
-              <div>
-                <p className="text-[10px] font-bold text-slate-400">出勤</p>
-                <p className="mt-1 text-xl font-black tabular-nums">
-                  {todayIn ? formatJst(todayIn.timestamp).slice(-5) : "--:--"}
-                </p>
+            <div className="today-punch-times">
+              <div className="today-punch-time-block">
+                <p className="today-punch-label">↪ <span>出勤</span></p>
+                <p className="today-punch-value">{todayIn ? formatJst(todayIn.timestamp).slice(-5) : "--:--"}</p>
               </div>
-              <div>
-                <p className="text-[10px] font-bold text-slate-400">退勤</p>
-                <p className="mt-1 text-xl font-black tabular-nums">
-                  {todayOut ? formatJst(todayOut.timestamp).slice(-5) : "--:--"}
-                </p>
+              <div className="today-punch-time-block">
+                <p className="today-punch-label">↪ <span>退勤</span></p>
+                <p className="today-punch-value">{todayOut ? formatJst(todayOut.timestamp).slice(-5) : "--:--"}</p>
               </div>
             </div>
           </section>
 
-          <section className="grid grid-cols-[1.06fr_.94fr] gap-3">
-            <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[#11263a] to-[#081522] p-5 text-white shadow-[0_10px_24px_rgba(15,23,42,.16)]">
-              <div className="absolute right-[-28px] top-[-30px] h-32 w-32 rounded-full border border-white/5" />
-              <p className="text-sm font-black">今月の確定受取金額</p>
-              <div className="mt-2 h-[3px] w-28 bg-gradient-to-r from-red-500 to-transparent" />
-              <p className="mt-5 text-[35px] font-black tracking-tight">
-                {earnings.confirmedAmount === null
-                  ? "－"
-                  : `¥ ${earnings.confirmedAmount.toLocaleString("ja-JP")}`}
-              </p>
-              <div className="mt-5 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[.03] px-3 py-3">
-                <span className="text-xs text-slate-300">残高</span>
-                <CircleDollarSign size={20} className="text-slate-300" />
-                <span className="ml-auto text-sm font-black">
-                  •••• {String(staff.employeeCode).slice(-4)}
-                </span>
-                <ChevronRight size={18} className="text-slate-400" />
+          <section className="payment-metal-panel">
+            <div className="payment-metal-main">
+              <div className="payment-metal-amount">
+                <p className="payment-metal-kicker">今月の確定受取金額</p>
+                <div className="payment-metal-glint" />
+                <p className="payment-metal-yen">
+                  {earnings.confirmedAmount === null
+                    ? "－"
+                    : `¥${earnings.confirmedAmount.toLocaleString("ja-JP")}`}
+                </p>
+              </div>
+              <div className="payment-metal-info">
+                <Link href={staff.paymentMethod === "REQUEST" ? "/payment/request" : "/payment/history"} className="payment-metal-link">
+                  <CalendarDays size={25} />
+                  <span>支払情報</span>
+                  <ChevronRight size={22} />
+                </Link>
+                {staff.paymentMethod === "FIXED" ? (
+                  <>
+                    <p className="payment-metal-label">次回支払予定日</p>
+                    <p className="payment-metal-date">
+                      {payDate
+                        ? new Intl.DateTimeFormat("ja-JP", {
+                            timeZone: "Asia/Tokyo",
+                            month: "long",
+                            day: "numeric",
+                            weekday: "short",
+                          }).format(payDate)
+                        : "未設定"}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="payment-metal-label">振込申請可能額</p>
+                    <p className="payment-metal-date">¥{transferBalance?.availableAmount.toLocaleString("ja-JP") || 0}</p>
+                  </>
+                )}
               </div>
             </div>
-            <div className="game-hud-frame game-cut-card rounded-[20px] p-5 shadow-[0_10px_24px_rgba(15,23,42,.08)] ring-1 ring-black/5">
-              <div className="flex items-center justify-between">
-                <h2 className="flex items-center gap-2 font-black">
-                  <CalendarDays size={22} />
-                  支払情報
-                </h2>
-                <ChevronRight size={18} />
+            <div className="payment-metal-bottom">
+              <div className="payment-metal-balance">
+                <span className="payment-metal-balance-label">残高</span>
+                <CircleDollarSign size={28} />
+                <strong>•••• {String(staff.employeeCode).slice(-4)}</strong>
+                <ChevronRight size={20} />
               </div>
-              {staff.paymentMethod === "FIXED" ? (
-                <>
-                  <p className="mt-6 text-xs text-slate-500">次回支払予定日</p>
-                  <p className="mt-2 text-[22px] font-black leading-tight">
-                    {payDate
-                      ? new Intl.DateTimeFormat("ja-JP", {
-                          timeZone: "Asia/Tokyo",
-                          month: "long",
-                          day: "numeric",
-                          weekday: "short",
-                        }).format(payDate)
-                      : "未設定"}
-                  </p>
-                  <div className="mt-5 border-t pt-3 text-xs font-bold">
-                    <span className="rounded-lg bg-slate-100 px-2 py-1">支払方式</span>
-                    <span className="ml-2 text-slate-600">固定支払</span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p className="mt-5 text-xs text-slate-500">振込申請可能額</p>
-                  <p className="mt-2 text-[24px] font-black">
-                    ¥{transferBalance?.availableAmount.toLocaleString("ja-JP") || 0}
-                  </p>
-                  <Link
-                    href="/payment/request"
-                    className="mt-4 block rounded-xl bg-slate-900 py-2.5 text-center text-xs font-black text-white"
-                  >
-                    振込申請
-                  </Link>
-                </>
-              )}
+              <div className="payment-metal-method">
+                <span>支払方式</span>
+                <strong>{staff.paymentMethod === "FIXED" ? "固定支払" : "申請支払"}</strong>
+              </div>
             </div>
           </section>
 
-          <section className="game-hud-frame game-cut-card overflow-hidden rounded-[20px] shadow-[0_10px_24px_rgba(15,23,42,.08)] ring-1 ring-black/5">
-            <div className="flex items-center justify-between px-5 py-4">
-              <h2 className="flex items-center gap-2 font-black">
-                <Clock3 size={19} />
+          <section className="recent-metal-card">
+            <div className="recent-metal-head">
+              <h2 className="recent-metal-title">
+                <span className="recent-metal-clock"><Clock3 size={25} /></span>
                 直近の打刻履歴
               </h2>
-              <Link href="/history" className="flex items-center text-xs font-bold text-slate-600">
-                すべて見る
-                <ChevronRight size={16} />
+              <Link href="/history" className="recent-metal-all">
+                すべて見る <ChevronRight size={17} />
               </Link>
             </div>
             {history.length ? (
               history.map((h) => (
-                <div
-                  key={h.key}
-                  className="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-2 border-t px-5 py-3 text-sm"
-                >
-                  <div className="font-bold">{h.label}</div>
-                  <div>
-                    <span className="text-[10px] text-slate-400">出勤</span>
-                    <p className="font-black">{h.in}</p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400">退勤</span>
-                    <p className="font-black">{h.out}</p>
-                  </div>
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-bold ${h.status ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-600"}`}
-                  >
+                <div key={h.key} className="recent-metal-row">
+                  <div className="recent-metal-date">{h.label}</div>
+                  <div className="recent-metal-time"><span>出勤</span><strong>{h.in}</strong></div>
+                  <div className="recent-metal-time"><span>退勤</span><strong>{h.out}</strong></div>
+                  <div className={`recent-metal-status ${h.status ? "working" : ""}`}>
                     {h.status || `${Math.floor(h.mins / 60)}時間${h.mins % 60}分`}
-                  </span>
+                  </div>
                 </div>
               ))
             ) : (
-              <p className="border-t px-5 py-5 text-sm text-slate-400">打刻記録がありません。</p>
+              <p className="px-6 py-7 text-sm text-slate-400">打刻記録がありません。</p>
             )}
           </section>
 

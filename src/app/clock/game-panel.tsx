@@ -6,55 +6,87 @@ export function GamePanel({ game }: { game: GameState }) {
   const xpPercent = game.xpForNextLevel > 0
     ? Math.min(100, Math.round((game.xpIntoLevel / game.xpForNextLevel) * 100))
     : 0;
-
-  const achievedCodes = new Set(game.titles.map((title) => title.code));
-  const highestDefinition = [...TITLE_DEFINITIONS].reverse().find((definition) => achievedCodes.has(definition.code));
-  const highestTitle = highestDefinition ? game.titles.find((title) => title.code === highestDefinition.code) : null;
+  const achievedCodes = new Set(game.titles.map((t) => t.code));
+  const highestDefinition = [...TITLE_DEFINITIONS].reverse().find((d) => achievedCodes.has(d.code));
+  const highestTitle = highestDefinition ? game.titles.find((t) => t.code === highestDefinition.code) : null;
 
   return (
-    <section className="relative overflow-hidden border-b border-white/10 bg-[linear-gradient(155deg,#10202c_0%,#071019_52%,#120b0d_100%)] px-3 pb-3 pt-3 text-white shadow-[inset_0_-12px_30px_rgba(0,0,0,.28)]">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/45 to-transparent" />
-      <div className="pointer-events-none absolute -right-10 -top-8 h-28 w-28 rounded-full bg-red-500/[.06] blur-3xl" />
+    <section className="relative overflow-hidden border-b border-[#9a7a40]/30 bg-[#020507] px-3 pb-4 pt-3 text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(255,224,166,.08),transparent_24%),radial-gradient(circle_at_86%_13%,rgba(178,130,54,.10),transparent_22%),linear-gradient(145deg,#12171b_0%,#030608_55%,#060707_100%)]" />
+      <div className="pointer-events-none absolute right-0 top-0 h-[44%] w-[48%] opacity-25 [background-image:linear-gradient(90deg,rgba(2,5,7,.98),rgba(2,5,7,.15)),repeating-linear-gradient(90deg,transparent_0_14px,rgba(188,152,90,.20)_15px_16px,transparent_17px_31px),repeating-linear-gradient(0deg,transparent_0_18px,rgba(255,255,255,.07)_19px_20px,transparent_21px_31px)]" />
+      <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:repeating-linear-gradient(118deg,transparent_0,transparent_10px,rgba(255,255,255,.015)_11px,transparent_12px)]" />
 
-      <div className="relative flex items-center gap-3">
-        <div className="relative flex h-[78px] w-[74px] shrink-0 items-center justify-center">
-          <svg viewBox="0 0 100 108" className="absolute inset-0 h-full w-full drop-shadow-[0_5px_9px_rgba(0,0,0,.6)]">
-            <defs>
-              <linearGradient id="rankFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#1c2b38"/><stop offset="1" stopColor="#080e14"/></linearGradient>
-              <linearGradient id="rankStroke" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#f1d087"/><stop offset=".55" stopColor="#b0782e"/><stop offset="1" stopColor="#f3d998"/></linearGradient>
-            </defs>
-            <polygon points="50,2 95,27 95,81 50,106 5,81 5,27" fill="url(#rankFill)" stroke="url(#rankStroke)" strokeWidth="3" />
-            <polygon points="50,8 89,30 89,78 50,100 11,78 11,30" fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="1" />
-          </svg>
-          <div className="relative text-center">
-            <div className="text-[9px] font-black tracking-[.16em] text-amber-100/60">LEVEL</div>
-            <div className="text-[28px] font-black leading-none text-white">{game.level}</div>
+      <div className="relative rounded-[24px] border border-[#89837b] bg-black/25 p-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,.06),inset_0_0_40px_rgba(0,0,0,.78),0_12px_30px_rgba(0,0,0,.52)]">
+        <div className="pointer-events-none absolute inset-[5px] rounded-[19px] border border-[#2c3135]" />
+
+        <div className="relative flex gap-3">
+          <div className="relative flex h-[118px] w-[104px] shrink-0 items-center justify-center">
+            <svg viewBox="0 0 100 112" className="absolute inset-0 h-full w-full drop-shadow-[0_9px_14px_rgba(0,0,0,.9)]">
+              <defs>
+                <linearGradient id="levelFrame" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stopColor="#fff3c7"/>
+                  <stop offset=".18" stopColor="#8e6327"/>
+                  <stop offset=".42" stopColor="#f1d38a"/>
+                  <stop offset=".72" stopColor="#4b3417"/>
+                  <stop offset="1" stopColor="#b48a42"/>
+                </linearGradient>
+                <linearGradient id="levelInner" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stopColor="#252a2d"/>
+                  <stop offset=".55" stopColor="#080a0c"/>
+                  <stop offset="1" stopColor="#18130d"/>
+                </linearGradient>
+              </defs>
+              <polygon points="50,1 97,28 97,84 50,111 3,84 3,28" fill="#090a0b" stroke="url(#levelFrame)" strokeWidth="4"/>
+              <polygon points="50,7 91,31 91,80 50,104 9,80 9,31" fill="url(#levelInner)" stroke="#dfc17f" strokeWidth="1.5"/>
+              <polygon points="50,13 85,34 85,77 50,98 15,77 15,34" fill="none" stroke="rgba(255,255,255,.22)" strokeWidth="1"/>
+            </svg>
+            <div className="relative text-center">
+              <div className="font-serif text-[11px] font-black tracking-[.12em] text-[#eee0bb] [text-shadow:0_1px_1px_#000]">LEVEL</div>
+              <div className="font-serif text-[48px] font-black leading-[.9] text-[#f4f0e9] [text-shadow:0_2px_0_#51401f,0_0_5px_rgba(255,255,255,.22)]">{game.level}</div>
+            </div>
+          </div>
+
+          <div className="min-w-0 flex-1 pt-2">
+            <p className="mb-2 text-[10px] font-bold tracking-[.21em] text-[#c5c5c2]">CURRENT TITLE</p>
+            <div className="game-cut-card flex min-h-[72px] items-center gap-3 border border-[#b58b43]/65 bg-[linear-gradient(100deg,rgba(15,17,18,.96),rgba(6,9,11,.82))] px-4 shadow-[inset_0_1px_0_rgba(255,255,255,.10),inset_0_0_18px_rgba(0,0,0,.7),0_0_10px_rgba(207,164,77,.08)]">
+              <Crown size={27} strokeWidth={2.2} className="shrink-0 text-[#e8b73e] drop-shadow-[0_0_5px_rgba(232,183,62,.55)]" />
+              <p className="truncate text-[21px] font-black tracking-[-.04em] text-[#f3f1ec] [text-shadow:0_2px_0_#0a0a0a,0_0_6px_rgba(255,255,255,.12)]">{highestTitle?.label ?? "称号未獲得"}</p>
+            </div>
           </div>
         </div>
 
-        <div className="min-w-0 flex-1">
-          <p className="text-[9px] font-black tracking-[.15em] text-[#7f91a3]">CURRENT TITLE</p>
-          <div className="mt-1 game-cut-card flex min-h-[40px] items-center gap-2 border border-white/10 bg-black/25 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,.05)]">
-            <Crown size={15} className="shrink-0 text-amber-300" />
-            <p className="truncate text-[13px] font-black text-white">{highestTitle?.label ?? "称号未獲得"}</p>
+        <div className="relative mt-3 grid grid-cols-2 gap-2.5">
+          <div className="game-cut-card flex min-h-[100px] items-center gap-3 border border-[#8e2b27] bg-[linear-gradient(135deg,#261111_0%,#120b0c_52%,#07090b_100%)] px-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,.08),inset_0_0_18px_rgba(110,15,13,.24),0_0_13px_rgba(180,25,20,.07)]">
+            <span className="flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-full border border-[#e5b7a8] bg-[radial-gradient(circle_at_35%_26%,#e86437,#8c1715_58%,#2b0707)] shadow-[inset_0_0_0_4px_rgba(44,7,7,.55),0_0_16px_rgba(220,38,38,.34)]">
+              <Flame size={31} className="text-[#f3ede7]" fill="currentColor" />
+            </span>
+            <div className="min-w-0">
+              <p className="whitespace-nowrap font-serif text-[34px] font-black leading-none text-[#f5f2ed] [text-shadow:0_2px_0_#000]"><span className="mr-1">{game.streak}</span><span className="font-sans text-[13px]">勤務連続</span></p>
+              <p className="mt-2 whitespace-nowrap text-[9px] font-bold text-[#aaa5a1]">連続シフト達成記録</p>
+            </div>
+          </div>
+
+          <div className="game-cut-card flex min-h-[100px] items-center gap-3 border border-[#8a6a28] bg-[linear-gradient(135deg,#251f10_0%,#121009_52%,#07090a_100%)] px-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,.08),inset_0_0_18px_rgba(135,99,21,.18),0_0_13px_rgba(202,138,4,.07)]">
+            <span className="flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-full border border-[#fff1b0] bg-[radial-gradient(circle_at_35%_26%,#ffe58a,#d79b26_55%,#68420c)] shadow-[inset_0_0_0_4px_rgba(107,69,10,.24),0_0_15px_rgba(245,158,11,.30)]">
+              <Coins size={29} strokeWidth={2.3} className="text-[#412906]" />
+            </span>
+            <div>
+              <p className="font-serif text-[34px] font-black leading-none text-[#f5f2ed] [text-shadow:0_2px_0_#000]">{game.coins.toLocaleString("ja-JP")}</p>
+              <p className="mt-2 text-[13px] font-black text-[#e6c873]">コイン</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="relative mt-2 grid grid-cols-2 gap-2">
-        <div className="game-cut-card flex min-h-[68px] items-center gap-2.5 border border-orange-400/20 bg-[linear-gradient(145deg,#21191a,#10151b)] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,.07),0_7px_14px_rgba(0,0,0,.25)]">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-orange-300/20 bg-[radial-gradient(circle_at_35%_25%,#ffb24a,#ee4f24_55%,#7d1416)] shadow-[0_0_16px_rgba(239,68,68,.22)]"><Flame size={21} className="text-white" fill="currentColor" /></span>
-          <div className="min-w-0"><p className="text-[21px] font-black leading-none">{game.streak}<span className="ml-1 text-[11px] text-white/70">勤務連続</span></p><p className="mt-1 truncate text-[9px] font-bold text-[#8fa0b1]">連続シフト達成記録</p></div>
+        <div className="game-cut-card relative mt-3 border border-[#6f7170] bg-[linear-gradient(180deg,#111315,#07090a)] px-4 py-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,.03),inset_0_4px_13px_rgba(0,0,0,.8)]">
+          <div className="flex items-center gap-3">
+            <span className="font-serif text-[24px] font-black text-[#e9e4dc] [text-shadow:0_2px_0_#000]">EXP</span>
+            <div className="h-[13px] flex-1 overflow-hidden rounded-full border border-[#a89d89] bg-[#020304] p-[2px] shadow-[inset_0_2px_6px_rgba(0,0,0,.95)]">
+              <div className="h-full rounded-full bg-[linear-gradient(90deg,#7d1915,#db3127)] shadow-[0_0_8px_rgba(219,49,39,.50)]" style={{ width: `${xpPercent}%` }} />
+            </div>
+            <span className="min-w-[66px] text-right font-serif text-[17px] font-black tabular-nums text-[#f0ece6]">{game.xpIntoLevel}/{game.xpForNextLevel}</span>
+          </div>
+          <p className="mt-2 text-center text-[10px] font-bold text-[#8f8d8b]">レベル{game.level + 1}まであと{Math.max(0, game.xpForNextLevel - game.xpIntoLevel)}EXP</p>
         </div>
-        <div className="game-cut-card flex min-h-[68px] items-center gap-2.5 border border-amber-300/20 bg-[linear-gradient(145deg,#211f17,#10151a)] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,.07),0_7px_14px_rgba(0,0,0,.25)]">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-amber-200/30 bg-[radial-gradient(circle_at_35%_25%,#fff0a3,#e4aa29_58%,#875d12)] shadow-[0_0_16px_rgba(245,158,11,.18)]"><Coins size={20} className="text-[#4f3408]" /></span>
-          <div className="min-w-0"><p className="truncate text-[21px] font-black leading-none">{game.coins.toLocaleString("ja-JP")}</p><p className="mt-1 text-[10px] font-bold text-[#8fa0b1]">コイン</p></div>
-        </div>
-      </div>
-
-      <div className="relative mt-2 game-cut-card border border-white/10 bg-black/30 px-3 py-2.5 shadow-[inset_0_2px_8px_rgba(0,0,0,.45)]">
-        <div className="flex items-center gap-3"><span className="text-[14px] font-black">EXP</span><div className="h-2.5 flex-1 overflow-hidden rounded-full border border-white/10 bg-[#1a222b]"><div className="h-full rounded-full bg-gradient-to-r from-red-600 via-red-500 to-amber-300 shadow-[0_0_9px_rgba(239,68,68,.45)]" style={{width:`${xpPercent}%`}} /></div><span className="min-w-[62px] text-right text-[12px] font-black tabular-nums">{game.xpIntoLevel} / {game.xpForNextLevel}</span></div>
-        <p className="mt-1 text-center text-[9px] font-bold text-[#708194]">レベル{game.level + 1}まであと{Math.max(0, game.xpForNextLevel - game.xpIntoLevel)}EXP</p>
       </div>
     </section>
   );
