@@ -81,21 +81,20 @@ export default async function HistoryPage() {
   return (
     <main className="staff-screen">
       <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28">
-        <PageHeader icon={History} title="打刻履歴" eyebrow={yearMonthLabel(yearMonth)} />
+        <PageHeader icon={History} title="打刻履歴" eyebrow={yearMonthLabel(yearMonth)} centered />
 
         <section className="grid grid-cols-2 gap-3">
-          <div className="game-hud-frame game-cut-card relative overflow-hidden rounded-[20px] p-4 shadow-[0_8px_22px_rgba(15,23,42,.07)] ring-1 ring-black/[.04]">
-            <CalendarCheck2 size={18} className="text-red-500" />
-            <p className="mt-3 text-[10px] font-black tracking-wide text-slate-400">今月の勤務日数</p>
-            <p className="mt-0.5 text-[28px] font-black leading-none tabular-nums text-slate-950">
-              {workDays}<span className="ml-1 text-xs text-slate-400">日</span>
+          <div className="vintage-stat-card game-cut-card rounded-[20px]">
+            <span className="vintage-icon"><CalendarCheck2 size={16} /></span>
+            <p className="vintage-stat-label">今月の勤務日数</p>
+            <p className="vintage-stat-value">
+              {workDays}<span className="ml-1 text-xs">日</span>
             </p>
           </div>
-          <div className="game-cut-card relative overflow-hidden rounded-[20px] bg-gradient-to-br from-[#7b151b] via-[#a71922] to-[#4c0c12] p-4 text-white shadow-[0_10px_22px_rgba(220,38,38,.20)] ring-1 ring-red-400/20">
-            <span className="pointer-events-none absolute -right-5 -top-6 h-20 w-20 rounded-full bg-white/15 blur-xl" />
-            <Clock3 size={18} className="relative text-white/90" />
-            <p className="relative mt-3 text-[10px] font-black tracking-wide text-white/70">記録済み勤務時間</p>
-            <p className="relative mt-0.5 text-[22px] font-black leading-none tabular-nums">{minutesLabel(totalMinutes)}</p>
+          <div className="vintage-stat-card game-cut-card rounded-[20px]">
+            <span className="vintage-icon"><Clock3 size={16} /></span>
+            <p className="vintage-stat-label">記録済み勤務時間</p>
+            <p className="vintage-stat-value">{minutesLabel(totalMinutes)}</p>
           </div>
         </section>
 

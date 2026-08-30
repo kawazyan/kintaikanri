@@ -373,3 +373,12 @@ body {
 .today-punch-clock-ring{display:grid;place-items:center;width:52px;height:52px;border-radius:50%;border:2px solid #e8c9a6;color:#e8c9a6;background:radial-gradient(circle,#241a12,#0a0705 70%);box-shadow:0 0 10px rgba(220,150,70,.33),inset 0 0 14px #000}
 .today-punch-cancel-row{position:relative;z-index:2;display:flex;justify-content:flex-end;padding:8px 16px 0}
 .today-punch-cancel{display:none!important}
+
+/* vintage / engraved stat card — used for 打刻履歴 summary tiles */
+.vintage-stat-card{position:relative;overflow:hidden;border:1px solid rgba(196,166,100,.55);background:linear-gradient(145deg,#171313 0%,#0a0808 60%,#0d0a08 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.04),inset 0 0 24px rgba(0,0,0,.6),0 8px 18px rgba(0,0,0,.35);padding:16px;color:#f0ece0}
+.vintage-stat-card:before{content:"";position:absolute;inset:4px;border:1px solid rgba(196,166,100,.25);pointer-events:none}
+.vintage-stat-card:after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 85% 0%,rgba(196,166,100,.10),transparent 45%)}
+.vintage-icon{position:relative;z-index:1;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:9999px;border:1px solid rgba(196,166,100,.6);background:radial-gradient(circle,#241d10,#0d0a05 70%);color:#e5c26a;box-shadow:inset 0 0 6px rgba(0,0,0,.7)}
+.vintage-stat-label{position:relative;z-index:1;margin-top:10px;font-size:10px;font-weight:900;letter-spacing:.08em;color:#a89a86}
+.vintage-stat-value{position:relative;z-index:1;margin-top:2px;font-size:26px;font-weight:900;line-height:1;color:#f0ece0;text-shadow:0 2px 0 #000}
+.vintage-stat-value span{color:#a89a86}

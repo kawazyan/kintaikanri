@@ -14,7 +14,7 @@ export default async function NoticesPage() {
   return (
     <main className="staff-screen">
       <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28">
-        <PageHeader icon={Bell} title="お知らせ" />
+        <PageHeader icon={Bell} title="お知らせ" centered />
 
         <section className="game-hud-frame game-cut-card relative overflow-hidden rounded-[20px] px-6 py-12 text-center shadow-[0_9px_26px_rgba(15,23,42,.07)] ring-1 ring-black/[.04]">
           <span className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-red-100/70 blur-2xl" />

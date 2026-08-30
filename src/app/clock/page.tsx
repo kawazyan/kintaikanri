@@ -296,30 +296,32 @@ export default async function ClockPage() {
           </section>
 
           {nextShift && (
-            <section className="flex items-center gap-4 rounded-[24px] bg-gradient-to-r from-[#102235] to-[#13283d] p-4 text-white shadow-[0_10px_24px_rgba(15,23,42,.16)]">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/15 bg-white/[.04]">
-                <CalendarDays size={27} />
-              </div>
-              <div>
-                <p className="text-xs text-slate-300">次のシフト</p>
-                <p className="mt-1 text-2xl font-black">
-                  {new Intl.DateTimeFormat("ja-JP", {
-                    timeZone: "Asia/Tokyo",
-                    month: "numeric",
-                    day: "numeric",
-                    weekday: "short",
-                  }).format(nextShift.startTime)}
-                </p>
-              </div>
-              <div className="ml-auto text-sm">
-                <p className="font-bold">
-                  {formatJst(nextShift.startTime).slice(-5)} - {formatJst(nextShift.endTime).slice(-5)}
-                </p>
-                <p className="mt-1 text-xs text-slate-300">{nextShift.storeName}</p>
+            <section className="rounded-[24px] bg-gradient-to-r from-[#102235] to-[#13283d] p-4 text-white shadow-[0_10px_24px_rgba(15,23,42,.16)]">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/[.04]">
+                  <CalendarDays size={27} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-300">次のシフト</p>
+                  <p className="mt-1 truncate text-2xl font-black">
+                    {new Intl.DateTimeFormat("ja-JP", {
+                      timeZone: "Asia/Tokyo",
+                      month: "numeric",
+                      day: "numeric",
+                      weekday: "short",
+                    }).format(nextShift.startTime)}
+                  </p>
+                </div>
+                <div className="ml-auto shrink-0 text-right text-sm">
+                  <p className="whitespace-nowrap font-bold">
+                    {formatJst(nextShift.startTime).slice(-5)} - {formatJst(nextShift.endTime).slice(-5)}
+                  </p>
+                  <p className="mt-1 truncate text-xs text-slate-300">{nextShift.storeName}</p>
+                </div>
               </div>
               <Link
                 href="/shift"
-                className="rounded-2xl bg-gradient-to-b from-red-500 to-red-700 px-4 py-3 text-sm font-black shadow-[0_4px_0_#7f1d1d]"
+                className="mt-3 flex items-center justify-center whitespace-nowrap rounded-2xl bg-gradient-to-b from-red-500 to-red-700 px-4 py-3 text-sm font-black shadow-[0_4px_0_#7f1d1d]"
               >
                 シフトを確認する
               </Link>

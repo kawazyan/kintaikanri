@@ -1,6 +1,107 @@
-import {redirect} from "next/navigation";import {getStaffId} from "@/lib/auth";import {prisma} from "@/lib/prisma";import {currentJstYearMonth,formatJst} from "@/lib/time";import {BottomTabBar} from "@/components/bottom-tab-bar";import {addExpense,submitMonth,deleteDraftExpense} from "./actions";
-const label=(c:string)=>c==="TRAVEL"?"交通費":c==="LODGING"?"宿泊費":"その他経費";
-export default async function ExpensesPage(){const staffId=await getStaffId();if(!staffId)redirect("/");const ym=currentJstYearMonth();const [items,assignments]=await Promise.all([prisma.expense.findMany({where:{staffId,yearMonth:ym},orderBy:{expenseDate:"desc"}}),prisma.workOrderStaff.findMany({where:{staffId,workOrder:{yearMonth:ym,status:{in:["APPROVED","CHANGES_PENDING"]}}},include:{workOrder:{include:{client:true}}}})]);const total=items.reduce((s,x)=>s+x.amountTaxInclusive,0);return <main className="min-h-dvh bg-[#f5f6f8] text-slate-900"><div className="mx-auto max-w-md px-4 pb-28 pt-6"><h1 className="text-2xl font-black">経費申請</h1><p className="mt-1 text-sm text-slate-500">{ym} ・ 実際に支払った税込金額を入力</p><div className="mt-5 rounded-3xl bg-[#0f1e2d] p-5 text-white shadow-lg"><p className="text-xs font-bold text-slate-300">今月入力済み</p><p className="mt-1 text-3xl font-black">¥{total.toLocaleString()}</p><p className="mt-2 text-xs text-slate-400">交通費・宿泊費は税込金額から税抜額と税分を自動計算します。</p></div>
-<form action={addExpense} className="mt-4 space-y-3 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5"><input type="hidden" name="yearMonth" value={ym}/><div className="grid grid-cols-2 gap-3"><label className="text-xs font-black">日付<input type="date" name="expenseDate" required className="mt-1 w-full rounded-xl border p-3 text-sm"/></label><label className="text-xs font-black">区分<select name="category" className="mt-1 w-full rounded-xl border p-3 text-sm"><option value="TRAVEL">交通費</option><option value="LODGING">宿泊費</option><option value="OTHER">その他経費</option></select></label></div><label className="block text-xs font-black">対象案件<select name="workOrderStaffId" className="mt-1 w-full rounded-xl border p-3 text-sm"><option value="">指定なし</option>{assignments.map(a=><option key={a.id} value={a.id}>{a.workOrder.client.name} / {a.workOrder.defaultStoreName}</option>)}</select></label><label className="block text-xs font-black">税込金額<input name="amountTaxInclusive" type="number" min="0" required className="mt-1 w-full rounded-xl border p-3 text-sm"/></label><label className="block text-xs font-black">内容・備考<textarea name="description" rows={2} className="mt-1 w-full rounded-xl border p-3 text-sm" placeholder="その他経費は必須"/></label><button className="w-full rounded-2xl bg-[#b91c1c] py-3 font-black text-white shadow-[0_4px_0_#7f1d1d]">経費を追加</button></form>
-<section className="mt-5 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5">{items.length?items.map(x=><div key={x.id} className="border-b p-4 last:border-0"><div className="flex justify-between gap-3"><div><p className="text-sm font-black">{label(x.category)} <span className="ml-1 text-xs font-bold text-slate-400">{formatJst(x.expenseDate).slice(0,10)}</span></p><p className="mt-1 text-xs text-slate-500">{x.description||"—"}</p><p className="mt-1 text-[11px] text-slate-400">税抜 ¥{x.amountExTax.toLocaleString()} / 税 ¥{x.taxAmount.toLocaleString()}</p></div><div className="text-right"><p className="font-black">¥{x.amountTaxInclusive.toLocaleString()}</p><p className="mt-1 text-xs font-bold text-slate-400">{x.status}</p>{x.status==="DRAFT"&&<form action={deleteDraftExpense.bind(null,x.id)}><button className="mt-2 text-xs font-bold text-red-600">削除</button></form>}</div></div></div>):<p className="p-5 text-sm text-slate-400">まだ経費はありません。</p>}</section>
-{items.some(x=>x.status==="DRAFT")&&<form action={submitMonth.bind(null,ym)}><button className="mt-4 w-full rounded-2xl bg-[#0f1e2d] py-4 font-black text-white shadow-[0_4px_0_#07101a]">今月分をK.Jへ申請する</button></form>}</div><BottomTabBar/></main>}
+import { redirect } from "next/navigation";
+import { getStaffId } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { currentJstYearMonth, formatJst } from "@/lib/time";
+import { BottomTabBar } from "@/components/bottom-tab-bar";
+import { addExpense, deleteDraftExpense } from "./actions";
+
+const label = (c: string) => (c === "TRAVEL" ? "交通費" : c === "LODGING" ? "宿泊費" : "その他経費");
+
+export default async function ExpensesPage() {
+  const staffId = await getStaffId();
+  if (!staffId) redirect("/");
+  const ym = currentJstYearMonth();
+  const [items, assignments] = await Promise.all([
+    prisma.expense.findMany({ where: { staffId, yearMonth: ym }, orderBy: { expenseDate: "desc" } }),
+    prisma.workOrderStaff.findMany({
+      where: { staffId, workOrder: { yearMonth: ym, status: { in: ["APPROVED", "CHANGES_PENDING"] } } },
+      include: { workOrder: { include: { client: true } } },
+    }),
+  ]);
+  const total = items.reduce((s, x) => s + x.amountTaxInclusive, 0);
+
+  return (
+    <main className="min-h-dvh bg-[#f5f6f8] text-slate-900">
+      <div className="mx-auto max-w-md px-4 pb-28 pt-6">
+        <h1 className="text-2xl font-black">経費申請</h1>
+        <p className="mt-1 text-sm text-slate-500">実際に支払った税込金額を入力</p>
+
+        <div className="mt-5 rounded-3xl bg-[#0f1e2d] p-5 text-white shadow-lg">
+          <p className="text-xs font-bold text-slate-300">今月入力済み</p>
+          <p className="mt-1 text-3xl font-black">¥{total.toLocaleString()}</p>
+          <p className="mt-2 text-xs text-slate-400">交通費・宿泊費は税込金額から税抜額と税分を自動計算します。</p>
+        </div>
+
+        <form action={addExpense} className="mt-4 space-y-3 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+          <input type="hidden" name="yearMonth" value={ym} />
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block text-xs font-black">
+              日付
+              <input type="date" name="expenseDate" required className="mt-1 w-full rounded-xl border p-3 text-sm" />
+            </label>
+            <label className="block text-xs font-black">
+              区分
+              <select name="category" className="mt-1 w-full rounded-xl border p-3 text-sm">
+                <option value="TRAVEL">交通費</option>
+                <option value="LODGING">宿泊費</option>
+                <option value="OTHER">その他経費</option>
+              </select>
+            </label>
+          </div>
+          <label className="block text-xs font-black">
+            対象案件
+            <select name="workOrderStaffId" className="mt-1 w-full rounded-xl border p-3 text-sm">
+              <option value="">指定なし</option>
+              {assignments.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.workOrder.client.name} / {a.workOrder.defaultStoreName}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-xs font-black">
+            税込金額
+            <input name="amountTaxInclusive" type="number" min="0" required className="mt-1 w-full rounded-xl border p-3 text-sm" />
+          </label>
+          <label className="block text-xs font-black">
+            内容・備考
+            <textarea name="description" rows={2} className="mt-1 w-full rounded-xl border p-3 text-sm" placeholder="その他経費は必須" />
+          </label>
+          <button className="w-full rounded-2xl bg-[#b91c1c] py-3 font-black text-white shadow-[0_4px_0_#7f1d1d]">経費を申請する</button>
+        </form>
+
+        <section className="mt-5 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5">
+          {items.length ? (
+            items.map((x) => (
+              <div key={x.id} className="border-b p-4 last:border-0">
+                <div className="flex justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black">
+                      {label(x.category)} <span className="ml-1 text-xs font-bold text-slate-400">{formatJst(x.expenseDate).slice(0, 10)}</span>
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">{x.description || "—"}</p>
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      税抜 ¥{x.amountExTax.toLocaleString()} / 税 ¥{x.taxAmount.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-black">¥{x.amountTaxInclusive.toLocaleString()}</p>
+                    <p className="mt-1 text-xs font-bold text-slate-400">{x.status}</p>
+                    {x.status === "DRAFT" && (
+                      <form action={deleteDraftExpense.bind(null, x.id)}>
+                        <button className="mt-2 text-xs font-bold text-red-600">削除</button>
+                      </form>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="p-5 text-sm text-slate-400">まだ経費はありません。</p>
+          )}
+        </section>
+      </div>
+      <BottomTabBar />
+    </main>
+  );
+}

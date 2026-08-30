@@ -23,7 +23,7 @@ export default async function MenuPage() {
   return (
     <main className="staff-screen">
       <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28">
-        <PageHeader icon={Menu} title="メニュー" eyebrow={`${staff.name} さん`} />
+        <PageHeader icon={Menu} title="メニュー" eyebrow={`${staff.name} さん`} centered />
 
         <section>
           <div className="mb-2 flex items-center gap-2 px-1">
