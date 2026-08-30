@@ -23,7 +23,7 @@ export default async function AdminRequests() {
               <Link href={`/admin/requests/${o.id}`} className="min-w-0 flex-1 hover:opacity-90">
                 <p className="text-xs text-slate-400">{o.client.name} ・ {o.yearMonth}</p>
                 <h2 className="mt-1 font-black">{o.defaultStoreName}</h2>
-                <p className="mt-1 text-xs font-bold text-slate-500">{o.requestedCarrier || "キャリア未設定"} ・ {o.requestType === "CATCH" ? "キャッチ" : o.requestType === "CLOSER" ? "クローザー" : "帯稼働"}</p>
+                <p className="mt-1 text-xs font-bold text-slate-500">{o.requestedCarrier || "キャリア未設定"} ・ {o.requestType === "CATCH" ? "キャッチ" : o.requestType === "CLOSER" ? "クローザー" : o.requestType === "CONSULTING" ? "コンサルティング" : "帯稼働"}</p>
                 <p className="mt-1 text-sm text-slate-400">{o.staffAssignments.map((s) => s.staff?.name ?? s.requestedName).join(" / ")}</p>
               </Link>
               <div className="flex shrink-0 flex-col items-end gap-2">

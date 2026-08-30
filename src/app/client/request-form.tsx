@@ -45,10 +45,10 @@ export function ClientRequestForm() {
         <div className="grid gap-4 p-5 sm:grid-cols-2">
           <label className={labelClass}>稼働依頼キャリア<select name="carrier" required className={inputClass} defaultValue=""><option value="" disabled>選択してください</option><option>au</option><option>UQ mobile</option><option>SoftBank</option><option>Y!mobile</option><option>docomo</option><option>楽天モバイル</option><option>その他</option></select></label>
           <label className={labelClass}>稼働場所<input name="storeName" required className={inputClass} placeholder="店舗名・会場名" /></label>
-          <label className={`${labelClass} sm:col-span-2`}>依頼内容<select name="requestType" value={requestType} onChange={(e)=>changeRequestType(e.target.value)} className={inputClass}><option value="CATCH">キャッチ</option><option value="CLOSER">クローザー</option><option value="BAND">帯稼働</option></select></label>
+          <label className={`${labelClass} sm:col-span-2`}>依頼内容<select name="requestType" value={requestType} onChange={(e)=>changeRequestType(e.target.value)} className={inputClass}><option value="CATCH">キャッチ</option><option value="CLOSER">クローザー</option><option value="BAND">帯稼働</option><option value="CONSULTING">コンサルティング</option></select></label>
           <div className="sm:col-span-2">
-            <div className="mb-2 flex items-center justify-between"><p className="text-[13px] font-black text-slate-700">稼働者名</p><button type="button" onClick={()=>setNames([...names,""])} className="flex items-center gap-1 rounded-xl bg-[#eef2f5] px-3 py-2 text-xs font-black text-[#14283b]"><Plus size={14}/>追加</button></div>
-            <div className="grid gap-2 sm:grid-cols-2">{names.map((_,i)=><div key={i} className="flex gap-2"><input name="requestedNames" required={i===0} className={`${inputClass} mt-0`} placeholder={`稼働者名 ${i+1}`} /><button type="button" disabled={names.length===1} onClick={()=>setNames(names.filter((_,x)=>x!==i))} className="grid w-12 shrink-0 place-items-center rounded-2xl border border-slate-200 text-slate-400 disabled:opacity-30"><Trash2 size={17}/></button></div>)}</div>
+            <div className="mb-2 flex items-center justify-between"><p className="text-[13px] font-black text-slate-700">稼働者名（バイネーム）</p><button type="button" onClick={()=>setNames([...names,""])} className="flex items-center gap-1 rounded-xl bg-[#eef2f5] px-3 py-2 text-xs font-black text-[#14283b]"><Plus size={14}/>追加</button></div>
+            <div className="grid gap-2 sm:grid-cols-2">{names.map((_,i)=><div key={i} className="flex gap-2"><input name="requestedNames" required={i===0} className={`${inputClass} mt-0`} placeholder={`稼働者名（バイネーム） ${i+1}`} /><button type="button" disabled={names.length===1} onClick={()=>setNames(names.filter((_,x)=>x!==i))} className="grid w-12 shrink-0 place-items-center rounded-2xl border border-slate-200 text-slate-400 disabled:opacity-30"><Trash2 size={17}/></button></div>)}</div>
           </div>
         </div>
       </section>
@@ -79,7 +79,7 @@ export function ClientRequestForm() {
       </section>
 
       <button className="group flex w-full items-center justify-center gap-3 rounded-[22px] bg-[#b4232c] px-5 py-4.5 font-black text-white shadow-[0_6px_0_#74151b,0_12px_26px_rgba(180,35,44,.20)] transition active:translate-y-1 active:shadow-[0_2px_0_#74151b]"><UserRound size={20}/><span>この内容で稼働を依頼する</span></button>
-      <p className="text-center text-xs font-bold leading-6 text-slate-400">送信後は管理者の確認・承認待ちになります。</p>
+      <p className="text-center text-xs font-bold leading-6 text-slate-400">送信後は管理者の確認・承認待ちになります。<br/>誤った内容で送信してしまった場合は、お手数ですが正しい内容で改めて送信してください。</p>
     </form>
   );
 }

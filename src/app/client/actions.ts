@@ -20,7 +20,7 @@ export async function submitClientRequest(formData: FormData) {
   const email = clean(formData.get("email"));
   const carrier = clean(formData.get("carrier"));
   const storeName = clean(formData.get("storeName"));
-  const requestType = clean(formData.get("requestType")) as "CATCH" | "CLOSER" | "BAND";
+  const requestType = clean(formData.get("requestType")) as "CATCH" | "CLOSER" | "BAND" | "CONSULTING";
   const schedulePattern = clean(formData.get("schedulePattern")) as "FIXED" | "VARIES";
   const contractType = clean(formData.get("contractType")) as "MONTHLY" | "DAILY";
   const rateAmountExTax = Number(formData.get("rateAmountExTax"));
@@ -33,7 +33,7 @@ export async function submitClientRequest(formData: FormData) {
     throw new Error("必須項目を入力してください。");
   }
   if (!Number.isFinite(rateAmountExTax) || rateAmountExTax < 0) throw new Error("単価を確認してください。");
-  if (!["CATCH", "CLOSER", "BAND"].includes(requestType)) throw new Error("依頼内容を確認してください。");
+  if (!["CATCH", "CLOSER", "BAND", "CONSULTING"].includes(requestType)) throw new Error("依頼内容を確認してください。");
   if (!["FIXED", "VARIES"].includes(schedulePattern)) throw new Error("稼働時間の設定を確認してください。");
   if (!["MONTHLY", "DAILY"].includes(contractType)) throw new Error("単価区分を確認してください。");
 

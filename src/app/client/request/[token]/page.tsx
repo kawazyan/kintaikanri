@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { formatJst } from "@/lib/time";
 import { ClientAutoRefresh } from "../../components/auto-refresh";
 
-const requestLabels = { CATCH: "キャッチ", CLOSER: "クローザー", BAND: "帯稼働" } as const;
+const requestLabels = { CATCH: "キャッチ", CLOSER: "クローザー", BAND: "帯稼働", CONSULTING: "コンサルティング" } as const;
 const statusLabels: Record<string, string> = { PENDING_APPROVAL: "承認待ち", APPROVED: "承認済み", CHANGES_PENDING: "変更確認中", CANCELLED: "キャンセル", TERMINATED: "途中終了" };
 const travelLabels: Record<string,string> = { INCLUDED:"単価に込み", SEPARATE:"別途請求", CONSULT:"要相談" };
 

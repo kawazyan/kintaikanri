@@ -78,3 +78,27 @@ export async function adminDeleteShift(shiftId: string) {
   await prisma.shift.delete({ where: { id: shiftId } });
   revalidatePath("/admin/shifts");
 }
+
+export async function adminBulkDeleteShifts(shiftIds: string[]) {
+  await requireAdmin();
+  if (!shiftIds.length) return { ok: true as const, deleted: 0 };
+
+  const existing = await prisma.shift.findMany({ where: { id: { in: shiftIds } } });
+  if (!existing.length) return { ok: true as const, deleted: 0 };
+
+  await prisma.$transaction([
+    prisma.shiftHistory.createMany({
+      data: existing.map((e) => ({
+        shiftId: e.id,
+        staffId: e.staffId,
+        changeType: "DELETE",
+        before: JSON.parse(JSON.stringify(e)),
+        after: JSON.parse(JSON.stringify(e)),
+      })),
+    }),
+    prisma.shift.deleteMany({ where: { id: { in: existing.map((e) => e.id) } } }),
+  ]);
+
+  revalidatePath("/admin/shifts");
+  return { ok: true as const, deleted: existing.length };
+}

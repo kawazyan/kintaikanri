@@ -258,6 +258,7 @@ enum WorkRequestType {
   CATCH
   CLOSER
   BAND
+  CONSULTING
 }
 
 enum SchedulePattern {

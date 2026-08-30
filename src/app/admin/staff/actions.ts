@@ -39,6 +39,23 @@ export async function updateStaff(staffId: string, formData: FormData) {
   revalidatePath("/admin/staff");
 }
 
+export async function adminBulkDeleteStaff(staffIds: string[]) {
+  await requireAdmin();
+  const results: { id: string; ok: boolean }[] = [];
+  for (const id of staffIds) {
+    try {
+      await prisma.staff.delete({ where: { id } });
+      results.push({ id, ok: true });
+    } catch {
+      // 打刻・シフト・経費など履歴が残っているスタッフは外部キー制約により削除できない。
+      results.push({ id, ok: false });
+    }
+  }
+  revalidatePath("/admin/staff");
+  const failed = results.filter((r) => !r.ok).length;
+  return { deleted: results.length - failed, failed };
+}
+
 function strOrNull(formData: FormData, key: string): string | null {
   const v = String(formData.get(key) ?? "").trim();
   return v || null;

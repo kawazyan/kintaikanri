@@ -1,7 +1,8 @@
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AdminNav } from "../admin-nav";
-import { Building2, ExternalLink, Mail, Phone, UserRound } from "lucide-react";
+import { ExternalLink } from "lucide-react";
+import { ClientsList } from "./clients-list";
 
 export default async function ClientsPage() {
   await requireAdmin();
@@ -20,7 +21,7 @@ export default async function ClientsPage() {
     </div>
 
     <section className="mt-6"><div className="mb-3 flex items-end justify-between"><div><p className="text-xs font-black tracking-widest text-slate-400">AUTO CREATED</p><h2 className="text-lg font-black">依頼実績のある取引先</h2></div><span className="text-sm font-black text-slate-400">{clients.length}社</span></div>
-      <div className="grid gap-3 md:grid-cols-2">{clients.map(c=><article key={c.id} className="rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-black/5"><div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#eef2f5] text-[#14283b]"><Building2 size={20}/></span><div><h3 className="font-black">{c.name}</h3><p className="text-xs font-bold text-slate-400">稼働依頼 {c._count.workOrders}件 ・ 請求 {c._count.invoices}件</p></div></div></div><div className="mt-4 space-y-2 text-sm font-bold text-slate-600"><p className="flex items-center gap-2"><UserRound size={15}/>{c.contactDepartment ? `${c.contactDepartment} / ` : ""}{c.contactName || "担当者未設定"}</p>{c.phone&&<p className="flex items-center gap-2"><Phone size={15}/>{c.phone}</p>}{c.email&&<p className="flex items-center gap-2"><Mail size={15}/>{c.email}</p>}</div></article>)}{!clients.length&&<div className="md:col-span-2 rounded-[24px] bg-white p-8 text-center text-sm font-bold text-slate-400 ring-1 ring-black/5">取引先から依頼が届くと、ここへ自動的に表示されます。</div>}</div>
+      <ClientsList clients={clients} />
     </section>
   </main>;
 }

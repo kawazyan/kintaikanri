@@ -4,6 +4,10 @@ import { AdminNav } from "../admin-nav";
 import { reviewExpense } from "./actions";
 import { formatJst } from "@/lib/time";
 
+const categoryLabel = (c: string) => (c === "TRAVEL" ? "交通費" : c === "LODGING" ? "宿泊費" : "その他経費");
+const statusLabel = (s: string) =>
+  s === "DRAFT" ? "下書き" : s === "SUBMITTED" ? "申請中" : s === "APPROVED" ? "承認済み" : s === "REJECTED" ? "却下" : s;
+
 export default async function AdminExpenses() {
   await requireAdmin();
   const items = await prisma.expense.findMany({
@@ -24,14 +28,14 @@ export default async function AdminExpenses() {
           <article key={x.id} className="rounded-2xl border border-slate-700 bg-slate-900 p-5">
             <div className="flex flex-wrap justify-between gap-3">
               <div>
-                <p className="font-black">{x.staff.name} ・ {x.category}</p>
+                <p className="font-black">{x.staff.name} ・ {categoryLabel(x.category)}</p>
                 <p className="text-sm text-slate-400">
                   {formatJst(x.expenseDate).slice(0, 10)} ・ {x.workOrderStaff?.workOrder.client.name || "案件指定なし"} ・ {x.description || "—"}
                 </p>
               </div>
               <div className="text-right">
                 <p className="font-black">税込 ¥{x.amountTaxInclusive.toLocaleString()}</p>
-                <p className="text-xs text-slate-400">税抜 ¥{x.amountExTax.toLocaleString()} / 税 ¥{x.taxAmount.toLocaleString()} ・ {x.status}</p>
+                <p className="text-xs text-slate-400">税抜 ¥{x.amountExTax.toLocaleString()} / 税 ¥{x.taxAmount.toLocaleString()} ・ {statusLabel(x.status)}</p>
               </div>
             </div>
             {x.status === "SUBMITTED" && (

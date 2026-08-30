@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useRef, useState } from "react";
-import { Bot, ChevronRight, MessageCircle, Search, Send, X } from "lucide-react";
+import { ArrowLeft, Bot, ChevronRight, MessageCircle, Search, Send, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 type Audience = "staff" | "client";
@@ -217,6 +217,8 @@ export function FixedSupportBot() {
     setInput("");
   };
 
+  const goBack = () => setMessages([]);
+
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     ask(input);
@@ -304,6 +306,18 @@ export function FixedSupportBot() {
               </>
             ) : (
               <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={goBack}
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-black transition active:scale-[.97] ${
+                    audience === "staff"
+                      ? "border border-white/10 bg-white/[.04] text-slate-300"
+                      : "border border-slate-200 bg-white text-slate-600"
+                  }`}
+                >
+                  <ArrowLeft size={14} />
+                  トピック一覧へ戻る
+                </button>
                 {messages.map((message) => (
                   <div
                     key={message.id}

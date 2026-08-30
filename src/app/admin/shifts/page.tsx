@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatJst, jstDayRange } from "@/lib/time";
-import { WORK_TYPE_LABEL } from "@/lib/carriers";
+import { jstDayRange } from "@/lib/time";
 import { AdminNav } from "../admin-nav";
-import { adminDeleteShift } from "./actions";
+import { ShiftsTable } from "./shifts-table";
 import type { Prisma } from "@prisma/client";
 
 const FIELD_CLASS =
@@ -83,48 +82,7 @@ export default async function AdminShiftsPage({
         </Link>
       </form>
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/40 backdrop-blur-sm">
-        <table className="w-full min-w-[800px] text-left text-sm">
-          <thead>
-            <tr className="border-b border-slate-800 text-slate-500">
-              <th className="py-2 pr-3 pl-4">スタッフ</th>
-              <th className="py-2 pr-3">区分</th>
-              <th className="py-2 pr-3">開始</th>
-              <th className="py-2 pr-3">終了</th>
-              <th className="py-2 pr-3">キャリア</th>
-              <th className="py-2 pr-3">店舗</th>
-              <th className="py-2 pr-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {shifts.map((s) => (
-              <tr key={s.id} className="border-b border-slate-800/60 text-slate-200">
-                <td className="py-2 pr-3 pl-4">
-                  {s.staff.name}({s.staff.employeeCode})
-                </td>
-                <td className="py-2 pr-3">{WORK_TYPE_LABEL[s.workType]}</td>
-                <td className="py-2 pr-3">{formatJst(s.startTime)}</td>
-                <td className="py-2 pr-3">{formatJst(s.endTime)}</td>
-                <td className="py-2 pr-3">{s.carrier}</td>
-                <td className="py-2 pr-3">{s.storeName}</td>
-                <td className="py-2 pr-3 whitespace-nowrap">
-                  <Link href={`/admin/shifts/${s.id}`} className="text-blue-400 underline">
-                    編集
-                  </Link>{" "}
-                  <form action={adminDeleteShift.bind(null, s.id)} className="inline">
-                    <button type="submit" className="text-red-400 underline">
-                      削除
-                    </button>
-                  </form>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {shifts.length === 0 && (
-          <p className="p-4 text-sm text-slate-500">シフトが登録されていません。</p>
-        )}
-      </div>
+      <ShiftsTable shifts={shifts} />
     </main>
   );
 }
