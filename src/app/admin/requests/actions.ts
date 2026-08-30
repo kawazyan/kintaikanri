@@ -1,10 +1,21 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { randomBytes } from "crypto";
 import type { TravelExpenseRule } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 export async function approveOrder(id:string,formData:FormData){await requireAdmin();const name=String(formData.get("approverName")||"").trim();if(!name)throw new Error("承認者名は必須です");const before=await prisma.workOrder.findUnique({where:{id}});if(!before)throw new Error("依頼がありません");await prisma.$transaction([prisma.workOrder.update({where:{id},data:{status:"APPROVED",approvedAt:new Date(),approverName:name,approverPhone:String(formData.get("approverPhone")||"").trim()||null,approverEmail:String(formData.get("approverEmail")||"").trim()||null}}),prisma.workOrderChangeHistory.create({data:{workOrderId:id,entityType:"WORK_ORDER",entityId:id,changeType:"APPROVE",before:{status:before.status},after:{status:"APPROVED"},actorRole:"KJ",actorName:name}})]);revalidatePath(`/admin/requests/${id}`);revalidatePath("/admin/requests")}
+export async function deleteOrder(id:string){
+  await requireAdmin();
+  const order=await prisma.workOrder.findUnique({where:{id},include:{invoices:{select:{id:true}},staffAssignments:{select:{id:true}}}});
+  if(!order) return;
+  if(order.invoices.length>0) throw new Error("請求書に紐付いた案件は削除できません。誤送信ではなくキャンセルとして処理してください。");
+  await prisma.workOrder.delete({where:{id}});
+  revalidatePath("/admin/requests");
+  redirect("/admin/requests");
+}
+
 export async function cancelOrder(id:string,formData:FormData){await requireAdmin();const actor=String(formData.get("operatorName")||"").trim();const reason=String(formData.get("reason")||"").trim();if(!actor||!reason)throw new Error("操作者名と理由は必須です");const before=await prisma.workOrder.findUnique({where:{id}});if(!before)return;await prisma.$transaction([prisma.workOrder.update({where:{id},data:{status:"CANCELLED",cancelledAt:new Date(),cancellationReason:reason}}),prisma.workOrderChangeHistory.create({data:{workOrderId:id,entityType:"WORK_ORDER",entityId:id,changeType:"CANCEL",before:{status:before.status},after:{status:"CANCELLED"},actorRole:"KJ",actorName:actor,reason}})]);revalidatePath(`/admin/requests/${id}`)}
 export async function terminateOrder(id:string,formData:FormData){await requireAdmin();const actor=String(formData.get("operatorName")||"").trim();const reason=String(formData.get("reason")||"").trim();const date=String(formData.get("terminatedAt")||"");if(!actor||!reason||!date)throw new Error("入力してください");const before=await prisma.workOrder.findUnique({where:{id},include:{staffAssignments:true}});if(!before)return;const terminatedAt=new Date(`${date}T00:00:00+09:00`);const assignmentIds=before.staffAssignments.map(a=>a.id);await prisma.$transaction([prisma.workOrder.update({where:{id},data:{status:"TERMINATED",terminatedAt,terminationReason:reason}}),prisma.shift.updateMany({where:{workOrderStaffId:{in:assignmentIds},startTime:{gte:terminatedAt},cancelledAt:null},data:{cancelledAt:new Date(),cancellationReason:`案件途中終了: ${reason}`,cancelledBy:actor}}),prisma.workOrderChangeHistory.create({data:{workOrderId:id,entityType:"WORK_ORDER",entityId:id,changeType:"TERMINATE",before:{status:before.status},after:{status:"TERMINATED",terminatedAt:date},actorRole:"KJ",actorName:actor,reason}})]);revalidatePath(`/admin/requests/${id}`)}
 export async function addSite(id:string,formData:FormData){await requireAdmin();const storeName=String(formData.get("storeName")||"").trim(),actor=String(formData.get("operatorName")||"").trim();if(!storeName||!actor)throw new Error("必須項目を入力してください");const site=await prisma.workOrderSite.create({data:{workOrderId:id,storeName,rateOverrideExTax:Number(formData.get("rateOverrideExTax"))||null,travelExpense:(String(formData.get("travelExpense")||"")||null) as TravelExpenseRule|null,notes:String(formData.get("notes")||"").trim()||null}});await prisma.workOrderChangeHistory.create({data:{workOrderId:id,entityType:"SITE",entityId:site.id,changeType:"ADD_SITE",after:{storeName},actorRole:"KJ",actorName:actor}});revalidatePath(`/admin/requests/${id}`)}

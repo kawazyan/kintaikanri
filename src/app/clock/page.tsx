@@ -4,12 +4,13 @@ import {
   CalendarDays,
   ChevronRight,
   Clock3,
+  TimerReset,
+  Swords,
   Trophy,
   Sofa,
   Users,
   CircleDollarSign,
   CheckCircle2,
-  Star,
 } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -153,7 +154,7 @@ export default async function ClockPage() {
               <div className="pointer-events-none absolute right-[13%] top-0 h-full w-[27%] opacity-35 [background-image:repeating-linear-gradient(90deg,transparent_0_14px,rgba(164,179,188,.11)_15px_16px,transparent_17px_30px),linear-gradient(0deg,rgba(0,0,0,.05),rgba(0,0,0,.8))]" />
               <div className="relative flex min-h-[146px] items-center rounded-[19px] border border-[#30363a] px-3 py-3 shadow-[inset_0_0_28px_rgba(0,0,0,.78)]">
                 <div className="flex h-[102px] w-[102px] shrink-0 items-center justify-center rounded-[24px] border-2 border-[#d8d9d7] bg-[radial-gradient(circle_at_50%_45%,#351011,#12090b_58%,#050607)] shadow-[inset_0_0_0_4px_rgba(255,255,255,.04),inset_0_0_24px_rgba(170,20,20,.28),0_0_14px_rgba(177,20,20,.25)]">
-                  <Star size={58} strokeWidth={1.5} className="text-[#d8d8d5] drop-shadow-[0_4px_2px_rgba(0,0,0,.9)]" fill="currentColor" />
+                  <div className="challenger-crest"><Swords size={52} strokeWidth={1.7} /></div>
                 </div>
 
                 <div className="min-w-0 flex-1 px-4">
@@ -192,17 +193,17 @@ export default async function ClockPage() {
 
           <section className="today-punch-panel">
             <div className="today-punch-head">
-              <div className="today-punch-clock"><Clock3 size={42} strokeWidth={1.55} /></div>
+              <div className="today-punch-clock"><span className="today-punch-clock-ring"><TimerReset size={36} strokeWidth={1.7} /></span></div>
               <div className="min-w-0 flex-1">
                 <h2 className="today-punch-title">今日の打刻履歴</h2>
                 <p className="today-punch-note">5分経過後は管理者に修正を依頼してください</p>
               </div>
-              {last && (
-                <div className="today-punch-cancel">
-                  <CancelPunchButton recordId={last.id} timestamp={last.timestamp.toISOString()} />
-                </div>
-              )}
             </div>
+            {last && (
+              <div className="today-punch-cancel-row">
+                <CancelPunchButton recordId={last.id} timestamp={last.timestamp.toISOString()} />
+              </div>
+            )}
             <div className="today-punch-times">
               <div className="today-punch-time-block">
                 <p className="today-punch-label">↪ <span>出勤</span></p>
@@ -227,7 +228,7 @@ export default async function ClockPage() {
                 </p>
               </div>
               <div className="payment-metal-info">
-                <Link href={staff.paymentMethod === "REQUEST" ? "/payment/request" : "/payment/history"} className="payment-metal-link">
+                <Link href="/payment/info" className="payment-metal-link">
                   <CalendarDays size={25} />
                   <span>支払情報</span>
                   <ChevronRight size={22} />
