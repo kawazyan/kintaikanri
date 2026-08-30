@@ -33,7 +33,7 @@ export function ClientRequestForm() {
           <label className={labelClass}>担当者様名<input name="contactName" required className={inputClass} placeholder="山田 太郎" /></label>
           <label className={labelClass}>担当者様部署<input name="contactDepartment" className={inputClass} placeholder="営業部" /></label>
           <label className={labelClass}>担当者様連絡先<input name="phone" required inputMode="tel" className={inputClass} placeholder="090-0000-0000" /></label>
-          <label className={`${labelClass} sm:col-span-2`}>担当者様メールアドレス<input name="email" required type="email" className={inputClass} placeholder="example@company.jp" /></label>
+          <label className={`${labelClass} sm:col-span-2`}>担当者様メールアドレス（任意）<input name="email" type="email" className={inputClass} placeholder="example@company.jp" /></label>
         </div>
       </section>
 

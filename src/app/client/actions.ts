@@ -29,7 +29,7 @@ export async function submitClientRequest(formData: FormData) {
   const notes = clean(formData.get("notes")) || null;
   const requestedNames = formData.getAll("requestedNames").map((v) => String(v).trim()).filter(Boolean);
 
-  if (!companyName || !contactName || !phone || !email || !carrier || !storeName || requestedNames.length === 0) {
+  if (!companyName || !contactName || !phone || !carrier || !storeName || requestedNames.length === 0) {
     throw new Error("必須項目を入力してください。");
   }
   if (!Number.isFinite(rateAmountExTax) || rateAmountExTax < 0) throw new Error("単価を確認してください。");
@@ -75,14 +75,14 @@ export async function submitClientRequest(formData: FormData) {
   const token = randomBytes(24).toString("hex");
 
   const existingClient = await prisma.client.findFirst({
-    where: { name: companyName, email },
+    where: { name: companyName, ...(email ? { email } : phone ? { phone } : {}) },
     orderBy: { updatedAt: "desc" },
   });
 
   const client = existingClient
     ? await prisma.client.update({
         where: { id: existingClient.id },
-        data: { contactName, contactDepartment: contactDepartment || null, phone, email, active: true },
+        data: { contactName, contactDepartment: contactDepartment || null, phone, email: email || null, active: true },
       })
     : await prisma.client.create({
         data: {
@@ -91,7 +91,7 @@ export async function submitClientRequest(formData: FormData) {
           contactName,
           contactDepartment: contactDepartment || null,
           phone,
-          email,
+          email: email || null,
         },
       });
 
@@ -110,7 +110,7 @@ export async function submitClientRequest(formData: FormData) {
       clientContactName: contactName,
       clientContactDepartment: contactDepartment || null,
       clientContactPhone: phone,
-      clientContactEmail: email,
+      clientContactEmail: email || null,
       staffAssignments: {
         create: requestedNames.map((requestedName) => ({
           requestedName,

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, LogIn, LogOut } from "lucide-react";
+import { LogIn, LogOut } from "lucide-react";
 import { clockAction } from "./actions";
 
 function getPosition(): Promise<GeolocationPosition | null> {
@@ -34,10 +34,8 @@ function getPosition(): Promise<GeolocationPosition | null> {
 
 export function ClockButtons({
   canClockOut,
-  finishedToday,
 }: {
   canClockOut: boolean;
-  finishedToday: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [busy, setBusy] = useState(false);
@@ -82,14 +80,6 @@ export function ClockButtons({
 
   const isBusy = pending || busy;
 
-  if (finishedToday) {
-    return (
-      <div className="flex w-full items-center justify-center gap-2 rounded-[16px] border border-white/10 bg-white/[.06] px-4 py-3 text-white shadow-[0_4px_0_rgba(0,0,0,.22)]">
-        <CheckCircle2 size={23} />
-        <span className="text-[18px] font-black">本日の勤務完了</span>
-      </div>
-    );
-  }
 
   const label = mode === "IN" ? "出勤する" : "退勤する";
   const Icon = mode === "IN" ? LogIn : LogOut;
