@@ -20,7 +20,7 @@ export function StampCard({ stamp }: { stamp: GameState["stamp"] }) {
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] border border-[#8e8780] bg-[linear-gradient(145deg,#292c2f,#080a0b)] shadow-[inset_0_1px_0_rgba(255,255,255,.22),0_2px_4px_rgba(0,0,0,.75)]">
             <CalendarDays size={21} strokeWidth={2.4} className="text-[#eee9df]" />
           </span>
-          <span>{yearMonthLabel(stamp.yearMonth)}の勤務スタンプ</span>
+          <span className="whitespace-nowrap text-[clamp(13px,3.8vw,17px)] leading-none">{yearMonthLabel(stamp.yearMonth)}の勤務スタンプ</span>
         </h2>
         <div className="shrink-0 text-right text-[9px] font-bold leading-[1.55] text-[#aaa39a]">
           <div>今月の目標：{stamp.targetDays}勤務</div>
