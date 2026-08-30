@@ -119,7 +119,7 @@ export default async function ClockPage() {
             staffName={staff.name}
           >
             <LiveClock />
-            <ClockButtons canClockOut={canClockOut} finishedToday={finished} />
+            <ClockButtons canClockOut={canClockOut} />
             <p className="rounded-full bg-white/80 px-3 py-1 text-[12px] font-bold text-slate-700 shadow-sm backdrop-blur-sm">
               {canClockOut
                 ? `出勤時刻 ${todayIn ? formatJst(todayIn.timestamp).slice(-5) : "--:--"}`
