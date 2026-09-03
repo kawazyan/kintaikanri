@@ -3,9 +3,10 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getStaffId } from "@/lib/auth";
+import { getStaffId, requireAdmin } from "@/lib/auth";
 import { combineJstDateAndTime, jstDayRange, jstMonthRange, toJstDateValue } from "@/lib/time";
 import { notifyAdminsOfShiftChange } from "@/lib/notify";
+import type { Staff } from "@prisma/client";
 
 export type BulkShiftInput = {
   yearMonth: string; // "YYYY-MM"
@@ -50,6 +51,21 @@ export async function getMonthPlanningData(
   const staffId = await getStaffId();
   if (!staffId) redirect("/");
 
+  return runGetMonthPlanningData(staffId, yearMonth);
+}
+
+export async function adminGetMonthPlanningData(
+  staffId: string,
+  yearMonth: string
+): Promise<{ existingDates: string[]; targetAmount: number | null }> {
+  await requireAdmin();
+  return runGetMonthPlanningData(staffId, yearMonth);
+}
+
+async function runGetMonthPlanningData(
+  staffId: string,
+  yearMonth: string
+): Promise<{ existingDates: string[]; targetAmount: number | null }> {
   const { start, end } = jstMonthRange(yearMonth);
   const [shifts, target] = await Promise.all([
     prisma.shift.findMany({
@@ -73,6 +89,35 @@ export async function createShiftsBulk(
   const staffId = await getStaffId();
   if (!staffId) redirect("/");
 
+  const staff = await prisma.staff.findUnique({ where: { id: staffId } });
+  if (!staff) redirect("/");
+
+  return runCreateShiftsBulk(staffId, staff, input);
+}
+
+// 管理者がスタッフの代わりにまとめてシフトを登録する版。ロジックは
+// createShiftsBulk と共通(runCreateShiftsBulk)で、認証だけが異なる。
+export async function adminCreateShiftsBulk(
+  staffId: string,
+  input: BulkShiftInput
+): Promise<{ error: string } | { ok: true; createdCount: number; skippedCount: number }> {
+  await requireAdmin();
+
+  const staff = await prisma.staff.findUnique({ where: { id: staffId } });
+  if (!staff) return { error: "スタッフが見つかりません" };
+
+  const result = await runCreateShiftsBulk(staffId, staff, input);
+  if (!("error" in result)) {
+    revalidatePath("/admin/shifts");
+  }
+  return result;
+}
+
+async function runCreateShiftsBulk(
+  staffId: string,
+  staff: Staff,
+  input: BulkShiftInput
+): Promise<{ error: string } | { ok: true; createdCount: number; skippedCount: number }> {
   const fieldError = validateCommonFields(input);
   if (fieldError) return { error: fieldError };
   if (!/^\d{4}-\d{2}$/.test(input.yearMonth)) return { error: "対象月が不正です" };
@@ -85,9 +130,6 @@ export async function createShiftsBulk(
       return { error: "月間受取予定単価を正しく入力してください" };
     }
   }
-
-  const staff = await prisma.staff.findUnique({ where: { id: staffId } });
-  if (!staff) redirect("/");
 
   const { start, end } = jstMonthRange(input.yearMonth);
   const existing = await prisma.shift.findMany({

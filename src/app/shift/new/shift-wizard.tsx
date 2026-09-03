@@ -11,7 +11,12 @@ import {
 } from "@/lib/time";
 import { CARRIERS, CARRIER_OTHER, WORK_TYPE_LABEL, isPresetCarrier } from "@/lib/carriers";
 import { YenInput } from "@/components/yen-input";
-import { createShiftsBulk, getMonthPlanningData } from "../actions";
+import {
+  createShiftsBulk,
+  getMonthPlanningData,
+  adminCreateShiftsBulk,
+  adminGetMonthPlanningData,
+} from "../actions";
 import { DayChecklist } from "./day-checklist";
 
 type WorkType = "BAND" | "SPOT";
@@ -36,7 +41,14 @@ const PRIMARY_BUTTON =
 const OUTLINE_BUTTON =
   "flex-1 rounded-xl border border-slate-300 bg-white py-3 text-sm text-slate-700 active:scale-[0.98] disabled:opacity-40";
 
-export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
+export function ShiftWizard({
+  initial,
+  staffId,
+}: {
+  initial?: WizardInitialValues;
+  /** 管理者がスタッフの代わりに登録する場合に指定する。未指定なら現在ログイン中の本人。 */
+  staffId?: string;
+}) {
   const router = useRouter();
   const [step, setStep] = useState(1);
 
@@ -81,7 +93,9 @@ export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
   function loadMonthData(ym: string) {
     setLoadingMonth(true);
     startTransition(async () => {
-      applyMonthData(await getMonthPlanningData(ym));
+      applyMonthData(
+        staffId ? await adminGetMonthPlanningData(staffId, ym) : await getMonthPlanningData(ym)
+      );
     });
   }
 
@@ -89,7 +103,10 @@ export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
   // only inside the .then() callback, not synchronously in the effect body.
   useEffect(() => {
     let cancelled = false;
-    getMonthPlanningData(yearMonth).then((data) => {
+    const load = staffId
+      ? adminGetMonthPlanningData(staffId, yearMonth)
+      : getMonthPlanningData(yearMonth);
+    load.then((data) => {
       if (!cancelled) applyMonthData(data);
     });
     return () => {
@@ -152,7 +169,7 @@ export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
       return;
     }
     startTransition(async () => {
-      const result = await createShiftsBulk({
+      const input = {
         yearMonth,
         workType,
         carrier,
@@ -167,11 +184,14 @@ export function ShiftWizard({ initial }: { initial?: WizardInitialValues }) {
                 sortedSelectedDates.map((d) => [d, spotAmounts[d] as number])
               )
             : undefined,
-      });
+      };
+      const result = staffId
+        ? await adminCreateShiftsBulk(staffId, input)
+        : await createShiftsBulk(input);
       if ("error" in result) {
         setError(result.error);
       } else {
-        router.push("/shift");
+        router.push(staffId ? "/admin/shifts" : "/shift");
       }
     });
   }

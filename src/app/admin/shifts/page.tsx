@@ -42,9 +42,14 @@ export default async function AdminShiftsPage({
         <h1 className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
           シフト一覧(全スタッフ)
         </h1>
-        <Link href="/admin/shifts/history" className="text-sm text-blue-400 underline">
-          変更履歴を見る
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link href="/admin/shifts/new" className="text-sm font-black text-emerald-400 underline">
+            + シフトを登録
+          </Link>
+          <Link href="/admin/shifts/history" className="text-sm text-blue-400 underline">
+            変更履歴を見る
+          </Link>
+        </div>
       </div>
 
       <form method="get" className="mb-4 flex flex-wrap items-end gap-3 text-sm text-slate-400">
