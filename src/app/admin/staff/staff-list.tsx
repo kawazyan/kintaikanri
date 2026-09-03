@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { updateStaff, adminBulkDeleteStaff } from "./actions";
+import { updateStaff, adminBulkDeleteStaff, adminForceDeleteStaff } from "./actions";
 
 const FIELD_CLASS =
   "rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none";
@@ -19,6 +19,7 @@ type StaffRow = {
 
 export function StaffList({ staffList }: { staffList: StaffRow[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [blocked, setBlocked] = useState<{ id: string; name: string }[]>([]);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -41,12 +42,42 @@ export function StaffList({ staffList }: { staffList: StaffRow[] }) {
     if (!selected.size) return;
     if (!window.confirm(`選択した${selected.size}名を削除します。打刻・シフト等の履歴があるスタッフは削除できません。元に戻せません。削除しますか？`)) return;
     startTransition(async () => {
-      const result = await adminBulkDeleteStaff([...selected]);
+      const idList = [...selected];
+      const result = await adminBulkDeleteStaff(idList);
       setSelected(new Set());
       router.refresh();
       if (result.failed > 0) {
-        window.alert(`${result.deleted}名を削除しました。${result.failed}名は打刻・シフト等の履歴が残っているため削除できませんでした。`);
+        const blockedList = result.blockedIds
+          .map((id) => {
+            const s = staffList.find((x) => x.id === id);
+            return s ? { id: s.id, name: s.name } : null;
+          })
+          .filter((x): x is { id: string; name: string } => x !== null);
+        setBlocked(blockedList);
+        window.alert(`${result.deleted}名を削除しました。${result.failed}名は打刻・シフト等の履歴が残っているため削除できませんでした。強制削除する場合は下の案内をご確認ください。`);
+      } else {
+        setBlocked([]);
       }
+    });
+  }
+
+  function handleForceDelete() {
+    if (!blocked.length) return;
+    const names = blocked.map((b) => b.name).join("・");
+    if (
+      !window.confirm(
+        `${names} を完全に削除します。この操作は元に戻せません。\n\n` +
+          `打刻履歴・シフト・経費申請・振込申請・獲得称号・皆勤賞など、このスタッフに紐づく全ての記録が完全に削除されます。\n` +
+          `稼働依頼(取引先への請求実績)だけは削除せず、「スタッフ一覧外の稼働者」として残ります。\n\n` +
+          `本当に削除しますか？`
+      )
+    )
+      return;
+    startTransition(async () => {
+      const result = await adminForceDeleteStaff(blocked.map((b) => b.id));
+      setBlocked([]);
+      router.refresh();
+      window.alert(`${result.deleted}名を完全に削除しました。${result.failed > 0 ? `${result.failed}名は削除できませんでした。` : ""}`);
     });
   }
 
@@ -62,6 +93,24 @@ export function StaffList({ staffList }: { staffList: StaffRow[] }) {
             className="rounded-lg border border-red-700 bg-red-950/40 px-3 py-1.5 text-xs font-black text-red-300 disabled:opacity-50"
           >
             選択した項目を削除
+          </button>
+        </div>
+      )}
+      {blocked.length > 0 && (
+        <div className="mb-3 rounded-xl border border-amber-700/70 bg-amber-950/25 px-4 py-3 text-sm">
+          <p className="font-black text-amber-200">
+            {blocked.map((b) => b.name).join("・")} は打刻・シフト等の履歴が残っているため通常削除できません。
+          </p>
+          <p className="mt-1 text-xs text-amber-300/80">
+            強制削除すると、このスタッフに紐づく打刻・シフト・経費申請・振込申請などの記録も完全に削除されます。元に戻せません。
+          </p>
+          <button
+            type="button"
+            onClick={handleForceDelete}
+            disabled={pending}
+            className="mt-2 rounded-lg border border-amber-600 bg-amber-950/40 px-3 py-1.5 text-xs font-black text-amber-200 disabled:opacity-50"
+          >
+            履歴ごと強制削除する
           </button>
         </div>
       )}
