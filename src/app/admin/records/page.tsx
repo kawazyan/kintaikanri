@@ -23,12 +23,16 @@ export default async function AdminRecordsPage({
     const { start, end } = jstDayRange(new Date(`${date}T00:00:00+09:00`));
     where.timestamp = { gte: start, lt: end };
   }
-  if (unlinkedOnly === "1") where.shiftId = null;
+  // シフトに紐付いていない、または紐付いたシフト自体がキャンセル済み
+  // (=どちらも勤務スタンプ・確定受取金額の集計対象外)の打刻だけを表示する。
+  if (unlinkedOnly === "1") {
+    where.OR = [{ shiftId: null }, { shift: { cancelledAt: { not: null } } }];
+  }
 
   const [records, staffList] = await Promise.all([
     prisma.clockRecord.findMany({
       where,
-      include: { staff: true },
+      include: { staff: true, shift: { select: { cancelledAt: true, cancellationReason: true } } },
       orderBy: { timestamp: "desc" },
       take: 200,
     }),
@@ -66,7 +70,7 @@ export default async function AdminRecordsPage({
           </label>
           <label className="flex items-center gap-1.5 pb-1.5 text-slate-300">
             <input type="checkbox" name="unlinkedOnly" value="1" defaultChecked={unlinkedOnly === "1"} />
-            シフト外(未紐付け)のみ
+            集計対象外のみ(シフト外／キャンセル済みシフト)
           </label>
           <button
             type="submit"
@@ -104,12 +108,19 @@ export default async function AdminRecordsPage({
                 <td className="py-2 pr-3">{formatJst(r.timestamp)}</td>
                 <td className="py-2 pr-3">{r.storeName ?? "-"}</td>
                 <td className="py-2 pr-3">
-                  {r.shiftId ? (
-                    "-"
-                  ) : (
+                  {!r.shiftId ? (
                     <span className="rounded bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-400">
                       シフト外
                     </span>
+                  ) : r.shift?.cancelledAt ? (
+                    <span
+                      className="rounded bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-400"
+                      title={r.shift.cancellationReason ?? ""}
+                    >
+                      シフトがキャンセル済み
+                    </span>
+                  ) : (
+                    "-"
                   )}
                 </td>
                 <td className="py-2 pr-3">

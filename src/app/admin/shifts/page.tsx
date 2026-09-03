@@ -12,10 +12,10 @@ const FIELD_CLASS =
 export default async function AdminShiftsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ staffId?: string; date?: string; workType?: string }>;
+  searchParams: Promise<{ staffId?: string; date?: string; workType?: string; cancelledOnly?: string }>;
 }) {
   await requireAdmin();
-  const { staffId, date, workType } = await searchParams;
+  const { staffId, date, workType, cancelledOnly } = await searchParams;
 
   const where: Prisma.ShiftWhereInput = {};
   if (staffId) where.staffId = staffId;
@@ -24,6 +24,7 @@ export default async function AdminShiftsPage({
     const { start, end } = jstDayRange(new Date(`${date}T00:00:00+09:00`));
     where.startTime = { gte: start, lt: end };
   }
+  if (cancelledOnly === "1") where.cancelledAt = { not: null };
 
   const [shifts, staffList] = await Promise.all([
     prisma.shift.findMany({
@@ -75,6 +76,10 @@ export default async function AdminShiftsPage({
             <option value="BAND">帯稼働</option>
             <option value="SPOT">スポット稼働</option>
           </select>
+        </label>
+        <label className="flex items-center gap-1.5 pb-1.5 text-slate-300">
+          <input type="checkbox" name="cancelledOnly" value="1" defaultChecked={cancelledOnly === "1"} />
+          キャンセル済みのみ
         </label>
         <button
           type="submit"

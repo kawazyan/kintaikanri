@@ -79,6 +79,36 @@ export async function adminDeleteShift(shiftId: string) {
   revalidatePath("/admin/shifts");
 }
 
+// 案件終了・稼働キャンセル等でシフトが cancelledAt 付きになっていると、
+// 打刻自体はシフトに紐付いていても勤務スタンプ・確定受取金額の集計から
+// 完全に除外される(game.ts / earnings.ts はどちらも cancelledAt: null の
+// シフトしか見ない)。誤ってキャンセルされた場合の取り消し手段がなかった
+// ため追加する。
+export async function adminRestoreShift(shiftId: string) {
+  await requireAdmin();
+
+  const existing = await prisma.shift.findUnique({ where: { id: shiftId } });
+  if (!existing || !existing.cancelledAt) return;
+
+  const updated = await prisma.shift.update({
+    where: { id: shiftId },
+    data: { cancelledAt: null, cancellationReason: null, cancelledBy: null },
+  });
+
+  await prisma.shiftHistory.create({
+    data: {
+      shiftId: updated.id,
+      staffId: updated.staffId,
+      changeType: "UPDATE",
+      before: JSON.parse(JSON.stringify(existing)),
+      after: JSON.parse(JSON.stringify(updated)),
+    },
+  });
+
+  revalidatePath("/admin/shifts");
+  revalidatePath("/admin/records");
+}
+
 export async function adminBulkDeleteShifts(shiftIds: string[]) {
   await requireAdmin();
   if (!shiftIds.length) return { ok: true as const, deleted: 0 };

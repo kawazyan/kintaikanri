@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatJst } from "@/lib/time";
 import { WORK_TYPE_LABEL } from "@/lib/carriers";
-import { adminDeleteShift, adminBulkDeleteShifts } from "./actions";
+import { adminDeleteShift, adminBulkDeleteShifts, adminRestoreShift } from "./actions";
 
 type ShiftRow = {
   id: string;
@@ -14,6 +14,8 @@ type ShiftRow = {
   endTime: Date;
   carrier: string;
   storeName: string;
+  cancelledAt: Date | null;
+  cancellationReason: string | null;
   staff: { name: string; employeeCode: string };
 };
 
@@ -41,6 +43,14 @@ export function ShiftsTable({ shifts }: { shifts: ShiftRow[] }) {
     if (!window.confirm("このシフトを削除しますか?")) return;
     startTransition(async () => {
       await adminDeleteShift(id);
+      router.refresh();
+    });
+  }
+
+  function handleRestore(id: string) {
+    if (!window.confirm("このシフトのキャンセルを取り消しますか? 打刻がすでに紐付いていれば、勤務スタンプ・確定受取金額の集計対象に戻ります。")) return;
+    startTransition(async () => {
+      await adminRestoreShift(id);
       router.refresh();
     });
   }
@@ -83,12 +93,13 @@ export function ShiftsTable({ shifts }: { shifts: ShiftRow[] }) {
               <th className="py-2 pr-3">終了</th>
               <th className="py-2 pr-3">キャリア</th>
               <th className="py-2 pr-3">店舗</th>
+              <th className="py-2 pr-3">状態</th>
               <th className="py-2 pr-3"></th>
             </tr>
           </thead>
           <tbody>
             {shifts.map((s) => (
-              <tr key={s.id} className="border-b border-slate-800/60 text-slate-200">
+              <tr key={s.id} className={`border-b border-slate-800/60 text-slate-200 ${s.cancelledAt ? "opacity-60" : ""}`}>
                 <td className="py-2 pl-4">
                   <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggleOne(s.id)} aria-label="選択" />
                 </td>
@@ -100,13 +111,31 @@ export function ShiftsTable({ shifts }: { shifts: ShiftRow[] }) {
                 <td className="py-2 pr-3">{formatJst(s.endTime)}</td>
                 <td className="py-2 pr-3">{s.carrier}</td>
                 <td className="py-2 pr-3">{s.storeName}</td>
+                <td className="py-2 pr-3">
+                  {s.cancelledAt ? (
+                    <span
+                      className="rounded bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-400"
+                      title={s.cancellationReason ?? ""}
+                    >
+                      キャンセル済み
+                    </span>
+                  ) : (
+                    "-"
+                  )}
+                </td>
                 <td className="py-2 pr-3 whitespace-nowrap">
                   <Link href={`/admin/shifts/${s.id}`} className="text-blue-400 underline">
                     編集
                   </Link>{" "}
-                  <button type="button" onClick={() => handleDeleteOne(s.id)} disabled={pending} className="text-red-400 underline disabled:opacity-50">
-                    削除
-                  </button>
+                  {s.cancelledAt ? (
+                    <button type="button" onClick={() => handleRestore(s.id)} disabled={pending} className="text-emerald-400 underline disabled:opacity-50">
+                      キャンセル取消
+                    </button>
+                  ) : (
+                    <button type="button" onClick={() => handleDeleteOne(s.id)} disabled={pending} className="text-red-400 underline disabled:opacity-50">
+                      削除
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
