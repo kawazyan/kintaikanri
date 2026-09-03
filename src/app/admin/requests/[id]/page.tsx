@@ -2,6 +2,7 @@ import {notFound} from "next/navigation";
 import {requireAdmin} from "@/lib/auth";
 import {prisma} from "@/lib/prisma";
 import {getBaseUrl} from "@/lib/url";
+import {syncWorkOrderShiftLinks} from "@/lib/work-order-linking";
 import {AdminNav} from "../../admin-nav";
 import {approveOrder,cancelOrder,terminateOrder,addSite,linkShift,mapRequestedStaff,updateRequestedStaffName,reviewDailyOverride,adminEditOrder,cancelAssignment,cancelLinkedShift,issueWorkOrderShare,stopWorkOrderShare} from "../actions";
 import {formatJst} from "@/lib/time";
@@ -9,6 +10,7 @@ import {DeleteOrderButton} from "../delete-order-button";
 
 export default async function AdminRequestDetail({params}:{params:Promise<{id:string}>}){
   await requireAdmin(); const {id}=await params;
+  await syncWorkOrderShiftLinks(id);
   const o=await prisma.workOrder.findUnique({where:{id},include:{client:true,sites:true,scheduleDays:{orderBy:{workDate:"asc"}},accessTokens:{where:{active:true},orderBy:{createdAt:"desc"},take:1},staffAssignments:{include:{staff:true,shifts:{include:{clockRecords:true},orderBy:{startTime:"asc"}},dailyOverrides:{orderBy:{createdAt:"desc"}}}},histories:{orderBy:{changedAt:"desc"}}}}); if(!o)notFound();
   const baseUrl=await getBaseUrl();
   const activeStaff=await prisma.staff.findMany({where:{status:"ACTIVE"},orderBy:{name:"asc"}});

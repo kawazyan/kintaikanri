@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatJst } from "@/lib/time";
+import { syncWorkOrderShiftLinks } from "@/lib/work-order-linking";
 import { ClientAutoRefresh } from "../../components/auto-refresh";
 
 const requestLabels = { CATCH: "キャッチ", CLOSER: "クローザー", BAND: "帯稼働", CONSULTING: "コンサルティング" } as const;
@@ -13,6 +14,11 @@ export default async function ClientRequestStatusPage({ params, searchParams }: 
   const search = await searchParams;
   const access = await prisma.workOrderAccessToken.findUnique({ where: { token }, include: { workOrder: true } });
   if (!access?.active) notFound();
+
+  // 帯稼働などで月の途中にシフトが追加登録されていくケースでも、取引先が
+  // このページを開くたび(自動更新も含む)に最新の紐づけへ同期させる。
+  await syncWorkOrderShiftLinks(access.workOrderId);
+
   const o = await prisma.workOrder.findUnique({
     where: { id: access.workOrderId },
     include: {
@@ -28,7 +34,7 @@ export default async function ClientRequestStatusPage({ params, searchParams }: 
 
   return <><ClientAutoRefresh/><main className="min-h-dvh bg-[linear-gradient(180deg,#edf1f4,#f8fafb)] text-slate-900"><div className="mx-auto max-w-4xl px-4 py-8">
     {search.submitted === "1" && <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-black text-emerald-800">稼働依頼を送信しました。管理者の承認をお待ちください。このページのURLから進捗を確認できます。</div>}
-    <header className="rounded-[28px] bg-[#14283b] p-6 text-white shadow-[0_16px_44px_rgba(20,40,59,.22)]"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-black tracking-[.18em] text-slate-300">REQUEST STATUS</p><h1 className="mt-1 text-2xl font-black">{o.client.name}</h1><p className="mt-2 text-sm font-bold text-slate-300">{o.yearMonth} ・ {requestLabels[o.requestType]}</p></div><span className="rounded-full bg-white/10 px-4 py-2 text-sm font-black">{statusLabels[o.status] ?? o.status}</span></div></header>
+    <header className="rounded-[28px] bg-[#14283b] p-6 text-white shadow-[0_16px_44px_rgba(20,40,59,.22)]"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-black tracking-[.18em] text-slate-300">REQUEST STATUS</p><h1 className="mt-1 text-2xl font-black">{o.client.name} 様</h1><p className="mt-2 text-sm font-bold text-slate-300">{o.yearMonth} ・ {requestLabels[o.requestType]}</p></div><span className="rounded-full bg-white/10 px-4 py-2 text-sm font-black">{statusLabels[o.status] ?? o.status}</span></div></header>
 
     <section className="mt-5 grid gap-4 md:grid-cols-2"><div className="rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-black/5"><p className="text-xs font-black tracking-widest text-slate-400">依頼内容</p><dl className="mt-4 space-y-3 text-sm"><div className="flex justify-between gap-4"><dt className="text-slate-400">キャリア</dt><dd className="font-black">{o.requestedCarrier || "—"}</dd></div><div className="flex justify-between gap-4"><dt className="text-slate-400">稼働場所</dt><dd className="font-black">{o.defaultStoreName}</dd></div><div className="flex justify-between gap-4"><dt className="text-slate-400">稼働者</dt><dd className="text-right font-black">{o.staffAssignments.map(a=>a.staff?.name ?? a.requestedName).join(" / ")}</dd></div><div className="flex justify-between gap-4"><dt className="text-slate-400">単価</dt><dd className="font-black">{first ? `${first.contractType === "MONTHLY" ? "月額" : "日額"} ¥${first.rateAmountExTax.toLocaleString("ja-JP")}（税抜）` : "—"}</dd></div><div className="flex justify-between gap-4"><dt className="text-slate-400">交通費</dt><dd className="font-black">{first ? travelLabels[first.travelExpense] : "—"}</dd></div></dl></div>
     <div className="rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-black/5"><p className="text-xs font-black tracking-widest text-slate-400">稼働予定</p>{o.requestType === "BAND" ? <div className="mt-4"><p className="text-2xl font-black">{o.plannedDays}<span className="ml-1 text-sm">日予定</span></p><p className="mt-2 text-sm font-bold text-slate-500">具体的な稼働日はスタッフ・管理者側のシフトで管理されます。</p>{o.schedulePattern === "FIXED" && <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm font-black">基本時間 {o.fixedStartTime}〜{o.fixedEndTime}</p>}</div> : <div className="mt-3 space-y-2">{o.scheduleDays.map(d=><div key={d.id} className="flex justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm"><b>{formatJst(d.workDate).slice(0,10)}</b><span>{d.startTime || o.fixedStartTime}〜{d.endTime || o.fixedEndTime}</span></div>)}</div>}</div></section>
