@@ -9,6 +9,7 @@ import {
   ClipboardCheck,
   Clock3,
   FileText,
+  Gift,
   LayoutDashboard,
   LogOut,
   Mail,
@@ -26,6 +27,7 @@ const links = [
   { href: "/admin/clients", label: "取引先窓口", icon: Building2 },
   { href: "/admin/requests", label: "稼働依頼", icon: ClipboardCheck },
   { href: "/admin/expenses", label: "経費", icon: ReceiptText },
+  { href: "/admin/compensation", label: "別途報酬", icon: Gift },
   { href: "/admin/invoices", label: "請求", icon: FileText },
   { href: "/admin/admins", label: "通知先", icon: Mail },
 ];

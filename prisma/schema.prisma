@@ -88,6 +88,7 @@ model Staff {
   workOrderAssignments  WorkOrderStaff[]
   expenses              Expense[]
   notices               Notice[]
+  compensationRequests  CompensationRequest[]
 }
 
 model MonthlyEarningTarget {
@@ -302,6 +303,11 @@ enum ExpenseCategory {
   LODGING
   OTHER
 }
+enum CompensationCategory {
+  REFERRAL
+  INCENTIVE
+  OTHER
+}
 enum ExpenseStatus {
   DRAFT
   SUBMITTED
@@ -494,6 +500,31 @@ model Expense {
   yearMonth String
   expenseDate DateTime
   category ExpenseCategory
+  description String?
+  amountTaxInclusive Int
+  amountExTax Int
+  taxAmount Int
+  taxRate Int @default(10)
+  status ExpenseStatus @default(DRAFT)
+  submittedAt DateTime?
+  reviewedAt DateTime?
+  reviewerName String?
+  reviewNote String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([staffId, yearMonth])
+  @@index([status])
+}
+
+// 別途報酬申請(item 8)。経費申請とは逆に、スタッフに追加で支払うべき報酬
+// (リファラル報酬・インセンティブ等)をスタッフ自身が申請する。承認フローは
+// Expense と同じ ExpenseStatus を再利用する。
+model CompensationRequest {
+  id String @id @default(cuid())
+  staffId String
+  staff Staff @relation(fields: [staffId], references: [id])
+  yearMonth String
+  category CompensationCategory
   description String?
   amountTaxInclusive Int
   amountExTax Int

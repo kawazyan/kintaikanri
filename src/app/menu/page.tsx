@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Award, ChevronRight, Menu, Sofa, Users, Wallet, Sparkles, ShieldCheck, ReceiptText } from "lucide-react";
+import { Award, ChevronRight, Menu, Sofa, Users, Wallet, Sparkles, ShieldCheck, ReceiptText, Gift } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
@@ -47,7 +47,6 @@ export default async function MenuPage() {
         </section>
 
         <section>
-          <p className="mb-2 px-1 text-[11px] font-black tracking-[.08em] text-slate-400">支払い・アカウント</p>
           <div className="game-hud-frame game-cut-card overflow-hidden rounded-[20px] shadow-[0_8px_24px_rgba(15,23,42,.07)] ring-1 ring-black/[.04]">
             <Link href="/payment/history" className="flex items-center gap-3 p-4 transition active:bg-slate-50">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] bg-gradient-to-br from-red-50 to-slate-50 ring-1 ring-red-100">
@@ -69,6 +68,19 @@ export default async function MenuPage() {
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-black text-slate-900">経費申請</span>
                 <span className="mt-0.5 block text-[11px] font-semibold text-slate-400">交通費・宿泊費・その他経費</span>
+              </span>
+              <ChevronRight size={19} className="shrink-0 text-slate-300" />
+            </Link>
+
+            <div className="mx-4 h-px bg-slate-100" />
+
+            <Link href="/payment/compensation" className="flex items-center gap-3 p-4 transition active:bg-slate-50">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] bg-slate-50 ring-1 ring-slate-100">
+                <Gift size={21} className="text-slate-700" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-black text-slate-900">別途報酬申請</span>
+                <span className="mt-0.5 block text-[11px] font-semibold text-slate-400">リファラル報酬・インセンティブなど</span>
               </span>
               <ChevronRight size={19} className="shrink-0 text-slate-300" />
             </Link>

@@ -34,10 +34,10 @@ export default async function ExpensesPage() {
 
         <form action={addExpense} className="mt-4 space-y-3 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5">
           <input type="hidden" name="yearMonth" value={ym} />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-[2fr_3fr] gap-3">
             <label className="block min-w-0 text-xs font-black">
               日付
-              <input type="date" name="expenseDate" required className="mt-1 w-full min-w-0 rounded-xl border p-3 text-sm" />
+              <input type="date" name="expenseDate" required className="mt-1 w-full min-w-0 rounded-xl border px-2 py-3 text-sm" />
             </label>
             <label className="block min-w-0 text-xs font-black">
               区分
