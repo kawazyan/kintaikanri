@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteGameData } from "@/lib/game";
@@ -22,6 +23,7 @@ export async function updateStaff(staffId: string, formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const status = String(formData.get("status") ?? "ACTIVE") as "ACTIVE" | "RETIRED";
+  const showRetired = String(formData.get("showRetired") ?? "") === "1";
   if (!employeeCode || !name || !email) return;
 
   const before = await prisma.staff.findUnique({ where: { id: staffId }, select: { status: true } });
@@ -37,6 +39,9 @@ export async function updateStaff(staffId: string, formData: FormData) {
   }
 
   revalidatePath("/admin/staff");
+  // 保存後にページを作り直させることで、フォームの各項目が確実に最新の
+  // 保存内容で再表示されるようにする(updateStaffDetails と同じ理由)。
+  redirect(`/admin/staff?saved=1${showRetired ? "&showRetired=1" : ""}`);
 }
 
 export async function adminBulkDeleteStaff(staffIds: string[]) {
@@ -128,4 +133,9 @@ export async function updateStaffDetails(staffId: string, formData: FormData) {
 
   revalidatePath("/admin/staff");
   revalidatePath(`/admin/staff/${staffId}`);
+  // 保存後に一覧を再取得した状態のページへ遷移させ、フォームの各項目
+  // (支払方法など)が確実に最新の保存内容で再表示されるようにする。
+  // (フォームがそのままだと defaultValue のみの input/select は再送信後も
+  // 画面上は変更前の値のまま据え置かれてしまうため、遷移で作り直す。)
+  redirect(`/admin/staff/${staffId}?saved=1`);
 }

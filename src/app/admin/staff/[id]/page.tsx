@@ -14,11 +14,14 @@ const FIELD_CLASS =
 
 export default async function AdminStaffDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ saved?: string }>;
 }) {
   await requireAdmin();
   const { id } = await params;
+  const { saved } = await searchParams;
 
   const staff = await prisma.staff.findUnique({ where: { id } });
   if (!staff) notFound();
@@ -32,7 +35,17 @@ export default async function AdminStaffDetailPage({
         スタッフ詳細 - {staff.name}({staff.employeeCode})
       </h1>
 
-      <form action={boundAction} className="flex flex-col gap-4">
+      {saved === "1" && (
+        <p className="mb-4 rounded-lg border border-emerald-700 bg-emerald-950/40 px-3 py-2 text-sm font-semibold text-emerald-300">
+          保存しました
+        </p>
+      )}
+
+      {/* key を保存時刻に紐づけることで、保存のたびにフォームを作り直させる。
+          そうしないと select/input の defaultValue は初回マウント時にしか
+          反映されないため、支払方法などを変更して保存しても画面上は変更前の
+          値のまま据え置かれて見えてしまう(実際の保存自体はできている)。 */}
+      <form key={staff.updatedAt.getTime()} action={boundAction} className="flex flex-col gap-4">
         <h2 className="text-sm font-semibold text-blue-400/80">個人情報</h2>
         <label className="flex flex-col gap-1 text-sm text-slate-400">
           生年月日

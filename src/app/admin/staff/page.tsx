@@ -10,10 +10,10 @@ const FIELD_CLASS =
 export default async function AdminStaffPage({
   searchParams,
 }: {
-  searchParams: Promise<{ showRetired?: string }>;
+  searchParams: Promise<{ showRetired?: string; saved?: string }>;
 }) {
   await requireAdmin();
-  const { showRetired } = await searchParams;
+  const { showRetired, saved } = await searchParams;
 
   const staffList = await prisma.staff.findMany({
     where: showRetired ? {} : { status: "ACTIVE" },
@@ -26,6 +26,12 @@ export default async function AdminStaffPage({
       <h1 className="mb-6 bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
         スタッフ管理
       </h1>
+
+      {saved === "1" && (
+        <p className="mb-4 rounded-lg border border-emerald-700 bg-emerald-950/40 px-3 py-2 text-sm font-semibold text-emerald-300">
+          保存しました
+        </p>
+      )}
 
       <section className="mb-8 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-lg shadow-black/40 backdrop-blur-sm">
         <h2 className="mb-3 text-sm font-semibold text-slate-300">新規スタッフ登録</h2>
@@ -57,7 +63,7 @@ export default async function AdminStaffPage({
         </a>
       </div>
 
-      <StaffList staffList={staffList} />
+      <StaffList staffList={staffList} showRetired={!!showRetired} />
     </main>
   );
 }

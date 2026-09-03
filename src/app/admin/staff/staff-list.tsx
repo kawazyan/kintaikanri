@@ -15,9 +15,16 @@ type StaffRow = {
   email: string;
   status: "ACTIVE" | "RETIRED";
   paymentMethod: "FIXED" | "REQUEST";
+  updatedAt: Date;
 };
 
-export function StaffList({ staffList }: { staffList: StaffRow[] }) {
+export function StaffList({
+  staffList,
+  showRetired = false,
+}: {
+  staffList: StaffRow[];
+  showRetired?: boolean;
+}) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [blocked, setBlocked] = useState<{ id: string; name: string }[]>([]);
   const [pending, startTransition] = useTransition();
@@ -129,7 +136,12 @@ export function StaffList({ staffList }: { staffList: StaffRow[] }) {
                 aria-label="選択"
                 className="mt-3 shrink-0"
               />
-              <form action={updateStaff.bind(null, s.id)} className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-5 sm:items-center">
+              <form
+                key={s.updatedAt.getTime()}
+                action={updateStaff.bind(null, s.id)}
+                className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-5 sm:items-center"
+              >
+                <input type="hidden" name="showRetired" value={showRetired ? "1" : ""} />
                 <input name="employeeCode" defaultValue={s.employeeCode} required className={FIELD_CLASS} />
                 <input name="name" defaultValue={s.name} required className={FIELD_CLASS} />
                 <input name="email" type="email" defaultValue={s.email} required className={FIELD_CLASS} />
