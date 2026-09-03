@@ -87,6 +87,7 @@ model Staff {
   perfectAttendances    PerfectAttendance[]
   workOrderAssignments  WorkOrderStaff[]
   expenses              Expense[]
+  notices               Notice[]
 }
 
 model MonthlyEarningTarget {
@@ -213,6 +214,22 @@ model AdminEmail {
   id        String   @id @default(cuid())
   email     String   @unique
   createdAt DateTime @default(now())
+}
+
+// 掲示板形式のお知らせ。全スタッフが投稿・編集できる(仕様)。投稿者名は
+// 投稿時点でスナップショットしておき、退職・強制削除後も表示上は名前が
+// 残るようにする(authorId は onDelete: SetNull で紐付けだけ外す)。
+model Notice {
+  id           String   @id @default(cuid())
+  authorId     String?
+  author       Staff?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  authorName   String
+  body         String
+  editedByName String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([createdAt])
 }
 
 // ゲーミフィケーション: 獲得済み称号(永続データ)。XP・コイン・現在ストリークは

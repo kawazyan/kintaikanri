@@ -5,7 +5,73 @@ import { randomBytes } from "crypto";
 import type { TravelExpenseRule } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-export async function approveOrder(id:string,formData:FormData){await requireAdmin();const name=String(formData.get("approverName")||"").trim();if(!name)throw new Error("承認者名は必須です");const before=await prisma.workOrder.findUnique({where:{id}});if(!before)throw new Error("依頼がありません");await prisma.$transaction([prisma.workOrder.update({where:{id},data:{status:"APPROVED",approvedAt:new Date(),approverName:name,approverPhone:String(formData.get("approverPhone")||"").trim()||null,approverEmail:String(formData.get("approverEmail")||"").trim()||null}}),prisma.workOrderChangeHistory.create({data:{workOrderId:id,entityType:"WORK_ORDER",entityId:id,changeType:"APPROVE",before:{status:before.status},after:{status:"APPROVED"},actorRole:"KJ",actorName:name}})]);revalidatePath(`/admin/requests/${id}`);revalidatePath("/admin/requests")}
+import { combineJstDateAndTime, jstMonthRange, toJstDateValue } from "@/lib/time";
+
+// 承認された時点で、依頼スタッフ(社内スタッフに紐付け済みのものだけ)に
+// ついてシフトとの紐づけを自動で行う。
+// 1. 対象月にすでに登録されている未紐付けのシフトがあれば、そのまま
+//    この依頼に紐づける(今まで「未紐付けシフト」欄で手動で行っていた操作)。
+// 2. 稼働日が具体的に決まっている依頼(スポット・キャッチ・クローザー・
+//    コンサルティング)は、依頼の稼働日からシフト自体をこの時点で新規作成する
+//    (帯稼働は具体的な日付を持たないため対象外。従来通り後からシフトを
+//    登録・紐付けする)。
+async function autoLinkShiftsOnApproval(workOrderId: string) {
+  const order = await prisma.workOrder.findUnique({
+    where: { id: workOrderId },
+    include: { scheduleDays: true, staffAssignments: true },
+  });
+  if (!order) return;
+
+  const { start, end } = jstMonthRange(order.yearMonth);
+  const mappedAssignments = order.staffAssignments.filter((a) => a.staffId && a.active);
+
+  for (const assignment of mappedAssignments) {
+    const staffId = assignment.staffId!;
+
+    // 1. 既存の未紐付けシフトをこの依頼に紐づける。
+    await prisma.shift.updateMany({
+      where: { staffId, workOrderStaffId: null, startTime: { gte: start, lt: end }, cancelledAt: null },
+      data: { workOrderStaffId: assignment.id },
+    });
+
+    // 2. 稼働日が確定している依頼は、まだシフトが無い日について新規作成する。
+    if (order.scheduleDays.length === 0) continue;
+
+    const linkedDateKeys = new Set(
+      (
+        await prisma.shift.findMany({
+          where: { workOrderStaffId: assignment.id },
+          select: { startTime: true },
+        })
+      ).map((s) => toJstDateValue(s.startTime))
+    );
+
+    const toCreate = order.scheduleDays.filter(
+      (d) => !linkedDateKeys.has(toJstDateValue(d.workDate))
+    );
+    if (toCreate.length === 0) continue;
+
+    await prisma.shift.createMany({
+      data: toCreate.map((d) => {
+        const dateKey = toJstDateValue(d.workDate);
+        const startTimeStr = d.startTime || order.fixedStartTime || "10:00";
+        const endTimeStr = d.endTime || order.fixedEndTime || "19:00";
+        return {
+          staffId,
+          workType: "SPOT" as const,
+          carrier: order.requestedCarrier || "",
+          storeName: d.storeName || order.defaultStoreName,
+          startTime: combineJstDateAndTime(dateKey, startTimeStr),
+          endTime: combineJstDateAndTime(dateKey, endTimeStr),
+          unitAmount: assignment.contractType === "DAILY" ? assignment.rateAmountExTax : null,
+          workOrderStaffId: assignment.id,
+        };
+      }),
+    });
+  }
+}
+
+export async function approveOrder(id:string,formData:FormData){await requireAdmin();const name=String(formData.get("approverName")||"").trim();if(!name)throw new Error("承認者名は必須です");const before=await prisma.workOrder.findUnique({where:{id}});if(!before)throw new Error("依頼がありません");await prisma.$transaction([prisma.workOrder.update({where:{id},data:{status:"APPROVED",approvedAt:new Date(),approverName:name,approverEmail:String(formData.get("approverEmail")||"").trim()||null}}),prisma.workOrderChangeHistory.create({data:{workOrderId:id,entityType:"WORK_ORDER",entityId:id,changeType:"APPROVE",before:{status:before.status},after:{status:"APPROVED"},actorRole:"KJ",actorName:name}})]);await autoLinkShiftsOnApproval(id);revalidatePath(`/admin/requests/${id}`);revalidatePath("/admin/requests")}
 export async function deleteOrder(id:string){
   await requireAdmin();
   const order=await prisma.workOrder.findUnique({where:{id},include:{invoices:{select:{id:true}},staffAssignments:{select:{id:true}}}});

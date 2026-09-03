@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { Clock3, MapPin, Users, Radio, UserRoundCheck, UserRound } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { jstDayRange, toJstTimeValue } from "@/lib/time";
+import { getAttendingStaff } from "@/lib/attendance";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { PageHeader } from "@/components/page-header";
 
@@ -12,32 +12,7 @@ export default async function TownPage() {
   const staff = await prisma.staff.findUnique({ where: { id: staffId } });
   if (!staff || staff.status !== "ACTIVE") redirect("/");
 
-  const { start, end } = jstDayRange();
-  const records = await prisma.clockRecord.findMany({
-    where: { timestamp: { gte: start, lt: end }, staff: { status: "ACTIVE" } },
-    include: { staff: true },
-    orderBy: { timestamp: "asc" },
-  });
-
-  const byStaff = new Map<string, typeof records>();
-  for (const record of records) {
-    byStaff.set(record.staffId, [...(byStaff.get(record.staffId) ?? []), record]);
-  }
-
-  const attending = [...byStaff.values()]
-    .filter((items) => items.at(-1)?.type === "IN")
-    .map((items) => {
-      const latest = items.at(-1)!;
-      const firstIn = items.find((record) => record.type === "IN");
-      return {
-        id: latest.staff.id,
-        name: latest.staff.name,
-        storeName: latest.storeName,
-        inTime: firstIn ? toJstTimeValue(firstIn.timestamp) : null,
-        inTimestamp: firstIn?.timestamp.getTime() ?? Number.MAX_SAFE_INTEGER,
-      };
-    })
-    .sort((a, b) => a.inTimestamp - b.inTimestamp || a.name.localeCompare(b.name, "ja"));
+  const attending = await getAttendingStaff();
 
   return (
     <main className="staff-screen">

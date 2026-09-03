@@ -22,6 +22,7 @@ import {
   formatJst,
 } from "@/lib/time";
 import { computeMonthlyEarnings, computeTransferBalance } from "@/lib/earnings";
+import { getAttendingStaff } from "@/lib/attendance";
 import { nextFixedPaymentDate } from "@/lib/payment";
 import { syncAndGetGameState } from "@/lib/game";
 import { ClockButtons } from "./clock-buttons";
@@ -69,9 +70,7 @@ export default async function ClockPage() {
         where: { staffId, cancelledAt: null, startTime: { gte: now } },
         orderBy: { startTime: "asc" },
       }),
-      prisma.shift.count({
-        where: { cancelledAt: null, startTime: { gte: todayStart, lt: todayEnd } },
-      }),
+      getAttendingStaff(now).then((list) => list.length),
     ]);
 
   const last = todayRecords[todayRecords.length - 1];
@@ -177,7 +176,7 @@ export default async function ClockPage() {
             {[
               { href: "/titles", label: "称号", sub: `${game.titles.length}個 獲得中`, Icon: Trophy, tone: "red" as const },
               { href: "/my-room", label: "マイルーム", sub: "キャラ・設定", Icon: Sofa, tone: "blue" as const },
-              { href: "/town", label: "出勤メンバー", sub: `${memberCount}人 予定`, Icon: Users, tone: "green" as const },
+              { href: "/town", label: "出勤メンバー", sub: `現在${memberCount}人出勤中`, Icon: Users, tone: "green" as const },
             ].map(({ href, label, sub, Icon, tone }) => (
               <Link
                 key={href}
