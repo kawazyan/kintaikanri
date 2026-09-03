@@ -69,6 +69,8 @@ export function ShiftWizard({
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
   const [lockedDates, setLockedDates] = useState<Set<string>>(new Set());
   const [targetAmount, setTargetAmount] = useState<number | null>(null);
+  const [amountMode, setAmountMode] = useState<"MONTHLY" | "DAILY">("MONTHLY");
+  const [dailyRate, setDailyRate] = useState<number | null>(null);
   const [spotAmounts, setSpotAmounts] = useState<Record<string, number | null>>({});
   const [error, setError] = useState<string | null>(null);
   const [loadingMonth, setLoadingMonth] = useState(true);
@@ -120,6 +122,12 @@ export function ShiftWizard({
     [selectedDates, lockedDates]
   );
   const totalDayCount = sortedSelectedDates.length + lockedDates.size;
+  const effectiveTargetAmount =
+    amountMode === "DAILY"
+      ? dailyRate !== null
+        ? dailyRate * totalDayCount
+        : null
+      : targetAmount;
 
   function toggleDate(key: string) {
     if (lockedDates.has(key)) return;
@@ -142,11 +150,13 @@ export function ShiftWizard({
     });
   }
 
+  // 単価は任意。入力されている場合のみ0以上の整数かを確認する。
   const spotAmountsValid =
     workType !== "SPOT" ||
-    sortedSelectedDates.every(
-      (d) => Number.isInteger(spotAmounts[d]) && (spotAmounts[d] as number) >= 0
-    );
+    sortedSelectedDates.every((d) => {
+      const amount = spotAmounts[d];
+      return amount === null || amount === undefined || (Number.isInteger(amount) && amount >= 0);
+    });
 
   function goNext() {
     setError(null);
@@ -177,12 +187,10 @@ export function ShiftWizard({
         startTime,
         endTime,
         dates: sortedSelectedDates,
-        targetAmount: workType === "BAND" ? targetAmount : null,
+        targetAmount: workType === "BAND" ? effectiveTargetAmount : null,
         spotAmounts:
           workType === "SPOT"
-            ? Object.fromEntries(
-                sortedSelectedDates.map((d) => [d, spotAmounts[d] as number])
-              )
+            ? Object.fromEntries(sortedSelectedDates.map((d) => [d, spotAmounts[d] ?? null]))
             : undefined,
       };
       const result = staffId
@@ -392,7 +400,7 @@ export function ShiftWizard({
             {yearMonthLabel(yearMonth)}の稼働日を選択してください({totalDayCount}日選択中)
           </h2>
           {workType === "SPOT" && (
-            <p className="text-xs text-slate-500">稼働日ごとに単価を入力してください。</p>
+            <p className="text-xs text-slate-500">稼働日ごとに単価を入力できます(未定の場合は空欄のままでも登録できます)。</p>
           )}
           <DayChecklist
             days={monthDays}
@@ -426,12 +434,47 @@ export function ShiftWizard({
       {step === 7 && (
         <div className="flex flex-col gap-3">
           <h2 className="text-base font-semibold text-slate-900">
-            {yearMonthLabel(yearMonth)}合計の受取予定単価
+            {yearMonthLabel(yearMonth)}の受取予定単価
           </h2>
           <p className="text-xs text-slate-500">
             未定の場合は空欄のままで構いません。あとから登録・更新できます。
           </p>
-          <YenInput value={targetAmount} onChange={setTargetAmount} autoFocus />
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setAmountMode("MONTHLY")}
+              className={`rounded-xl border-2 py-3 text-sm font-bold transition ${
+                amountMode === "MONTHLY"
+                  ? "border-red-500 bg-red-500/10 text-red-600 shadow-md shadow-red-900/10"
+                  : "border-slate-300 text-slate-600"
+              }`}
+            >
+              月額で入力
+            </button>
+            <button
+              type="button"
+              onClick={() => setAmountMode("DAILY")}
+              className={`rounded-xl border-2 py-3 text-sm font-bold transition ${
+                amountMode === "DAILY"
+                  ? "border-red-500 bg-red-500/10 text-red-600 shadow-md shadow-red-900/10"
+                  : "border-slate-300 text-slate-600"
+              }`}
+            >
+              日当たりで入力
+            </button>
+          </div>
+          {amountMode === "MONTHLY" ? (
+            <YenInput value={targetAmount} onChange={setTargetAmount} autoFocus />
+          ) : (
+            <div className="flex flex-col gap-2">
+              <YenInput value={dailyRate} onChange={setDailyRate} autoFocus />
+              <p className="text-xs text-slate-500">
+                {dailyRate !== null
+                  ? `${dailyRate.toLocaleString("ja-JP")}円 × ${totalDayCount}日 = ${effectiveTargetAmount?.toLocaleString("ja-JP")}円(月間合計)`
+                  : `稼働予定 ${totalDayCount}日 分の日当たり金額を入力してください`}
+              </p>
+            </div>
+          )}
           <div className="flex gap-3">
             <button type="button" onClick={goBack} className={OUTLINE_BUTTON}>
               戻る
@@ -474,7 +517,16 @@ export function ShiftWizard({
                 <dt className="text-slate-500">稼働合計日数</dt>
                 <dd>{totalDayCount}日</dd>
                 <dt className="text-slate-500">月間受取予定単価</dt>
-                <dd>{targetAmount !== null ? `${targetAmount.toLocaleString("ja-JP")}円` : "未定"}</dd>
+                <dd>
+                  {effectiveTargetAmount !== null
+                    ? `${effectiveTargetAmount.toLocaleString("ja-JP")}円`
+                    : "未定"}
+                  {amountMode === "DAILY" && dailyRate !== null && (
+                    <span className="ml-1 text-xs text-slate-400">
+                      (日当たり{dailyRate.toLocaleString("ja-JP")}円 × {totalDayCount}日)
+                    </span>
+                  )}
+                </dd>
               </>
             ) : (
               <>
@@ -483,7 +535,8 @@ export function ShiftWizard({
                   <ul className="flex flex-col gap-0.5">
                     {sortedSelectedDates.map((d) => (
                       <li key={d}>
-                        {d.slice(5).replace("-", "/")}: {spotAmounts[d]?.toLocaleString("ja-JP")}円
+                        {d.slice(5).replace("-", "/")}:{" "}
+                        {spotAmounts[d] != null ? `${spotAmounts[d]!.toLocaleString("ja-JP")}円` : "未定"}
                       </li>
                     ))}
                     {lockedDates.size > 0 && (

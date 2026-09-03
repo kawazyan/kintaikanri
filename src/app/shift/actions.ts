@@ -17,7 +17,7 @@ export type BulkShiftInput = {
   endTime: string; // "HH:mm"
   dates: string[]; // "YYYY-MM-DD"[]
   targetAmount: number | null; // BAND only, optional
-  spotAmounts?: Record<string, number>; // SPOT only: dateKey -> per-shift unit amount
+  spotAmounts?: Record<string, number | null>; // SPOT only: dateKey -> per-shift unit amount (未定なら null)
 };
 
 function validateCommonFields(input: {
@@ -144,9 +144,11 @@ async function runCreateShiftsBulk(
   }
 
   if (input.workType === "SPOT") {
+    // 単価は任意。入力されている場合のみ、0以上の整数かを確認する(未定のまま
+    // 登録して後から確定させる運用にも対応する)。
     for (const dateStr of newDates) {
       const amount = input.spotAmounts?.[dateStr];
-      if (!Number.isInteger(amount) || (amount as number) < 0) {
+      if (amount !== undefined && amount !== null && (!Number.isInteger(amount) || amount < 0)) {
         return { error: `${dateStr} の単価を正しく入力してください` };
       }
     }
@@ -158,6 +160,7 @@ async function runCreateShiftsBulk(
   const created = await Promise.all(
     newDates.map((dateStr) => {
       const { startTime, endTime } = buildShiftTimes(dateStr, input.startTime, input.endTime);
+      const spotAmount = input.spotAmounts?.[dateStr];
       return prisma.shift.create({
         data: {
           staffId,
@@ -166,7 +169,7 @@ async function runCreateShiftsBulk(
           storeName,
           startTime,
           endTime,
-          unitAmount: input.workType === "SPOT" ? input.spotAmounts?.[dateStr] : null,
+          unitAmount: input.workType === "SPOT" && spotAmount !== undefined ? spotAmount : null,
         },
       });
     })
@@ -241,7 +244,11 @@ export async function updateShift(
 
   const fieldError = validateCommonFields(input);
   if (fieldError) return { error: fieldError };
-  if (input.workType === "SPOT" && (!Number.isInteger(input.unitAmount) || (input.unitAmount as number) < 0)) {
+  if (
+    input.workType === "SPOT" &&
+    input.unitAmount !== null &&
+    (!Number.isInteger(input.unitAmount) || input.unitAmount < 0)
+  ) {
     return { error: "単価を正しく入力してください" };
   }
 

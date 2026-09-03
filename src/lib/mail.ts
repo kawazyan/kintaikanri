@@ -11,14 +11,16 @@ function getClient() {
   return resendClient;
 }
 
+// 通知メールはあくまで補助機能。RESEND_API_KEY/MAIL_FROM が未設定、または送信自体が
+// 失敗しても、呼び出し元(シフト登録など本来の業務処理)を絶対に失敗させない。
 export async function sendMail(params: {
   to: string | string[];
   subject: string;
   text: string;
 }) {
-  const from = process.env.MAIL_FROM;
-  if (!from) throw new Error("MAIL_FROM is not set");
   try {
+    const from = process.env.MAIL_FROM;
+    if (!from) throw new Error("MAIL_FROM is not set");
     await getClient().emails.send({
       from,
       to: params.to,

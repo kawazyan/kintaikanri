@@ -178,7 +178,7 @@ export function EditShiftForm({
 
       <button
         type="submit"
-        disabled={pending || !carrier || (workType === "SPOT" && unitAmount === null)}
+        disabled={pending || !carrier}
         className="rounded-xl bg-gradient-to-b from-red-400 via-[#e0272e] to-red-800 px-4 py-3 text-base font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_4px_12px_rgba(220,38,38,0.4)] active:scale-[0.98] disabled:opacity-50"
       >
         {pending ? "保存中..." : "保存"}
