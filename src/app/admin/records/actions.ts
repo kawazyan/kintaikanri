@@ -117,6 +117,15 @@ export async function updateClockRecord(id: string, formData: FormData) {
   const existing = await prisma.clockRecord.findUnique({ where: { id } });
   if (!existing) return;
 
+  // shiftId は必ずこの打刻と同じスタッフのシフトでなければならない。
+  // ここを素通りさせると、打刻はシフトに「紐付いている」のに、そのシフトが
+  // 別のスタッフのものだと勤務スタンプ・確定受取金額の集計が本人に反映され
+  // ない(紐付け先のスタッフ側に誤って計上されてしまう)事故になる。
+  if (shiftId) {
+    const targetShift = await prisma.shift.findUnique({ where: { id: shiftId }, select: { staffId: true } });
+    if (!targetShift || targetShift.staffId !== existing.staffId) return;
+  }
+
   const updated = await prisma.clockRecord.update({
     where: { id },
     data: {

@@ -23,21 +23,28 @@ export default async function AdminRecordsPage({
     const { start, end } = jstDayRange(new Date(`${date}T00:00:00+09:00`));
     where.timestamp = { gte: start, lt: end };
   }
-  // シフトに紐付いていない、または紐付いたシフト自体がキャンセル済み
-  // (=どちらも勤務スタンプ・確定受取金額の集計対象外)の打刻だけを表示する。
-  if (unlinkedOnly === "1") {
-    where.OR = [{ shiftId: null }, { shift: { cancelledAt: { not: null } } }];
-  }
 
-  const [records, staffList] = await Promise.all([
+  const [fetched, staffList] = await Promise.all([
     prisma.clockRecord.findMany({
       where,
-      include: { staff: true, shift: { select: { cancelledAt: true, cancellationReason: true } } },
+      include: {
+        staff: true,
+        shift: { select: { staffId: true, cancelledAt: true, cancellationReason: true } },
+      },
       orderBy: { timestamp: "desc" },
-      take: 200,
+      // 「集計対象外のみ」はDBのwhereでは絞り込めない条件(紐付き先シフトの
+      // スタッフ不一致)を含むため、取得件数を広げて取得後にJS側で判定する。
+      take: unlinkedOnly === "1" ? 1000 : 200,
     }),
     prisma.staff.findMany({ orderBy: { employeeCode: "asc" } }),
   ]);
+
+  // 集計対象外になる3パターン: ①シフト外(未紐付け) ②紐付き先シフトが
+  // キャンセル済み ③紐付き先シフトが別のスタッフのもの(打刻自体は
+  // staffId通りでも、紐付け先の取り違えで本人の集計に反映されない)。
+  const isUncounted = (r: (typeof fetched)[number]) =>
+    !r.shiftId || !!r.shift?.cancelledAt || (!!r.shift && r.shift.staffId !== r.staffId);
+  const records = unlinkedOnly === "1" ? fetched.filter(isUncounted).slice(0, 200) : fetched;
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
@@ -70,7 +77,7 @@ export default async function AdminRecordsPage({
           </label>
           <label className="flex items-center gap-1.5 pb-1.5 text-slate-300">
             <input type="checkbox" name="unlinkedOnly" value="1" defaultChecked={unlinkedOnly === "1"} />
-            集計対象外のみ(シフト外／キャンセル済みシフト)
+            集計対象外のみ(シフト外／キャンセル済み／スタッフ不一致)
           </label>
           <button
             type="submit"
@@ -111,6 +118,13 @@ export default async function AdminRecordsPage({
                   {!r.shiftId ? (
                     <span className="rounded bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-400">
                       シフト外
+                    </span>
+                  ) : r.shift && r.shift.staffId !== r.staffId ? (
+                    <span
+                      className="rounded bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-400"
+                      title="紐付いているシフトが別のスタッフのものです"
+                    >
+                      スタッフ不一致
                     </span>
                   ) : r.shift?.cancelledAt ? (
                     <span

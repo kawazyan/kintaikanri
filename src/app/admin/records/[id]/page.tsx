@@ -38,6 +38,12 @@ export default async function EditRecordPage({
 
   const boundAction = updateClockRecord.bind(null, record.id);
   const restoreShiftAction = record.shiftId ? adminRestoreShift.bind(null, record.shiftId) : null;
+  // 打刻はシフトに紐付いていて(シフト外でも削除済みでもない)、そのシフト自体
+  // キャンセルもされていないのに、紐付き先シフトの持ち主が別のスタッフに
+  // なっているケース。この場合「紐付いている」ように見えても、本人の勤務
+  // スタンプ・確定受取金額には一切反映されない(紐付け先のスタッフの方に
+  // 誤って計上されてしまっている可能性がある)。
+  const isStaffMismatch = !!record.shift && record.shift.staffId !== record.staffId;
 
   return (
     <main className="mx-auto max-w-md px-4 py-8">
@@ -45,6 +51,17 @@ export default async function EditRecordPage({
       <h1 className="mb-6 bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
         打刻記録の修正 - {record.staff.name}({record.staff.employeeCode})
       </h1>
+
+      {isStaffMismatch && (
+        <div className="mb-4 rounded-lg border border-red-700 bg-red-950/30 p-3 text-sm text-red-200">
+          <p className="font-bold">この打刻が紐付いているシフトは、別のスタッフのシフトです。</p>
+          <p className="mt-1 text-xs text-red-300/80">
+            打刻は{record.staff.name}さん本人のものですが、紐付け先のシフトの持ち主が別のスタッフになっています。
+            この状態だと{record.staff.name}さんの勤務スタンプ・確定受取金額には反映されません。
+            下の「紐付けシフト」で本人の正しいシフトを選び直すか、「紐付けなし」にして保存してください。
+          </p>
+        </div>
+      )}
 
       {record.shift?.cancelledAt && (
         <div className="mb-4 rounded-lg border border-amber-700 bg-amber-950/30 p-3 text-sm text-amber-200">
