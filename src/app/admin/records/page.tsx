@@ -1,21 +1,32 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatJst } from "@/lib/time";
+import { formatJst, jstDayRange } from "@/lib/time";
 import { AdminNav } from "../admin-nav";
 import { deleteClockRecord } from "./actions";
+import type { Prisma } from "@prisma/client";
+
+const FIELD_CLASS =
+  "rounded-lg border border-slate-700 bg-slate-900/60 px-2 py-1 text-slate-100 focus:border-blue-500 focus:outline-none";
 
 export default async function AdminRecordsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ staffId?: string }>;
+  searchParams: Promise<{ staffId?: string; date?: string }>;
 }) {
   await requireAdmin();
-  const { staffId } = await searchParams;
+  const { staffId, date } = await searchParams;
+
+  const where: Prisma.ClockRecordWhereInput = {};
+  if (staffId) where.staffId = staffId;
+  if (date) {
+    const { start, end } = jstDayRange(new Date(`${date}T00:00:00+09:00`));
+    where.timestamp = { gte: start, lt: end };
+  }
 
   const [records, staffList] = await Promise.all([
     prisma.clockRecord.findMany({
-      where: staffId ? { staffId } : undefined,
+      where,
       include: { staff: true },
       orderBy: { timestamp: "desc" },
       take: 200,
@@ -36,27 +47,31 @@ export default async function AdminRecordsPage({
         >
           + 打刻を代わりに登録
         </Link>
-        <form method="get" className="flex items-center gap-2 text-sm text-slate-400">
-          <label htmlFor="staffId">スタッフで絞り込み:</label>
-          <select
-            id="staffId"
-            name="staffId"
-            defaultValue={staffId ?? ""}
-            className="rounded-lg border border-slate-700 bg-slate-900/60 px-2 py-1 text-slate-100 focus:border-blue-500 focus:outline-none"
-          >
-            <option value="">全員</option>
-            {staffList.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}({s.employeeCode}){s.status === "RETIRED" ? " - 退職済み" : ""}
-              </option>
-            ))}
-          </select>
+        <form method="get" className="flex flex-wrap items-end gap-3 text-sm text-slate-400">
+          <label className="flex flex-col gap-1">
+            スタッフ
+            <select id="staffId" name="staffId" defaultValue={staffId ?? ""} className={FIELD_CLASS}>
+              <option value="">全員</option>
+              {staffList.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}({s.employeeCode}){s.status === "RETIRED" ? " - 退職済み" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            日付
+            <input type="date" name="date" defaultValue={date ?? ""} className={FIELD_CLASS} />
+          </label>
           <button
             type="submit"
-            className="rounded-lg bg-gradient-to-r from-blue-600 to-cyan-500 px-3 py-1 text-white shadow-md shadow-blue-950/50 active:scale-[0.98]"
+            className="rounded-lg bg-gradient-to-r from-blue-600 to-cyan-500 px-3 py-1.5 text-white shadow-md shadow-blue-950/50 active:scale-[0.98]"
           >
-            表示
+            絞り込み
           </button>
+          <Link href="/admin/records" className="text-blue-400 underline">
+            クリア
+          </Link>
         </form>
       </div>
 
