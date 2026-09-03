@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Clock3, MapPin, Users, Radio, UserRoundCheck } from "lucide-react";
+import { Clock3, MapPin, Users, Radio, UserRoundCheck, UserRound } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { jstDayRange, toJstTimeValue } from "@/lib/time";
@@ -63,20 +63,23 @@ export default async function TownPage() {
           <section className="grid gap-3">
             {attending.map((member) => {
               const isMe = member.id === staffId;
+              // プライバシー配慮: 他のメンバーの名前はお互いに分からないようにする。
+              // 自分自身の行だけ実名を表示し、他のメンバーは匿名化する。
+              const displayName = isMe ? member.name : "出勤中のスタッフ";
               return (
                 <article key={member.id} className="game-hud-frame game-cut-card relative flex items-center gap-3 overflow-hidden rounded-[20px] p-4 shadow-[0_8px_24px_rgba(15,23,42,.07)] ring-1 ring-black/[.04]">
                   {isMe ? <span className="absolute inset-y-0 left-0 w-1 bg-emerald-500" /> : null}
                   <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[18px] bg-gradient-to-br from-emerald-50 to-teal-50 text-[17px] font-black text-emerald-700 ring-1 ring-emerald-100">
-                    {member.name.slice(0, 1)}
+                    {isMe ? member.name.slice(0, 1) : <UserRound size={22} />}
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex min-w-0 items-center gap-2">
-                      <p className="truncate text-sm font-black text-slate-900">{member.name}</p>
+                      <p className="truncate text-sm font-black text-slate-900">{displayName}</p>
                       {isMe ? <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-black text-slate-500">あなた</span> : null}
                     </div>
                     <div className="mt-1.5 flex flex-col gap-1 text-[11px] font-semibold text-slate-400">
                       {member.inTime ? <span className="flex items-center gap-1.5"><Clock3 size={11} className="text-emerald-500"/>{member.inTime} 出勤</span> : null}
-                      {member.storeName ? <span className="flex min-w-0 items-center gap-1.5"><MapPin size={11} className="shrink-0 text-emerald-500"/><span className="truncate">{member.storeName}</span></span> : null}
+                      {isMe && member.storeName ? <span className="flex min-w-0 items-center gap-1.5"><MapPin size={11} className="shrink-0 text-emerald-500"/><span className="truncate">{member.storeName}</span></span> : null}
                     </div>
                   </div>
                   <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-black text-emerald-700 ring-1 ring-emerald-100">

@@ -16,6 +16,7 @@ import {
   STAMP_MONTHLY_BONUS_COINS,
   TITLE_DEFINITIONS,
 } from "@/lib/game-config";
+import type { TitleDefinition } from "@/lib/game-config";
 import type { GameTitleCode } from "@prisma/client";
 
 // ゲーミフィケーション機能全体の設計方針:
@@ -175,12 +176,36 @@ function levelFromXp(xp: number): { level: number; xpIntoLevel: number; xpForNex
   return { level, xpIntoLevel: remaining, xpForNextLevel: needed };
 }
 
+// その月にスタッフへ登録されている稼働予定日数(過去・未来問わず、その月全体)。
+// 称号の閾値を「今月の予定シフト数」で頭打ちにするための基準値。
+async function countScheduledShiftDaysInMonth(staffId: string, yearMonth: string): Promise<number> {
+  const { start, end } = jstMonthRange(yearMonth);
+  const shifts = await prisma.shift.findMany({
+    where: { staffId, cancelledAt: null, startTime: { gte: start, lt: end } },
+    select: { startTime: true },
+  });
+  return new Set(shifts.map((s) => toJstDateValue(s.startTime))).size;
+}
+
+// 称号ごとの必要連続勤務日数を、今月の予定シフト数を上限に頭打ちする。
+// パート等で月の予定シフト数がそもそも少ないスタッフでも、その月に組まれた
+// シフトを全て完走すれば上位称号まで届くようにするための救済措置(仕様:
+// 「連続勤務日数の上限を、その月の予定シフト数に合わせる」)。予定シフトが
+// まだ1件も登録されていない(＝基準にできない)月は頭打ちせず本来の閾値のまま。
+function effectiveTitleDefinitions(scheduledShiftDays: number): TitleDefinition[] {
+  if (scheduledShiftDays <= 0) return TITLE_DEFINITIONS;
+  return TITLE_DEFINITIONS.map((t) => ({
+    ...t,
+    minStreak: Math.min(t.minStreak, scheduledShiftDays),
+  }));
+}
+
 // 現在ストリークが新たに閾値へ到達していれば称号をDB保存する。称号は永久保持
 // のため、一度保存されたコードは再評価しても消えない(UNIQUE制約で重複防止)。
-async function syncTitles(staffId: string, currentStreak: number) {
+async function syncTitles(staffId: string, currentStreak: number, titleDefs: TitleDefinition[]) {
   const existing = await prisma.gameTitle.findMany({ where: { staffId } });
   const existingCodes = new Set(existing.map((t) => t.titleCode));
-  const toCreate = TITLE_DEFINITIONS.filter(
+  const toCreate = titleDefs.filter(
     (t) => currentStreak >= t.minStreak && !existingCodes.has(t.code)
   );
   if (toCreate.length > 0) {
@@ -261,8 +286,11 @@ export async function syncAndGetGameState(staffId: string, now: Date = new Date(
   const coins = totalCompletedDays * COINS_PER_SHIFT + careerBonusCoins;
   const { level, xpIntoLevel, xpForNextLevel } = levelFromXp(xp);
 
+  const scheduledShiftDays = await countScheduledShiftDaysInMonth(staffId, yearMonth);
+  const titleDefs = effectiveTitleDefinitions(scheduledShiftDays);
+
   const [titles] = await Promise.all([
-    syncTitles(staffId, streak),
+    syncTitles(staffId, streak, titleDefs),
     syncPerfectAttendance(staffId, yearMonth, statuses, todayKey),
     syncPerfectAttendance(staffId, previousYearMonth(yearMonth), statuses, todayKey),
   ]);
@@ -293,7 +321,7 @@ export async function syncAndGetGameState(staffId: string, now: Date = new Date(
       label: TITLE_LABELS[t.titleCode],
       achievedAt: t.achievedAt,
     })),
-    lockedTitles: TITLE_DEFINITIONS.filter(
+    lockedTitles: titleDefs.filter(
       (def) => !titles.some((t) => t.titleCode === def.code)
     ),
     perfectAttendanceThisMonth: !!perfectAttendanceThisMonth,

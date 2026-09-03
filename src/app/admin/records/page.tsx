@@ -30,6 +30,12 @@ export default async function AdminRecordsPage({
         <h1 className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
           打刻記録一覧
         </h1>
+        <Link
+          href="/admin/records/new"
+          className="rounded-lg bg-gradient-to-r from-blue-600 to-cyan-500 px-3 py-1.5 text-sm text-white shadow-md shadow-blue-950/50 active:scale-[0.98]"
+        >
+          + 打刻を代わりに登録
+        </Link>
         <form method="get" className="flex items-center gap-2 text-sm text-slate-400">
           <label htmlFor="staffId">スタッフで絞り込み:</label>
           <select
