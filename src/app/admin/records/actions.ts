@@ -111,6 +111,7 @@ export async function updateClockRecord(id: string, formData: FormData) {
   const timestampRaw = String(formData.get("timestamp") ?? "");
   const storeName = String(formData.get("storeName") ?? "").trim() || null;
   const operatorName = String(formData.get("operatorName") ?? "").trim() || null;
+  const shiftId = String(formData.get("shiftId") ?? "").trim() || null;
   if (!timestampRaw) return;
 
   const existing = await prisma.clockRecord.findUnique({ where: { id } });
@@ -122,6 +123,7 @@ export async function updateClockRecord(id: string, formData: FormData) {
       type,
       timestamp: fromJstInputValue(timestampRaw),
       storeName,
+      shiftId,
       editedByAdmin: true,
     },
   });

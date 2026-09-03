@@ -9,7 +9,6 @@ import {
   Trophy,
   Sofa,
   Users,
-  CircleDollarSign,
   CheckCircle2,
 } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
@@ -254,13 +253,7 @@ export default async function ClockPage() {
                 )}
               </div>
             </div>
-            <div className="payment-metal-bottom">
-              <div className="payment-metal-balance">
-                <span className="payment-metal-balance-label">残高</span>
-                <CircleDollarSign size={28} />
-                <strong>•••• {String(staff.employeeCode).slice(-4)}</strong>
-                <ChevronRight size={20} />
-              </div>
+            <div className="payment-metal-bottom payment-metal-bottom-single">
               <div className="payment-metal-method">
                 <span>支払方式</span>
                 <strong>{staff.paymentMethod === "FIXED" ? "固定支払" : "申請支払"}</strong>
