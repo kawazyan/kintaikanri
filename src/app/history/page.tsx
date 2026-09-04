@@ -26,6 +26,7 @@ export default async function HistoryPage() {
   if (!staffId) redirect("/");
 
   const yearMonth = currentJstYearMonth();
+  const todayKey = toJstDateValue(new Date());
   const { start, end } = jstMonthRange(yearMonth);
   const records = await prisma.clockRecord.findMany({
     where: { staffId, timestamp: { gte: start, lt: end } },
@@ -63,6 +64,11 @@ export default async function HistoryPage() {
     }
     if (openIn) hasUnpairedPunch = true;
 
+    // 出勤打刻はあるが退勤打刻がないまま稼働日(JST)が終わっている場合は、
+    // 「打刻確認中」ではなく退勤打刻漏れとして明示する(仕様: 退勤打刻漏れは
+    // 稼働したものとして確定受取金額・勤務スタンプに反映される)。
+    const missedCheckout = !!firstIn && !lastOut && dateKey < todayKey;
+
     return {
       dateKey,
       firstIn,
@@ -70,6 +76,7 @@ export default async function HistoryPage() {
       workedMinutes,
       completedSessions,
       complete: completedSessions > 0 && !hasUnpairedPunch,
+      missedCheckout,
       edited: asc.some((r) => r.editedByAdmin),
       storeName: asc.find((r) => r.storeName)?.storeName ?? null,
     };
@@ -117,8 +124,8 @@ export default async function HistoryPage() {
                       <PencilLine size={10} />修正済み
                     </span>
                   ) : null}
-                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ring-1 ${day.complete ? "bg-emerald-50 text-emerald-700 ring-emerald-100" : "bg-amber-50 text-amber-700 ring-amber-100"}`}>
-                    {day.complete ? "勤務完了" : "打刻確認中"}
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ring-1 ${day.complete ? "bg-emerald-50 text-emerald-700 ring-emerald-100" : day.missedCheckout ? "bg-red-50 text-red-600 ring-red-100" : "bg-amber-50 text-amber-700 ring-amber-100"}`}>
+                    {day.complete ? "勤務完了" : day.missedCheckout ? "退勤打刻漏れ" : "打刻確認中"}
                   </span>
                 </div>
               </div>
@@ -130,7 +137,9 @@ export default async function HistoryPage() {
                 </div>
                 <div className="px-3">
                   <p className="flex items-center justify-center gap-1 text-[10px] font-black text-red-600"><LogOut size={12}/>退勤</p>
-                  <p className="mt-1 text-[25px] font-black tabular-nums tracking-tight text-slate-950">{day.lastOut ? toJstTimeValue(day.lastOut.timestamp) : "--:--"}</p>
+                  <p className={`mt-1 font-black tabular-nums tracking-tight text-slate-950 ${day.missedCheckout ? "text-[15px]" : "text-[25px]"}`}>
+                    {day.lastOut ? toJstTimeValue(day.lastOut.timestamp) : day.missedCheckout ? "退勤打刻漏れ" : "--:--"}
+                  </p>
                 </div>
               </div>
 

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { jstMonthRange, toJstDateValue } from "@/lib/time";
+import { jstDayRange, jstMonthRange, toJstDateValue } from "@/lib/time";
 
 export type MonthlyEarnings = {
   // The amount confirmed so far this month. `null` means it cannot be
@@ -8,10 +8,12 @@ export type MonthlyEarnings = {
   confirmedAmount: number | null;
 };
 
-// Server-side source of truth for "今月の確定受取金額". A shift day only
-// counts once it has both an IN and an OUT clock record tied to it — no
-// other "trouble-free" reporting mechanism exists yet, so this presence
-// check is the sole confirmation signal.
+// Server-side source of truth for "今月の確定受取金額". A shift day counts
+// once it has both an IN and an OUT clock record tied to it. It also counts
+// once its calendar day (JST) has fully ended even with only an IN and no
+// OUT -- a missed clock-out is treated as having worked the shift (仕様:
+// 退勤打刻漏れは稼働したものとして扱う), rather than leaving the day stuck
+// unconfirmed forever until someone notices and fixes it manually.
 //
 // BAND: monthly target ÷ planned BAND days this month (floored) × confirmed
 // BAND days. If no target amount has been entered yet, the BAND portion is
@@ -20,7 +22,8 @@ export type MonthlyEarnings = {
 // SPOT: each confirmed SPOT shift contributes its own per-shift unitAmount.
 export async function computeMonthlyEarnings(
   staffId: string,
-  yearMonth: string
+  yearMonth: string,
+  now: Date = new Date()
 ): Promise<MonthlyEarnings> {
   const { start, end } = jstMonthRange(yearMonth);
 
@@ -34,8 +37,13 @@ export async function computeMonthlyEarnings(
     }),
   ]);
 
-  const isConfirmed = (s: (typeof shifts)[number]) =>
-    s.clockRecords.some((r) => r.type === "IN") && s.clockRecords.some((r) => r.type === "OUT");
+  const isConfirmed = (s: (typeof shifts)[number]) => {
+    const hasIn = s.clockRecords.some((r) => r.type === "IN");
+    const hasOut = s.clockRecords.some((r) => r.type === "OUT");
+    if (hasIn && hasOut) return true;
+    if (hasIn && !hasOut) return now >= jstDayRange(s.startTime).end;
+    return false;
+  };
 
   const bandShifts = shifts.filter((s) => s.workType === "BAND");
   const spotShifts = shifts.filter((s) => s.workType === "SPOT");

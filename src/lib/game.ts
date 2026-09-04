@@ -55,12 +55,17 @@ export type GameState = {
 // 1日にシフトが複数ある場合でも「1勤務達成」は日単位の二値判定にする(仕様:
 // 1日1勤務まで。同日中の複数回出退勤でも付与は1日1回分のみ)。
 function classifyDay(
-  shiftsThatDay: { endTime: Date; hasIn: boolean; hasOut: boolean }[],
+  shiftsThatDay: { endTime: Date; hasIn: boolean; hasOut: boolean; dayEnded: boolean }[],
   now: Date
 ): DayStatus {
   if (shiftsThatDay.length === 0) return "OFF"; // 公休
   if (shiftsThatDay.some((s) => s.hasIn && s.hasOut)) return "COMPLETED";
-  if (shiftsThatDay.some((s) => s.hasIn && !s.hasOut)) return "PENDING"; // 退勤打刻忘れ
+  // 退勤打刻を忘れていても、稼働日(JST)がすでに終わっていれば出勤打刻の
+  // 事実をもって稼働したものとして扱う(仕様: 退勤打刻漏れは稼働扱い)。
+  // これにより勤務スタンプ・確定受取金額の計上と、連続勤務ストリークの
+  // 停止(下記 PENDING による凍結)を防ぐ。
+  if (shiftsThatDay.some((s) => s.hasIn && !s.hasOut && s.dayEnded)) return "COMPLETED";
+  if (shiftsThatDay.some((s) => s.hasIn && !s.hasOut)) return "PENDING"; // 退勤打刻忘れ(当日中)
   if (shiftsThatDay.some((s) => s.endTime > now)) return "PENDING"; // まだ勤務予定終了前
   return "ABSENT"; // 予定終了時刻を過ぎても出勤打刻なし
 }
@@ -100,13 +105,16 @@ async function loadDailyStatusMap(staffId: string, now: Date): Promise<Map<strin
     select: { startTime: true, endTime: true, clockRecords: { select: { type: true } } },
   });
 
-  const byDate = new Map<string, { endTime: Date; hasIn: boolean; hasOut: boolean }[]>();
+  const byDate = new Map<string, { endTime: Date; hasIn: boolean; hasOut: boolean; dayEnded: boolean }[]>();
   for (const s of shifts) {
     const key = toJstDateValue(s.startTime);
     const entry = {
       endTime: s.endTime,
       hasIn: s.clockRecords.some((r) => r.type === "IN"),
       hasOut: s.clockRecords.some((r) => r.type === "OUT"),
+      // 稼働日(JST)がすでに終わっているか。退勤打刻漏れを稼働扱いにする
+      // 判定に使う(下記 classifyDay 参照)。
+      dayEnded: key < todayKey,
     };
     const list = byDate.get(key);
     if (list) list.push(entry);
