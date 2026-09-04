@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Award, ChevronRight, Menu, Sofa, Users, Wallet, Sparkles, ReceiptText, Gift, Settings, CircleHelp } from "lucide-react";
+import { Award, ChevronRight, Menu, Sofa, Users, Wallet, Sparkles, ReceiptText, Gift } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
@@ -102,11 +102,6 @@ export default async function MenuPage() {
             </Link>
 
           </div>
-        </section>
-
-        <section className="app-settings-list">
-          <div className="app-settings-row"><Settings size={18}/><span>設定</span><ChevronRight size={17}/></div>
-          <div className="app-settings-row"><CircleHelp size={18}/><span>ヘルプ</span><ChevronRight size={17}/></div>
         </section>
 
         <LogoutButton />
