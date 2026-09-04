@@ -1,13 +1,14 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
+import { MapPin } from "lucide-react";
 import { avatarImagePath, DEFAULT_CHARACTER_ID, type AvatarState } from "@/lib/character-config";
 
 export type { AvatarState };
 
 const AVATAR_LABEL: Record<AvatarState, string> = {
   HOME: "未出勤",
-  WORK: "出勤中",
-  NIGHT: "退勤済み",
+  WORK: "勤務中",
+  NIGHT: "勤務完了",
 };
 
 export function CharacterAvatar({
@@ -22,28 +23,24 @@ export function CharacterAvatar({
   children?: ReactNode;
 }) {
   return (
-    <section className="relative h-[390px] overflow-hidden border-x border-white/10 bg-[#eadfd2] shadow-[0_12px_28px_rgba(65,35,24,.16)] sm:h-[410px]">
+    <section id="punch" className={`app-character-hero app-character-hero--${state.toLowerCase()}`}>
       <Image
         src={avatarImagePath(characterId, state)}
         alt={AVATAR_LABEL[state]}
         fill
         sizes="(max-width: 430px) 100vw, 430px"
-        className={`object-cover ${state === "WORK" ? "object-[center_30%]" : "object-[center_22%]"}`}
+        className={`app-character-hero__image ${state === "WORK" ? "object-[center_30%]" : "object-[center_22%]"}`}
         priority
       />
-
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[37%] bg-gradient-to-t from-[#f9f4ed] via-[#f9f4ed]/78 to-transparent" />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/8 via-transparent to-transparent" />
-
-      <div className="absolute left-3 top-3 rounded-full bg-black/65 px-3 py-1.5 text-[12px] font-bold text-white shadow-lg backdrop-blur-md">
-        {staffName} さん
-      </div>
-
-      {children && (
-        <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-1.5 px-4 pb-3">
-          {children}
+      <div className="app-character-hero__shade" />
+      <div className="app-character-hero__top">
+        <div>
+          <p className="app-character-hero__name">{staffName}</p>
+          <p className="app-character-hero__sub"><MapPin size={11} /> K.J STAFF</p>
         </div>
-      )}
+        <span className="app-character-hero__status">{AVATAR_LABEL[state]}</span>
+      </div>
+      {children && <div className="app-character-hero__controls">{children}</div>}
     </section>
   );
 }

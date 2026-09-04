@@ -1,12 +1,14 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Award, ChevronRight, Menu, Sofa, Users, Wallet, Sparkles, ShieldCheck, ReceiptText, Gift } from "lucide-react";
+import Image from "next/image";
+import { Award, ChevronRight, Menu, Sofa, Users, Wallet, Sparkles, ReceiptText, Gift, Settings, CircleHelp } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { HexIcon } from "@/components/hex-icon";
 import { PageHeader } from "@/components/page-header";
 import { LogoutButton } from "./logout-button";
+import { avatarImagePath } from "@/lib/character-config";
 
 const GAME_MENU_ITEMS = [
   { href: "/titles", label: "獲得した称号", icon: Award, tone: "red" as const },
@@ -23,7 +25,21 @@ export default async function MenuPage() {
   return (
     <main className="staff-screen">
       <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28">
-        <PageHeader icon={Menu} title="メニュー" eyebrow={`${staff.name} さん`} centered />
+        <PageHeader icon={Menu} title="メニュー" centered />
+
+        <section className="app-profile-card">
+          <div className="app-profile-card__cover" />
+          <div className="app-profile-card__content">
+            <span className="app-profile-card__avatar">
+              <Image src={avatarImagePath(staff.selectedCharacterId, "WORK")} alt="プロフィール" fill sizes="64px" className="object-cover" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="app-profile-card__name">{staff.name}</p>
+              <p className="app-profile-card__code">社員コード：{staff.employeeCode}</p>
+            </div>
+            <ChevronRight size={18} className="text-slate-500"/>
+          </div>
+        </section>
 
         <section>
           <div className="mb-2 flex items-center gap-2 px-1">
@@ -85,18 +101,12 @@ export default async function MenuPage() {
               <ChevronRight size={19} className="shrink-0 text-slate-300" />
             </Link>
 
-            <div className="mx-4 h-px bg-slate-100" />
-
-            <div className="flex items-center gap-3 p-4">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] bg-slate-50 ring-1 ring-slate-100">
-                <ShieldCheck size={21} className="text-slate-500" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-black text-slate-900">ログイン中</span>
-                <span className="mt-0.5 block truncate text-[11px] font-semibold text-slate-400">{staff.name} さん</span>
-              </span>
-            </div>
           </div>
+        </section>
+
+        <section className="app-settings-list">
+          <div className="app-settings-row"><Settings size={18}/><span>設定</span><ChevronRight size={17}/></div>
+          <div className="app-settings-row"><CircleHelp size={18}/><span>ヘルプ</span><ChevronRight size={17}/></div>
         </section>
 
         <LogoutButton />

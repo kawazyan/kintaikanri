@@ -1,8 +1,7 @@
 import type { LucideIcon } from "lucide-react";
-import { HexIcon } from "./hex-icon";
 
 export function PageHeader({
-  icon,
+  icon: Icon,
   title,
   eyebrow,
   action,
@@ -14,37 +13,16 @@ export function PageHeader({
   action?: React.ReactNode;
   centered?: boolean;
 }) {
-  if (centered) {
-    return (
-      <header className="cinema-header game-cut-card">
-        <div className="cinema-header-city" />
-        <div className="relative z-10 flex flex-col items-center gap-2">
-          <div className="flex items-center gap-3 text-left">
-            <HexIcon icon={icon} tone="gold" size={22} small />
-            <div className="min-w-0">
-              {eyebrow && <p className="mb-0.5 truncate text-[10px] font-black tracking-[.12em] text-[#d5b36b]">{eyebrow}</p>}
-              <h1 className="truncate text-[23px] font-black text-white">{title}</h1>
-            </div>
-          </div>
-          {action && <div className="mt-1">{action}</div>}
-        </div>
-      </header>
-    );
-  }
-
   return (
-    <header className="cinema-header game-cut-card">
-      <div className="cinema-header-city" />
-      <div className="relative z-10 flex items-center justify-between gap-3">
-        <div className="min-w-0 flex items-center gap-3">
-          <HexIcon icon={icon} tone="gold" size={22} small />
-          <div className="min-w-0">
-            {eyebrow && <p className="mb-0.5 truncate text-[10px] font-black tracking-[.12em] text-[#d5b36b]">{eyebrow}</p>}
-            <h1 className="truncate text-[23px] font-black text-white">{title}</h1>
-          </div>
+    <header className={`app-page-header ${centered ? "is-centered" : ""}`}>
+      <div className="app-page-header__titleWrap">
+        <span className="app-page-header__icon"><Icon size={19} strokeWidth={2.2} /></span>
+        <div className="min-w-0">
+          {eyebrow && <p className="app-page-header__eyebrow">{eyebrow}</p>}
+          <h1 className="app-page-header__title">{title}</h1>
         </div>
-        {action && <div className="shrink-0">{action}</div>}
       </div>
+      {action && <div className="app-page-header__action">{action}</div>}
     </header>
   );
 }

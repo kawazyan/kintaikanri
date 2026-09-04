@@ -1,6 +1,48 @@
 "use client";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, History, CalendarDays, Bell, Menu, type LucideIcon } from "lucide-react";
-const TABS:{href:string;label:string;icon:LucideIcon}[]=[{href:"/clock",label:"ホーム",icon:Home},{href:"/history",label:"打刻履歴",icon:History},{href:"/shift",label:"シフト",icon:CalendarDays},{href:"/notices",label:"お知らせ",icon:Bell},{href:"/menu",label:"メニュー",icon:Menu}];
-export function BottomTabBar(){const pathname=usePathname();return <nav className="fixed inset-x-0 bottom-0 z-50"><div className="mx-auto max-w-[430px] px-2 pb-[calc(.35rem+env(safe-area-inset-bottom))]"><div className="game-cut-card flex items-stretch justify-between border border-white/10 bg-gradient-to-b from-[#15222d]/[.98] to-[#091119]/[.99] px-1 py-1 shadow-[0_10px_28px_rgba(0,0,0,.42),inset_0_1px_0_rgba(255,255,255,.08)] backdrop-blur-xl">{TABS.map(({href,label,icon:Icon})=>{const active=pathname===href||(href!=="/clock"&&pathname.startsWith(`${href}/`));const cls=`relative flex min-h-[60px] flex-1 flex-col items-center justify-center gap-1 text-[9px] font-black transition active:scale-95 ${active?"text-white":"text-[#7f91a3]"}`;const inner=<><span className={`flex h-8 w-10 items-center justify-center ${active?"text-red-400 drop-shadow-[0_0_8px_rgba(239,68,68,.5)]":""}`}><Icon size={22} strokeWidth={active?2.8:2.15}/></span><span className="whitespace-nowrap">{label}</span>{active&&<><span className="absolute inset-x-3 top-0 h-px bg-red-500 shadow-[0_0_9px_rgba(239,68,68,.75)]"/><span className="absolute inset-x-4 bottom-0 h-[2px] bg-red-500 shadow-[0_0_10px_rgba(239,68,68,.75)]"/></>}</>;if(href==="/clock")return <button key={href} type="button" className={cls} onClick={()=>window.location.assign("/clock")}>{inner}</button>;return <Link key={href} href={href} className={cls}>{inner}</Link>})}</div></div></nav>}
+import { Home, CalendarDays, Clock3, Bell, Menu, type LucideIcon } from "lucide-react";
+
+type Tab = { href: string; label: string; icon: LucideIcon; center?: boolean };
+
+const TABS: Tab[] = [
+  { href: "/clock", label: "ホーム", icon: Home },
+  { href: "/shift", label: "シフト", icon: CalendarDays },
+  { href: "/clock#punch", label: "打刻", icon: Clock3, center: true },
+  { href: "/notices", label: "お知らせ", icon: Bell },
+  { href: "/menu", label: "メニュー", icon: Menu },
+];
+
+export function BottomTabBar() {
+  const pathname = usePathname();
+
+  return (
+    <nav className="app-bottom-nav" aria-label="メインナビゲーション">
+      <div className="app-bottom-nav__inner">
+        {TABS.map(({ href, label, icon: Icon, center }) => {
+          const baseHref = href.split("#")[0];
+          const active = !center && (pathname === baseHref || (baseHref !== "/clock" && pathname.startsWith(`${baseHref}/`)));
+          const content = (
+            <>
+              <span className={center ? "app-bottom-nav__centerIcon" : "app-bottom-nav__icon"}>
+                <Icon size={center ? 25 : 21} strokeWidth={active || center ? 2.7 : 2.15} />
+              </span>
+              <span className="app-bottom-nav__label">{label}</span>
+            </>
+          );
+
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={`app-bottom-nav__item ${center ? "is-center" : ""} ${active ? "is-active" : ""}`}
+            >
+              {content}
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}

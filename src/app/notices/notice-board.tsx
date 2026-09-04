@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2, Send } from "lucide-react";
+import { Pencil, Trash2, Send, Plus, X } from "lucide-react";
 import { createNotice, updateNotice, deleteNotice } from "./actions";
 
 type NoticeItem = {
@@ -26,6 +26,7 @@ export function NoticeBoard({ notices, staffName }: { notices: NoticeItem[]; sta
   const [newBody, setNewBody] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBody, setEditBody] = useState("");
+  const [composerOpen, setComposerOpen] = useState(false);
 
   function submitNew(e: React.FormEvent) {
     e.preventDefault();
@@ -68,24 +69,36 @@ export function NoticeBoard({ notices, staffName }: { notices: NoticeItem[]; sta
 
   return (
     <div className="flex flex-col gap-4">
-      <form onSubmit={submitNew} className={cardClass}>
-        <p className="text-[13px] font-black text-slate-700">{staffName} さんとして投稿</p>
-        <textarea
-          value={newBody}
-          onChange={(e) => setNewBody(e.target.value)}
-          rows={3}
-          placeholder="スタッフ全員に共有したい連絡事項を入力してください"
-          className={textareaClass}
-        />
+      {!composerOpen ? (
         <button
-          type="submit"
-          disabled={pending || !newBody.trim()}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-red-400 via-[#e0272e] to-red-800 px-4 py-3 text-sm font-black text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_4px_12px_rgba(220,38,38,0.4)] active:scale-[0.98] disabled:opacity-50"
+          type="button"
+          onClick={() => setComposerOpen(true)}
+          className="flex w-full items-center justify-center gap-2 rounded-[18px] border border-white/10 bg-white/[.045] px-4 py-3 text-sm font-black text-slate-100 active:scale-[.98]"
         >
-          <Send size={15} />
-          投稿する
+          <Plus size={16} className="text-red-400" /> お知らせを投稿
         </button>
-      </form>
+      ) : (
+        <form onSubmit={submitNew} className={cardClass}>
+          <div className="flex items-center justify-between">
+            <p className="text-[13px] font-black text-slate-700">{staffName} さんとして投稿</p>
+            <button type="button" onClick={() => setComposerOpen(false)} className="grid h-8 w-8 place-items-center rounded-full bg-white/[.05] text-slate-400"><X size={14}/></button>
+          </div>
+          <textarea
+            value={newBody}
+            onChange={(e) => setNewBody(e.target.value)}
+            rows={3}
+            placeholder="スタッフ全員に共有したい連絡事項を入力してください"
+            className={textareaClass}
+          />
+          <button
+            type="submit"
+            disabled={pending || !newBody.trim()}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-red-400 via-[#e0272e] to-red-800 px-4 py-3 text-sm font-black text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_4px_12px_rgba(220,38,38,0.4)] active:scale-[0.98] disabled:opacity-50"
+          >
+            <Send size={15} /> 投稿する
+          </button>
+        </form>
+      )}
 
       {notices.map((item) => (
         <article key={item.id} className={cardClass}>

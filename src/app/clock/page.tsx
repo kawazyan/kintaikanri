@@ -89,7 +89,9 @@ export default async function ClockPage() {
     if (r.type === "OUT") e.out = r.timestamp;
     byDate.set(k, e);
   }
+  const todayKey = toJstDateValue(now);
   const history = [...byDate.entries()]
+    .filter(([k]) => k !== todayKey)
     .sort((a, b) => (a[0] < b[0] ? 1 : -1))
     .slice(0, 3)
     .map(([k, v]) => {
@@ -111,7 +113,6 @@ export default async function ClockPage() {
     <main className="staff-screen">
       <div className="mx-auto max-w-[430px] pb-28">
         <div className="flex flex-col">
-          <GamePanel game={game} />
           <CharacterAvatar
             state={avatarState}
             characterId={staff.selectedCharacterId}
@@ -132,6 +133,7 @@ export default async function ClockPage() {
               </p>
             )}
           </CharacterAvatar>
+          <div className="px-3 pt-3"><GamePanel game={game} /></div>
         </div>
 
         <div className="flex flex-col gap-3 px-4 pt-4">
