@@ -145,6 +145,14 @@ function classifyDayForAttendanceStreak(
   return "ABSENT"; // 開始時刻を過ぎても遅刻なしの出勤打刻なし(遅刻または欠勤)
 }
 
+// 分未満(秒・ミリ秒)を切り捨てて比較する。管理画面や打刻時刻の表示は分単位
+// (例:「10:00」)のため、シフト開始予定「10:00」に対して打刻が「10:00:23」の
+// ように同じ分の中で数秒後だった場合でも、表示上は同じ「10:00」であり
+// 「無遅刻」として扱う(秒単位のわずかな差で不成立になるのを防ぐ)。
+function floorToMinute(date: Date): number {
+  return Math.floor(date.getTime() / 60000);
+}
+
 async function loadAttendanceStreakStatusMap(staffId: string, now: Date): Promise<Map<string, DayStatus>> {
   const todayKey = toJstDateValue(now);
   if (GAME_FEATURE_START_DATE > todayKey) return new Map();
@@ -162,7 +170,7 @@ async function loadAttendanceStreakStatusMap(staffId: string, now: Date): Promis
     const key = toJstDateValue(s.startTime);
     const entry = {
       startTime: s.startTime,
-      onTime: s.clockRecords.some((r) => r.type === "IN" && r.timestamp <= s.startTime),
+      onTime: s.clockRecords.some((r) => r.type === "IN" && floorToMinute(r.timestamp) <= floorToMinute(s.startTime)),
     };
     const list = byDate.get(key);
     if (list) list.push(entry);
