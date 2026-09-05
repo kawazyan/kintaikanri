@@ -33,15 +33,12 @@ enum TransferRequestStatus {
 
 // 連続「早出出勤」(シフトの勤務開始時刻より前に出勤打刻した日)の閾値で
 // 獲得する通常称号(item 5)。一度獲得したら永久保持。
-// EARLY_BIRD は連続記録ではなく「一度でも早出出勤した」ことが条件の特別称号
-// (src/lib/game-config.ts の SPECIAL_TITLE_DEFINITIONS 参照)。
 enum GameTitleCode {
   CHALLENGER
   TOP_PLAYER
   EXECUTIVE
   PLATINUM_MASTER
   LEGEND
-  EARLY_BIRD
 }
 
 model Staff {

@@ -34,15 +34,3 @@ export const TITLE_DEFINITIONS: TitleDefinition[] = [
   { code: "PLATINUM_MASTER", label: "PLATINUM MASTER", minStreak: 17 },
   { code: "LEGEND", label: "LEGEND", minStreak: 21 },
 ];
-
-export type SpecialTitleDefinition = {
-  code: GameTitleCode;
-  label: string;
-  description: string;
-};
-
-// 連続勤務ストリークとは無関係に、特定の行動が条件で獲得する称号。
-// 一度獲得したら永久保持(通常称号と同じ扱い)。
-export const SPECIAL_TITLE_DEFINITIONS: SpecialTitleDefinition[] = [
-  { code: "EARLY_BIRD", label: "EARLY BIRD", description: "勤務開始時刻より前に出勤打刻すると獲得" },
-];

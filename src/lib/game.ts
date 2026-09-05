@@ -15,7 +15,6 @@ import {
   STAMP_MONTHLY_TARGET_DAYS,
   STAMP_MONTHLY_BONUS_COINS,
   TITLE_DEFINITIONS,
-  SPECIAL_TITLE_DEFINITIONS,
 } from "@/lib/game-config";
 import type { TitleDefinition } from "@/lib/game-config";
 import type { GameTitleCode } from "@prisma/client";
@@ -30,7 +29,7 @@ import type { GameTitleCode } from "@prisma/client";
 type DayStatus = "OFF" | "COMPLETED" | "ABSENT" | "PENDING";
 
 const TITLE_LABELS: Record<GameTitleCode, string> = Object.fromEntries(
-  [...TITLE_DEFINITIONS, ...SPECIAL_TITLE_DEFINITIONS].map((t) => [t.code, t.label])
+  TITLE_DEFINITIONS.map((t) => [t.code, t.label])
 ) as Record<GameTitleCode, string>;
 
 export type GameState = {
@@ -302,29 +301,6 @@ async function isMonthFullyPunched(
   return true;
 }
 
-// 特別称号 EARLY_BIRD: 過去に一度でも「シフトの勤務開始時刻より前」に出勤打刻
-// した記録があれば獲得。連続勤務のような蓄積型ではなく事実の有無だけなので、
-// 打刻+シフトの実データから毎回判定し、未獲得なら都度DB保存する。
-async function syncEarlyBirdTitle(staffId: string): Promise<void> {
-  const existing = await prisma.gameTitle.findUnique({
-    where: { staffId_titleCode: { staffId, titleCode: "EARLY_BIRD" } },
-  });
-  if (existing) return;
-
-  const records = await prisma.clockRecord.findMany({
-    where: { staffId, type: "IN", shiftId: { not: null } },
-    select: { timestamp: true, shift: { select: { startTime: true, cancelledAt: true } } },
-  });
-  const achieved = records.some(
-    (r) => r.shift && !r.shift.cancelledAt && r.timestamp < r.shift.startTime
-  );
-  if (achieved) {
-    await prisma.gameTitle
-      .create({ data: { staffId, titleCode: "EARLY_BIRD" } })
-      .catch(() => {}); // 並行実行時のUNIQUE制約違反は無視してよい
-  }
-}
-
 async function syncPerfectAttendance(
   staffId: string,
   yearMonth: string,
@@ -375,7 +351,6 @@ export async function syncAndGetGameState(staffId: string, now: Date = new Date(
   const scheduledShiftDays = await countScheduledShiftDaysInMonth(staffId, yearMonth);
   const titleDefs = effectiveTitleDefinitions(scheduledShiftDays);
 
-  await syncEarlyBirdTitle(staffId);
   const [titles] = await Promise.all([
     syncTitles(staffId, streak, titleDefs),
     syncPerfectAttendance(staffId, yearMonth, statuses, todayKey),
@@ -430,19 +405,6 @@ export async function getAllTitlesForStaff(
   const achieved = await prisma.gameTitle.findMany({ where: { staffId } });
   const achievedMap = new Map(achieved.map((t) => [t.titleCode, t.achievedAt]));
   return TITLE_DEFINITIONS.map((def) => ({
-    ...def,
-    achievedAt: achievedMap.get(def.code) ?? null,
-  }));
-}
-
-// 特別称号(連続勤務と無関係な行動条件で獲得する称号)の一覧。称号・バッジ
-// 一覧画面用。ストリーク称号とは別セクションで表示する想定。
-export async function getSpecialTitlesForStaff(
-  staffId: string
-): Promise<{ code: GameTitleCode; label: string; description: string; achievedAt: Date | null }[]> {
-  const achieved = await prisma.gameTitle.findMany({ where: { staffId } });
-  const achievedMap = new Map(achieved.map((t) => [t.titleCode, t.achievedAt]));
-  return SPECIAL_TITLE_DEFINITIONS.map((def) => ({
     ...def,
     achievedAt: achievedMap.get(def.code) ?? null,
   }));
