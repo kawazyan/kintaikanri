@@ -6,9 +6,9 @@ import {
   Clock3,
   TimerReset,
   Swords,
-  Trophy,
-  Sofa,
-  Users,
+  Medal,
+  UserRoundCog,
+  UsersRound,
   CheckCircle2,
 } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
@@ -32,7 +32,6 @@ import { CancelPunchButton } from "./cancel-punch-button";
 import { GamePanel } from "./game-panel";
 import { StampCard } from "./stamp-card";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
-import { HexIcon } from "@/components/hex-icon";
 
 const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -182,20 +181,19 @@ export default async function ClockPage() {
             </section>
           )}
 
-          <section className="grid grid-cols-3 gap-2.5">
+          <section className="home-feature-grid">
             {[
-              { href: "/titles", label: "称号", sub: `${game.titles.length}個 獲得中`, Icon: Trophy, tone: "red" as const },
-              { href: "/my-room", label: "キャラ変更", sub: "キャラ・設定", Icon: Sofa, tone: "blue" as const },
-              { href: "/town", label: "出勤メンバー", sub: `現在${memberCount}人出勤中`, Icon: Users, tone: "green" as const },
+              { href: "/titles", label: "称号", sub: `${game.titles.length}個 獲得中`, Icon: Medal, tone: "red" as const },
+              { href: "/my-room", label: "キャラ変更", sub: "キャラ・設定", Icon: UserRoundCog, tone: "blue" as const },
+              { href: "/town", label: "出勤メンバー", sub: `現在${memberCount}人出勤中`, Icon: UsersRound, tone: "green" as const },
             ].map(({ href, label, sub, Icon, tone }) => (
-              <Link
-                key={href}
-                href={href}
-                className="flex flex-col items-center gap-1.5 rounded-[20px] border border-white/10 bg-[linear-gradient(160deg,#14171b,#07090a)] px-2 py-4 text-center text-white active:scale-[.97]"
-              >
-                <HexIcon icon={Icon} tone={tone} size={26} />
-                <span className="mt-1 whitespace-nowrap text-[12px] font-black">{label}</span>
-                <span className="whitespace-nowrap text-[9px] text-slate-400">{sub}</span>
+              <Link key={href} href={href} className={`home-feature-card home-feature-card--${tone}`}>
+                <span className="home-feature-icon">
+                  <Icon size={25} strokeWidth={2.05} />
+                </span>
+                <span className="home-feature-label">{label}</span>
+                <span className="home-feature-sub">{sub}</span>
+                <ChevronRight className="home-feature-chevron" size={14} strokeWidth={2.4} />
               </Link>
             ))}
           </section>
