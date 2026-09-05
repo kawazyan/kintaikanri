@@ -217,6 +217,26 @@ model AdminEmail {
   createdAt DateTime @default(now())
 }
 
+// サポートBOTのFAQ。管理画面(BOT管理 → FAQ管理)から質問・回答・表示対象
+// (スタッフ/取引先)・並び順・表示/非表示を管理する。コードを変更せずに
+// 内容を追加・編集・削除でき、保存内容はBOT側に即座に反映される(BOTは
+// 表示ページのレイアウトを描画するたびにこのテーブルを読みに行くため)。
+model BotFaq {
+  id         String         @id @default(cuid())
+  audience   BotFaqAudience
+  category   String
+  question   String
+  answer     String
+  // 質問文以外にも一致させたい追加キーワード(カンマ区切り、任意)。
+  keywords   String?
+  visible    Boolean        @default(true)
+  sortOrder  Int            @default(0)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@index([audience, visible, sortOrder])
+}
+
 // 掲示板形式のお知らせ。全スタッフが投稿・編集できる(仕様)。投稿者名は
 // 投稿時点でスナップショットしておき、退職・強制削除後も表示上は名前が
 // 残るようにする(authorId は onDelete: SetNull で紐付けだけ外す)。
@@ -307,6 +327,10 @@ enum CompensationCategory {
   REFERRAL
   INCENTIVE
   OTHER
+}
+enum BotFaqAudience {
+  STAFF
+  CLIENT
 }
 enum ExpenseStatus {
   DRAFT

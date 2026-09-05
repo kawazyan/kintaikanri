@@ -19,139 +19,34 @@ type ChatMessage = {
   text: string;
 };
 
-const STAFF_ITEMS: Item[] = [
-  {
-    id: "staff-clock",
-    title: "出勤・退勤について",
-    category: "勤怠",
-    keywords: ["出勤", "退勤", "打刻", "再出勤", "勤務開始", "勤務終了"],
-    answer:
-      "文字通りです。押してください。ミスったら5分以内であれば修正できます。位置情報も自動回収なので余計な事は考えないように。",
-  },
-  {
-    id: "staff-shift",
-    title: "シフトを確認・変更したい",
-    category: "勤怠",
-    keywords: ["シフト", "予定", "勤務日", "変更", "休み"],
-    answer:
-      "シフトが確定したら確定分を入力してください。受取予定報酬額も確定している場合は入力してください。",
-  },
-  {
-    id: "staff-money",
-    title: "確定金額・支払日を確認したい",
-    category: "支払",
-    keywords: ["金額", "給料", "報酬", "支払", "振込", "確定", "受取"],
-    answer: "ホームからどうぞ確認してください。",
-  },
-  {
-    id: "staff-expense",
-    title: "交通費・経費を申請したい",
-    category: "申請",
-    keywords: ["交通費", "経費", "高速", "宿泊", "ガソリン", "申請"],
-    answer:
-      "メニューからすすんで申請してください。領収書は写真等で経理課（keiri@kjgroup.info）に送っておいてください。洩れたら振り込みませんよからね。",
-  },
-  {
-    id: "staff-mnp",
-    title: "MNP・予約番号について調べたい",
-    category: "販売サポート",
-    keywords: ["MNP", "予約番号", "転出", "番号移行", "乗り換え"],
-    answer: "ここで聞くな。Googleあるだろ。",
-  },
-  {
-    id: "staff-plan",
-    title: "料金プランについて調べたい",
-    category: "販売サポート",
-    keywords: ["プラン", "料金", "ギガ", "GB", "割引", "料金プラン"],
-    answer: "調べてください。",
-  },
-  {
-    id: "staff-device",
-    title: "機種・端末について調べたい",
-    category: "販売サポート",
-    keywords: ["機種", "端末", "iPhone", "Pixel", "Android", "eSIM", "SIM"],
-    answer: "そういうのはチャッピーにやらせとけばいいんだよ。",
-  },
-  {
-    id: "staff-no-work",
-    title: "仕事行きたくない",
-    category: "雑談",
-    keywords: ["仕事行きたくない", "行きたくない", "サボりたい", "仕事だるい"],
-    answer: "皆そうです。行ってください。",
-  },
-  {
-    id: "staff-sick",
-    title: "体調が悪い",
-    category: "雑談",
-    keywords: ["体調が悪い", "体調不良", "しんどい", "だるい"],
-    answer: "気のせいです。頑張ってください。",
-  },
-  {
-    id: "staff-really-sick",
-    title: "マジで体調が悪い",
-    category: "雑談",
-    keywords: ["マジで体調が悪い", "本当に体調が悪い", "高熱", "動けない", "救急"],
-    answer: "上長の承認取って、即現場責任者等に連絡してください。",
-  },
-  {
-    id: "staff-drink",
-    title: "飲みに行きたい",
-    category: "雑談",
-    keywords: ["飲みに行きたい", "飲み会", "飲みたい", "飲みに行く"],
-    answer: "俺も",
-  },
-];
+// スタッフ向け/取引先向けのFAQ本体は 管理画面 → BOT管理 → FAQ管理 で
+// 編集する(prisma の BotFaq テーブル)。ここではDBから受け取った内容を
+// 既存の Item 形状に変換するだけ。雑談的な定型あいさつ(SMALL_TALK)は
+// FAQ一覧のトピックボタンとしては表示しない従来仕様のため、引き続き
+// ここに残す。
+export type BotFaqData = {
+  id: string;
+  audience: "STAFF" | "CLIENT";
+  category: string;
+  question: string;
+  answer: string;
+  keywords: string | null;
+};
 
-const CLIENT_ITEMS: Item[] = [
-  {
-    id: "client-request",
-    title: "稼働を依頼したい",
-    category: "稼働依頼",
-    keywords: ["依頼", "稼働", "申し込み", "申込", "スタッフ"],
-    answer:
-      "稼働依頼フォームから、会社名・ご担当者様・稼働場所・依頼内容・単価などをご入力ください。担当者様メールアドレスは任意です。",
-  },
-  {
-    id: "client-flow",
-    title: "依頼後の流れを知りたい",
-    category: "稼働依頼",
-    keywords: ["流れ", "承認", "依頼後", "ステータス", "状況"],
-    answer:
-      "送信された稼働依頼はK.J管理側で確認します。承認後は専用ページから依頼状況・勤怠・請求情報を確認できます。",
-  },
-  {
-    id: "client-change",
-    title: "依頼内容を変更したい",
-    category: "稼働依頼",
-    keywords: ["変更", "修正", "キャンセル", "中止", "追加"],
-    answer:
-      "依頼内容の変更や追加が必要な場合は、対象の依頼内容が分かる状態でK.J担当者へご連絡ください。",
-  },
-  {
-    id: "client-attendance",
-    title: "スタッフの勤怠を確認したい",
-    category: "確認",
-    keywords: ["勤怠", "出勤", "退勤", "勤務", "時間"],
-    answer:
-      "承認済みの依頼は専用ページからスタッフの勤怠状況を確認できます。表示は自動更新されます。",
-  },
-  {
-    id: "client-invoice",
-    title: "請求書・明細を確認したい",
-    category: "請求",
-    keywords: ["請求", "請求書", "明細", "PDF", "金額"],
-    answer:
-      "請求確定後、専用ページから請求書PDFと勤務・請求明細を確認できます。",
-  },
-  {
-    id: "client-staff",
-    title: "稼働スタッフについて",
-    category: "スタッフ",
-    keywords: ["スタッフ", "稼働者", "人員", "人数", "名前"],
-    answer:
-      "稼働スタッフ名は依頼時に入力できます。登録済みスタッフ一覧にいない方でも、名前を直接入力して依頼できます。",
-  },
-];
+function toItem(faq: BotFaqData): Item {
+  const extraKeywords = faq.keywords
+    ? faq.keywords.split(",").map((k) => k.trim()).filter(Boolean)
+    : [];
+  return {
+    id: faq.id,
+    title: faq.question,
+    category: faq.category,
+    answer: faq.answer,
+    // 質問文自体も検索キーワードに含めるので、追加キーワードを未入力
+    // のままでも質問文で普通に一致する。
+    keywords: [faq.question, ...extraKeywords],
+  };
+}
 
 const SMALL_TALK: Array<{ keywords: string[]; answer: string }> = [
   { keywords: ["おはよう", "おはよ"], answer: "おはようございます。今日もよろしくお願いします。" },
@@ -207,7 +102,7 @@ function findAnswer(input: string, items: Item[], audience: Audience) {
     : "この内容はまだBOTに登録されていません。個別のご依頼・契約条件に関する内容は、K.J担当者へお問い合わせください。";
 }
 
-export function FixedSupportBot() {
+export function FixedSupportBot({ faqs }: { faqs: BotFaqData[] }) {
   const pathname = usePathname();
   const audience = audienceFromPath(pathname);
   const [open, setOpen] = useState(false);
@@ -215,7 +110,13 @@ export function FixedSupportBot() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const nextId = useRef(0);
 
-  const items = audience === "client" ? CLIENT_ITEMS : STAFF_ITEMS;
+  const items = useMemo(
+    () =>
+      faqs
+        .filter((f) => f.audience === (audience === "client" ? "CLIENT" : "STAFF"))
+        .map(toItem),
+    [faqs, audience]
+  );
   const title = audience === "client" ? "K.J ご案内BOT" : "K.J サポートBOT";
   const intro =
     audience === "client"

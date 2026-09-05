@@ -27,7 +27,7 @@ export default async function MenuPage() {
       <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28">
         <PageHeader icon={Menu} title="メニュー" centered />
 
-        <section className="app-profile-card">
+        <section className="app-profile-card app-profile-card--static">
           <div className="app-profile-card__cover" />
           <div className="app-profile-card__content">
             <span className="app-profile-card__avatar">
@@ -37,7 +37,6 @@ export default async function MenuPage() {
               <p className="app-profile-card__name">{staff.name}</p>
               <p className="app-profile-card__code">社員コード：{staff.employeeCode}</p>
             </div>
-            <ChevronRight size={18} className="text-slate-500"/>
           </div>
         </section>
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Banknote,
+  Bot,
   Building2,
   CalendarDays,
   ClipboardCheck,
@@ -30,6 +31,7 @@ const links = [
   { href: "/admin/compensation", label: "別途報酬", icon: Gift },
   { href: "/admin/invoices", label: "請求", icon: FileText },
   { href: "/admin/admins", label: "通知先", icon: Mail },
+  { href: "/admin/bot", label: "BOT管理", icon: Bot },
 ];
 
 export function AdminNav() {
