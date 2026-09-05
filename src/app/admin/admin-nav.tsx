@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -11,6 +12,7 @@ import {
   Clock3,
   FileText,
   Gift,
+  Inbox,
   LayoutDashboard,
   LogOut,
   Mail,
@@ -27,6 +29,7 @@ const links = [
   { href: "/admin/payments", label: "振込申請", icon: Banknote },
   { href: "/admin/clients", label: "取引先窓口", icon: Building2 },
   { href: "/admin/requests", label: "稼働依頼", icon: ClipboardCheck },
+  { href: "/admin/attendance-requests", label: "申請・報告管理", icon: Inbox },
   { href: "/admin/expenses", label: "経費", icon: ReceiptText },
   { href: "/admin/compensation", label: "別途報酬", icon: Gift },
   { href: "/admin/invoices", label: "請求", icon: FileText },
@@ -37,6 +40,20 @@ const links = [
 export function AdminNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/admin/pending-count")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data) setPendingCount(data.count ?? 0);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
 
   async function logout() {
     await clearAdminCookieAction();
@@ -77,6 +94,11 @@ export function AdminNav() {
             >
               <Icon size={16} strokeWidth={2.2} />
               {item.label}
+              {item.href === "/admin/attendance-requests" && pendingCount > 0 && (
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-black text-white">
+                  {pendingCount}
+                </span>
+              )}
             </Link>
           );
         })}

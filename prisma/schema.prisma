@@ -97,6 +97,8 @@ model Staff {
   expenses              Expense[]
   notices               Notice[]
   compensationRequests  CompensationRequest[]
+  irregularReports      IrregularReport[]
+  shiftChangeRequests   ShiftChangeRequest[]
 }
 
 model MonthlyEarningTarget {
@@ -132,6 +134,7 @@ model Shift {
   cancelledAt DateTime?
   cancellationReason String?
   cancelledBy String?
+  shiftChangeRequests ShiftChangeRequest[]
 
   @@index([staffId, startTime])
   @@index([workOrderStaffId])
@@ -616,4 +619,81 @@ model InvoiceLine {
   taxAmount Int
   totalInclTax Int
   @@index([invoiceId, sortOrder])
+}
+
+// ===== イレギュラー報告・シフト変更申請 =====
+// 「予定どおりの勤務ができない、または勤務内容にイレギュラーが発生した場合の
+// 報告窓口」。遅刻・欠勤等の簡易申請ではなく、あくまで会社への報告記録。
+enum IrregularReportType {
+  LATE             // 遅刻
+  EARLY_LEAVE      // 早退
+  ABSENCE          // 欠勤
+  SAME_DAY_ABSENCE // 当日欠勤
+  CLOCK_IN_CHANGE  // 出勤時間変更
+  CLOCK_OUT_CHANGE // 退勤時間変更
+  LOCATION_CHANGE  // 勤務場所変更
+  OTHER            // その他
+}
+
+enum IrregularReportStatus {
+  UNCONFIRMED // 未確認
+  IN_PROGRESS // 確認中
+  RESOLVED    // 対応済み
+}
+
+model IrregularReport {
+  id              String                 @id @default(cuid())
+  staffId         String
+  staff           Staff                  @relation(fields: [staffId], references: [id])
+  targetDate      DateTime
+  reportType      IrregularReportType
+  reason          String
+  details         String
+  changedTime     String?
+  changedLocation String?
+  status          IrregularReportStatus  @default(UNCONFIRMED)
+  reviewerName    String?
+  reviewedAt      DateTime?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@index([staffId, createdAt])
+  @@index([status])
+}
+
+// スタッフ・稼働先・上長間の調整が完了した内容をシステムへ申請する機能。
+// システム上の申請だけでシフト変更の許可を求めるものではない(仕様)。
+// 承認されるまでは対象Shiftを一切変更しない。
+enum ShiftChangeKind {
+  DATE_CHANGE     // 勤務日変更
+  TIME_CHANGE     // 勤務時間変更
+  LOCATION_CHANGE // 勤務場所変更
+  TO_OFF          // 休みへの変更
+  TRANSFER        // 別日への振替
+}
+
+model ShiftChangeRequest {
+  id                String                 @id @default(cuid())
+  staffId           String
+  staff             Staff                  @relation(fields: [staffId], references: [id])
+  shiftId           String?
+  shift             Shift?                 @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  targetDate        DateTime
+  kind              ShiftChangeKind
+  reason            String
+  newDate           DateTime?
+  newStartTime      String?
+  newEndTime        String?
+  newLocation       String?
+  transferDate      DateTime?
+  approvalConfirmed Boolean                @default(false)
+  status            OverrideApprovalStatus @default(PENDING)
+  reviewerName      String?
+  reviewedAt        DateTime?
+  rejectionReason   String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  @@index([staffId, createdAt])
+  @@index([status])
 }

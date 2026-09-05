@@ -1,28 +1,47 @@
 import Link from "next/link";
 import {
+  AlertTriangle,
   Building2,
+  CalendarCheck2,
   CalendarDays,
   ChevronRight,
   ClipboardCheck,
   Clock3,
+  DoorOpen,
   ReceiptText,
+  UserCheck,
+  UserX,
   Users,
 } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getTodayShiftStatusSummary } from "@/lib/attendance";
+import { jstDayRange } from "@/lib/time";
 import { AdminNav } from "./admin-nav";
 
 export default async function AdminDashboardPage() {
   await requireAdmin();
 
-  const [staffCount, shiftCount, recordCount, clientCount, pendingRequests, pendingExpenses] = await Promise.all([
-    prisma.staff.count({ where: { status: "ACTIVE" } }),
-    prisma.shift.count(),
-    prisma.clockRecord.count(),
-    prisma.client.count(),
-    prisma.workOrder.count({ where: { status: "PENDING_APPROVAL" } }),
-    prisma.expense.count({ where: { status: "SUBMITTED" } }),
-  ]);
+  const { start: todayStart, end: todayEnd } = jstDayRange();
+  const [staffCount, shiftCount, recordCount, clientCount, pendingRequests, pendingExpenses, todaySummary, todayIrregularCount] =
+    await Promise.all([
+      prisma.staff.count({ where: { status: "ACTIVE" } }),
+      prisma.shift.count(),
+      prisma.clockRecord.count(),
+      prisma.client.count(),
+      prisma.workOrder.count({ where: { status: "PENDING_APPROVAL" } }),
+      prisma.expense.count({ where: { status: "SUBMITTED" } }),
+      getTodayShiftStatusSummary(),
+      prisma.irregularReport.count({ where: { targetDate: { gte: todayStart, lt: todayEnd } } }),
+    ]);
+
+  const todayTiles = [
+    { label: "本日稼働予定", value: todaySummary.scheduledCount, unit: "名", icon: CalendarCheck2, filter: "scheduled" },
+    { label: "出勤済み", value: todaySummary.clockedIn.length, unit: "名", icon: UserCheck, filter: "clocked_in" },
+    { label: "未出勤", value: todaySummary.notClockedIn.length, unit: "名", icon: UserX, filter: "not_clocked_in" },
+    { label: "退勤済み", value: todaySummary.clockedOut.length, unit: "名", icon: DoorOpen, filter: "clocked_out" },
+    { label: "イレギュラー報告", value: todayIrregularCount, unit: "件", icon: AlertTriangle, filter: "irregular" },
+  ];
 
   const stats = [
     { label: "在籍スタッフ", value: staffCount, icon: Users, href: "/admin/staff" },
@@ -86,6 +105,31 @@ export default async function AdminDashboardPage() {
           </div>
           <ChevronRight className="ml-auto text-slate-300" />
         </Link>
+      </section>
+
+      <section className="mt-8">
+        <p className="mb-3 text-xs font-black tracking-[0.18em] text-red-600">今日の稼働状況</p>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+          {todayTiles.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.filter}
+                href={`/admin/today?filter=${item.filter}`}
+                className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-[0_8px_20px_rgba(15,23,42,.06)] transition active:translate-y-0.5"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100">
+                  <Icon size={18} />
+                </span>
+                <p className="mt-3 text-2xl font-black tabular-nums text-slate-950">
+                  {item.value}
+                  <span className="ml-0.5 text-xs font-bold text-slate-400">{item.unit}</span>
+                </p>
+                <p className="mt-1 text-xs font-bold text-slate-500">{item.label}</p>
+              </Link>
+            );
+          })}
+        </div>
       </section>
     </main>
   );

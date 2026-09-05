@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Award, ChevronRight, Menu, Sofa, Users, Wallet, Sparkles, ReceiptText, Gift, User } from "lucide-react";
+import { Award, ChevronRight, Menu, Sofa, Users, Wallet, Sparkles, ReceiptText, Gift, User, AlertTriangle, CalendarClock } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
@@ -115,6 +115,32 @@ export default async function MenuPage() {
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-black text-slate-900">別途報酬申請</span>
                 <span className="mt-0.5 block text-[11px] font-semibold text-slate-400">リファラル報酬・インセンティブなど</span>
+              </span>
+              <ChevronRight size={19} className="shrink-0 text-slate-300" />
+            </Link>
+
+            <div className="mx-4 h-px bg-slate-100" />
+
+            <Link href="/irregular-report" className="flex items-center gap-3 p-4 transition active:bg-slate-50">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] bg-slate-50 ring-1 ring-slate-100">
+                <AlertTriangle size={21} className="text-slate-700" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-black text-slate-900">イレギュラー報告</span>
+                <span className="mt-0.5 block text-[11px] font-semibold text-slate-400">勤務予定の変更・問題の報告窓口</span>
+              </span>
+              <ChevronRight size={19} className="shrink-0 text-slate-300" />
+            </Link>
+
+            <div className="mx-4 h-px bg-slate-100" />
+
+            <Link href="/shift-change-request" className="flex items-center gap-3 p-4 transition active:bg-slate-50">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] bg-slate-50 ring-1 ring-slate-100">
+                <CalendarClock size={21} className="text-slate-700" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-black text-slate-900">シフト変更申請</span>
+                <span className="mt-0.5 block text-[11px] font-semibold text-slate-400">調整済みのシフト変更をシステムへ申請</span>
               </span>
               <ChevronRight size={19} className="shrink-0 text-slate-300" />
             </Link>
