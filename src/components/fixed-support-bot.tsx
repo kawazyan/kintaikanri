@@ -108,6 +108,7 @@ export function FixedSupportBot({ faqs }: { faqs: BotFaqData[] }) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const nextId = useRef(0);
 
   const items = useMemo(
@@ -120,12 +121,20 @@ export function FixedSupportBot({ faqs }: { faqs: BotFaqData[] }) {
   const title = audience === "client" ? "K.J ご案内BOT" : "K.J サポートBOT";
   const intro =
     audience === "client"
-      ? "稼働依頼・勤怠・請求についてご案内します。"
-      : "勤怠・支払・販売サポートについて登録済み情報から回答します。";
+      ? "稼働依頼・勤怠・請求についてご案内します。まずはカテゴリを選んでください。"
+      : "勤怠・支払・販売サポートについて登録済み情報から回答します。まずはカテゴリを選んでください。";
 
   const categories = useMemo(() => {
     return Array.from(new Set(items.map((item) => item.category)));
   }, [items]);
+
+  // ページ遷移で audience が切り替わった場合など、選択中のカテゴリが
+  // 今の一覧に存在しなければカテゴリ選択からやり直させる。
+  const currentCategory = activeCategory && categories.includes(activeCategory) ? activeCategory : null;
+  const topicsInCategory = useMemo(
+    () => (currentCategory ? items.filter((item) => item.category === currentCategory) : []),
+    [items, currentCategory]
+  );
 
   if (!audience) return null;
 
@@ -142,7 +151,10 @@ export function FixedSupportBot({ faqs }: { faqs: BotFaqData[] }) {
     setInput("");
   };
 
+  // 回答画面から一段階だけ戻る(選んでいたカテゴリのトピック一覧へ)。
   const goBack = () => setMessages([]);
+  // トピック一覧からさらに一段階戻って、カテゴリ選択からやり直す。
+  const goBackToCategories = () => setActiveCategory(null);
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -190,41 +202,68 @@ export function FixedSupportBot({ faqs }: { faqs: BotFaqData[] }) {
                     audience === "staff" ? "bg-white/[.06] text-slate-200" : "bg-slate-100 text-slate-700"
                   }`}
                 >
-                  {intro}
+                  {currentCategory ? currentCategory : intro}
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {categories.map((category) => (
-                    <span
-                      key={category}
-                      className={`rounded-full px-3 py-1.5 text-[11px] font-black ${
-                        audience === "staff"
-                          ? "border border-white/10 bg-white/[.04] text-slate-300"
-                          : "bg-slate-100 text-slate-600"
-                      }`}
-                    >
-                      {category}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="mt-4 space-y-2">
-                  {items.map((item) => (
+                {currentCategory === null ? (
+                  <div className="mt-4 space-y-2">
+                    {categories.map((category) => {
+                      const count = items.filter((item) => item.category === category).length;
+                      return (
+                        <button
+                          type="button"
+                          key={category}
+                          onClick={() => setActiveCategory(category)}
+                          className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-black transition active:scale-[.99] ${
+                            audience === "staff"
+                              ? "border border-white/10 bg-white/[.045] text-slate-100"
+                              : "border border-slate-200 bg-white text-slate-800 shadow-sm"
+                          }`}
+                        >
+                          <span className="flex-1">{category}</span>
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black ${
+                              audience === "staff" ? "bg-white/[.08] text-slate-400" : "bg-slate-100 text-slate-500"
+                            }`}
+                          >
+                            {count}
+                          </span>
+                          <ChevronRight size={17} className="opacity-60" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="mt-4 space-y-2">
                     <button
                       type="button"
-                      key={item.id}
-                      onClick={() => ask(item.title)}
-                      className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-black transition active:scale-[.99] ${
+                      onClick={goBackToCategories}
+                      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-black transition active:scale-[.97] ${
                         audience === "staff"
-                          ? "border border-white/10 bg-white/[.045] text-slate-100"
-                          : "border border-slate-200 bg-white text-slate-800 shadow-sm"
+                          ? "border border-white/10 bg-white/[.04] text-slate-300"
+                          : "border border-slate-200 bg-white text-slate-600"
                       }`}
                     >
-                      <span className="flex-1">{item.title}</span>
-                      <ChevronRight size={17} className="opacity-60" />
+                      <ArrowLeft size={14} />
+                      カテゴリ一覧へ戻る
                     </button>
-                  ))}
-                </div>
+                    {topicsInCategory.map((item) => (
+                      <button
+                        type="button"
+                        key={item.id}
+                        onClick={() => ask(item.title)}
+                        className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-black transition active:scale-[.99] ${
+                          audience === "staff"
+                            ? "border border-white/10 bg-white/[.045] text-slate-100"
+                            : "border border-slate-200 bg-white text-slate-800 shadow-sm"
+                        }`}
+                      >
+                        <span className="flex-1">{item.title}</span>
+                        <ChevronRight size={17} className="opacity-60" />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </>
             ) : (
               <div className="space-y-3">
