@@ -1,14 +1,14 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Award, ChevronRight, Menu, Sofa, Users, Wallet, Sparkles, ReceiptText, Gift } from "lucide-react";
+import { Award, ChevronRight, Menu, Sofa, Users, Wallet, Sparkles, ReceiptText, Gift, User } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { HexIcon } from "@/components/hex-icon";
 import { PageHeader } from "@/components/page-header";
 import { LogoutButton } from "./logout-button";
-import { avatarImagePath } from "@/lib/character-config";
+import { resolveAvatarSrc } from "@/lib/character-config";
 
 const GAME_MENU_ITEMS = [
   { href: "/titles", label: "獲得した称号", icon: Award, tone: "red" as const },
@@ -22,6 +22,12 @@ export default async function MenuPage() {
   const staff = await prisma.staff.findUnique({ where: { id: staffId } });
   if (!staff || staff.status !== "ACTIVE") redirect("/");
 
+  const avatarSrc = resolveAvatarSrc(staff.selectedCharacterId, "WORK", {
+    home: staff.customAvatarHome,
+    work: staff.customAvatarWork,
+    night: staff.customAvatarNight,
+  });
+
   return (
     <main className="staff-screen">
       <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28">
@@ -31,7 +37,20 @@ export default async function MenuPage() {
           <div className="app-profile-card__cover" />
           <div className="app-profile-card__content">
             <span className="app-profile-card__avatar">
-              <Image src={avatarImagePath(staff.selectedCharacterId, "WORK")} alt="プロフィール" fill sizes="64px" className="object-cover" />
+              {avatarSrc ? (
+                <Image
+                  src={avatarSrc}
+                  alt="プロフィール"
+                  fill
+                  sizes="64px"
+                  unoptimized={avatarSrc.startsWith("data:")}
+                  className="object-cover"
+                />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center bg-slate-100 text-slate-400">
+                  <User size={26} />
+                </span>
+              )}
             </span>
             <div className="min-w-0 flex-1">
               <p className="app-profile-card__name">{staff.name}</p>

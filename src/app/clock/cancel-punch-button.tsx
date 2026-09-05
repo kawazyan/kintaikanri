@@ -10,9 +10,13 @@ const WINDOW_MS = 5 * 60 * 1000;
 export function CancelPunchButton({
   recordId,
   timestamp,
+  compact = false,
 }: {
   recordId: string;
   timestamp: string; // ISO instant
+  // ホーム画面の出勤・退勤ボタン直下に置く、小さく控えめな見た目のバリアント。
+  // 期限切れ時は(下の「今日の打刻履歴」に同じ案内があるため)何も表示しない。
+  compact?: boolean;
 }) {
   // Starts null and fills in on mount for the same hydration-mismatch
   // reason as LiveClock: the remaining time is a function of "now".
@@ -34,6 +38,7 @@ export function CancelPunchButton({
 
   const elapsedMs = now - new Date(timestamp).getTime();
   if (elapsedMs > WINDOW_MS) {
+    if (compact) return null;
     return <p className="text-[11px] text-slate-500">5分経過後は管理者に修正を依頼してください</p>;
   }
 
@@ -57,9 +62,13 @@ export function CancelPunchButton({
       type="button"
       onClick={handleCancel}
       disabled={pending}
-      className="flex items-center gap-1 rounded-lg bg-red-50 px-2 py-1 text-[11px] font-semibold text-red-600 transition active:scale-95 disabled:opacity-50"
+      className={
+        compact
+          ? "flex items-center gap-1 rounded-full bg-white/70 px-2.5 py-1 text-[10px] font-bold text-red-600 shadow-sm backdrop-blur-sm transition active:scale-95 disabled:opacity-50"
+          : "flex items-center gap-1 rounded-lg bg-red-50 px-2 py-1 text-[11px] font-semibold text-red-600 transition active:scale-95 disabled:opacity-50"
+      }
     >
-      <RotateCcw size={11} />
+      <RotateCcw size={compact ? 10 : 11} />
       {pending ? "取り消し中..." : `やり直す(あと${remainingLabel})`}
     </button>
   );

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { PageHeader } from "@/components/page-header";
 import { CharacterPicker } from "./character-picker";
+import { NameEditor } from "./name-editor";
 
 export default async function MyRoomPage() {
   const staffId = await getStaffId();
@@ -16,6 +17,8 @@ export default async function MyRoomPage() {
     <main className="staff-screen">
       <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28">
         <PageHeader icon={Sofa} title="マイルーム" eyebrow={`${staff.name} さん`} />
+
+        <NameEditor name={staff.name} />
 
         <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#f8c85f] via-[#f59e0b] to-[#ea580c] p-5 text-white shadow-[0_12px_28px_rgba(234,88,12,.22)] ring-1 ring-white/20">
           <span className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/20 blur-2xl" />
@@ -43,7 +46,14 @@ export default async function MyRoomPage() {
               <CheckCircle2 size={10} /> 即時反映
             </span>
           </div>
-          <CharacterPicker selectedCharacterId={staff.selectedCharacterId} />
+          <CharacterPicker
+            selectedCharacterId={staff.selectedCharacterId}
+            customAvatars={{
+              home: staff.customAvatarHome,
+              work: staff.customAvatarWork,
+              night: staff.customAvatarNight,
+            }}
+          />
         </section>
       </div>
       <BottomTabBar />

@@ -2,6 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["@prisma/client", "@prisma/adapter-pg", "pg"],
+  // マイルームのキャラ写真アップロード(data URLをServer Actionで送信)が
+  // デフォルトの1MB制限に収まらない場合があるため引き上げる。
+  experimental: {
+    serverActions: { bodySizeLimit: "4mb" },
+  },
   // Allows the dev server to accept requests (including Server Actions)
   // from phones on the same LAN, not just localhost. This IP can change
   // when the dev machine reconnects to Wi-Fi — update it if that happens.

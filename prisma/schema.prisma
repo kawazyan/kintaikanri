@@ -32,12 +32,15 @@ enum TransferRequestStatus {
 }
 
 // 連続勤務ストリークの閾値で獲得する通常称号(item 5)。一度獲得したら永久保持。
+// EARLY_BIRD は連続勤務ではなく「勤務開始時刻より前に出勤打刻した」ことが
+// 条件の特別称号(src/lib/game-config.ts の SPECIAL_TITLE_DEFINITIONS 参照)。
 enum GameTitleCode {
   CHALLENGER
   TOP_PLAYER
   EXECUTIVE
   PLATINUM_MASTER
   LEGEND
+  EARLY_BIRD
 }
 
 model Staff {
@@ -63,7 +66,14 @@ model Staff {
 
   // ホーム画面に表示するキャラクター(public/characters/<id>/ 配下の画像を参照)。
   // 選択肢は src/lib/character-config.ts で管理。無料でいつでも切り替え可能。
+  // "none" = 表示なし、"custom" = 下記の自分でアップロードした写真を使う。
   selectedCharacterId String @default("default")
+
+  // selectedCharacterId="custom" のときに使う、本人がアップロードした写真
+  // (data URL文字列としてそのまま保存。出勤前/勤務中/退勤後の3状態分)。
+  customAvatarHome  String?
+  customAvatarWork  String?
+  customAvatarNight String?
 
   // 支払方法(item 6)
   paymentMethod PaymentMethod @default(REQUEST)

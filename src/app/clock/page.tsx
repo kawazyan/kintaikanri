@@ -24,6 +24,7 @@ import { computeMonthlyEarnings, computeTransferBalance } from "@/lib/earnings";
 import { getAttendingStaff } from "@/lib/attendance";
 import { nextFixedPaymentDate } from "@/lib/payment";
 import { syncAndGetGameState } from "@/lib/game";
+import { resolveAvatarSrc } from "@/lib/character-config";
 import { ClockButtons } from "./clock-buttons";
 import { LiveClock } from "./live-clock";
 import { CharacterAvatar, type AvatarState } from "./character-avatar";
@@ -79,6 +80,11 @@ export default async function ClockPage() {
   const todayOut = [...todayRecords].reverse().find((r) => r.type === "OUT");
   const todayHasShift = todayRecords.some((r) => r.shiftId);
   const avatarState: AvatarState = !last ? "HOME" : last.type === "IN" ? "WORK" : "NIGHT";
+  const avatarSrc = resolveAvatarSrc(staff.selectedCharacterId, avatarState, {
+    home: staff.customAvatarHome,
+    work: staff.customAvatarWork,
+    night: staff.customAvatarNight,
+  });
   const nextTitle = game.lockedTitles[0];
 
   const byDate = new Map<string, { in?: Date; out?: Date }>();
@@ -115,11 +121,14 @@ export default async function ClockPage() {
         <div className="flex flex-col">
           <CharacterAvatar
             state={avatarState}
-            characterId={staff.selectedCharacterId}
+            imageSrc={avatarSrc}
             staffName={staff.name}
           >
             <LiveClock />
             <ClockButtons canClockOut={canClockOut} />
+            {last && (
+              <CancelPunchButton recordId={last.id} timestamp={last.timestamp.toISOString()} compact />
+            )}
             <p className="rounded-full bg-white/80 px-3 py-1 text-[12px] font-bold text-slate-700 shadow-sm backdrop-blur-sm">
               {canClockOut
                 ? `出勤時刻 ${todayIn ? formatJst(todayIn.timestamp).slice(-5) : "--:--"}`

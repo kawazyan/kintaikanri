@@ -3,7 +3,7 @@ import { Crown, Award, Trophy, LockKeyhole, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getAllTitlesForStaff, getPerfectAttendanceHistory } from "@/lib/game";
+import { getAllTitlesForStaff, getSpecialTitlesForStaff, getPerfectAttendanceHistory } from "@/lib/game";
 import { formatJst, yearMonthLabel } from "@/lib/time";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 
@@ -14,8 +14,9 @@ export default async function TitlesPage() {
   const staff = await prisma.staff.findUnique({ where: { id: staffId } });
   if (!staff || staff.status !== "ACTIVE") redirect("/");
 
-  const [titles, perfectAttendances] = await Promise.all([
+  const [titles, specialTitles, perfectAttendances] = await Promise.all([
     getAllTitlesForStaff(staffId),
+    getSpecialTitlesForStaff(staffId),
     getPerfectAttendanceHistory(staffId),
   ]);
 
@@ -67,6 +68,45 @@ export default async function TitlesPage() {
                       <>
                         <span className="inline-flex rounded-full bg-white/14 px-2 py-1 text-[9px] font-black text-white ring-1 ring-white/15">獲得済み</span>
                         <p className="mt-1 text-[9px] font-bold text-white/55">{formatJst(title.achievedAt)}</p>
+                      </>
+                    ) : (
+                      <span className="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-black text-slate-400">未獲得</span>
+                    )}
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </section>
+
+        <section className="flex flex-col gap-3">
+          <p className="px-1 text-[11px] font-black tracking-[.1em] text-slate-400">特別称号</p>
+          {specialTitles.map((title) => {
+            const achieved = Boolean(title.achievedAt);
+            return (
+              <article
+                key={title.code}
+                className={achieved
+                  ? "relative overflow-hidden rounded-[24px] bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 p-4 text-white shadow-[0_9px_22px_rgba(217,119,6,.22)] ring-1 ring-amber-300/30"
+                  : "rounded-[24px] bg-white p-4 shadow-[0_7px_20px_rgba(15,23,42,.06)] ring-1 ring-black/[.05]"}
+              >
+                {achieved ? <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent" /> : null}
+                <div className="relative flex items-center gap-3">
+                  <span className={achieved
+                    ? "flex h-12 w-12 shrink-0 items-center justify-center rounded-[17px] bg-white/16 ring-1 ring-white/20"
+                    : "flex h-12 w-12 shrink-0 items-center justify-center rounded-[17px] bg-slate-100 ring-1 ring-slate-200"}
+                  >
+                    {achieved ? <Crown size={22} className="text-white" fill="currentColor" /> : <LockKeyhole size={19} className="text-slate-400" />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className={achieved ? "truncate text-[15px] font-black text-white" : "truncate text-[15px] font-black text-slate-600"}>{title.label}</p>
+                    <p className={achieved ? "mt-0.5 text-[11px] font-semibold text-white/80" : "mt-0.5 text-[11px] font-semibold text-slate-400"}>{title.description}</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    {title.achievedAt ? (
+                      <>
+                        <span className="inline-flex rounded-full bg-white/14 px-2 py-1 text-[9px] font-black text-white ring-1 ring-white/15">獲得済み</span>
+                        <p className="mt-1 text-[9px] font-bold text-white/70">{formatJst(title.achievedAt)}</p>
                       </>
                     ) : (
                       <span className="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-black text-slate-400">未獲得</span>
