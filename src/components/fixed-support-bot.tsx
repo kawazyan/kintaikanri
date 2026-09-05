@@ -285,7 +285,7 @@ export function FixedSupportBot({ faqs }: { faqs: BotFaqData[] }) {
                     className={`flex ${message.from === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`max-w-[86%] rounded-2xl px-4 py-3 text-sm font-bold leading-6 ${
+                      className={`max-w-[86%] whitespace-pre-line rounded-2xl px-4 py-3 text-sm font-bold leading-6 ${
                         message.from === "user"
                           ? audience === "staff"
                             ? "bg-[#8a231f] text-white"
