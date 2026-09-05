@@ -129,9 +129,57 @@ async function loadDailyStatusMap(staffId: string, now: Date): Promise<Map<strin
   return statuses;
 }
 
-// 今月の連続勤務ストリーク。未完了(退勤打刻忘れ)の日に達したら、以降の日は
-// 補正されるまでカウントを一時停止する(欠勤とは判定しない)。欠勤の日は
-// 0にリセットして継続。公休の日はスキップして継続扱い。
+// 称号ランクアップ(CHALLENGER〜LEGEND)専用の判定。報酬・スタンプ・皆勤賞の
+// 「1勤務達成」(出勤+退勤)とは別物で、「シフトの勤務開始時刻より前に出勤打刻
+// したか」だけを見る(出勤時のみ判定。退勤の有無・時刻は問わない)。開始時刻を
+// 過ぎてもまだ早出出勤がなければ、その時点で不成立が確定する(退勤や稼働日
+// 終了を待つ必要はない)。
+function classifyDayForEarlyStreak(
+  shiftsThatDay: { startTime: Date; earlyIn: boolean }[],
+  now: Date
+): DayStatus {
+  if (shiftsThatDay.length === 0) return "OFF"; // 公休
+  if (shiftsThatDay.some((s) => s.earlyIn)) return "COMPLETED";
+  if (shiftsThatDay.some((s) => s.startTime > now)) return "PENDING"; // まだ開始前(判定待ち)
+  return "ABSENT"; // 開始時刻を過ぎても早出出勤なし
+}
+
+async function loadEarlyStreakStatusMap(staffId: string, now: Date): Promise<Map<string, DayStatus>> {
+  const todayKey = toJstDateValue(now);
+  if (GAME_FEATURE_START_DATE > todayKey) return new Map();
+
+  const rangeStart = combineJstDateAndTime(GAME_FEATURE_START_DATE, "00:00");
+  const { end: rangeEnd } = jstDayRange(now);
+
+  const shifts = await prisma.shift.findMany({
+    where: { staffId, cancelledAt: null, startTime: { gte: rangeStart, lt: rangeEnd } },
+    select: { startTime: true, clockRecords: { select: { type: true, timestamp: true } } },
+  });
+
+  const byDate = new Map<string, { startTime: Date; earlyIn: boolean }[]>();
+  for (const s of shifts) {
+    const key = toJstDateValue(s.startTime);
+    const entry = {
+      startTime: s.startTime,
+      earlyIn: s.clockRecords.some((r) => r.type === "IN" && r.timestamp < s.startTime),
+    };
+    const list = byDate.get(key);
+    if (list) list.push(entry);
+    else byDate.set(key, [entry]);
+  }
+
+  const statuses = new Map<string, DayStatus>();
+  for (const dateKey of enumerateDateKeys(GAME_FEATURE_START_DATE, todayKey)) {
+    statuses.set(dateKey, classifyDayForEarlyStreak(byDate.get(dateKey) ?? [], now));
+  }
+  return statuses;
+}
+
+// 今月の連続記録を DayStatus のマップから汎用的に算出する。呼び出し元
+// (現在は称号ランクアップ用の早出出勤ストリークのみ)が渡す statuses の
+// 意味に従う: PENDING(判定待ち)の日に達したら、確定するまでカウントを
+// 一時停止する。ABSENT(不成立)の日は0にリセットして継続。OFF(公休)の
+// 日はスキップして継続扱い。
 function computeCurrentMonthStreak(
   statuses: Map<string, DayStatus>,
   yearMonth: string,
@@ -304,8 +352,14 @@ export async function syncAndGetGameState(staffId: string, now: Date = new Date(
   const todayKey = toJstDateValue(now);
   const yearMonth = currentJstYearMonth(now);
 
-  const statuses = await loadDailyStatusMap(staffId, now);
-  const streak = computeCurrentMonthStreak(statuses, yearMonth, todayKey);
+  const [statuses, earlyStreakStatuses] = await Promise.all([
+    loadDailyStatusMap(staffId, now),
+    loadEarlyStreakStatusMap(staffId, now),
+  ]);
+  // 称号ランクアップ(CHALLENGER〜LEGEND)の連続記録は「早出出勤」専用の判定
+  // (earlyStreakStatuses)から算出する。報酬・スタンプ・皆勤賞は従来通り
+  // statuses(出勤+退勤の完了)から算出するため、この変更による影響はない。
+  const streak = computeCurrentMonthStreak(earlyStreakStatuses, yearMonth, todayKey);
   const monthCompletedDays = countCompletedDays(statuses, (k) => k.startsWith(yearMonth));
   const totalCompletedDays = countCompletedDays(statuses);
 

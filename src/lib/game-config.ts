@@ -24,7 +24,9 @@ export type TitleDefinition = {
   minStreak: number;
 };
 
-// 連続勤務ストリークの閾値で獲得する通常称号。一度獲得したら永久保持。
+// 連続「早出出勤」(シフトの勤務開始時刻より前に出勤打刻した日)の閾値で
+// 獲得する通常称号。一度獲得したら永久保持。判定は src/lib/game.ts の
+// classifyDayForEarlyStreak/loadEarlyStreakStatusMap 参照。
 export const TITLE_DEFINITIONS: TitleDefinition[] = [
   { code: "CHALLENGER", label: "CHALLENGER", minStreak: 3 },
   { code: "TOP_PLAYER", label: "TOP PLAYER", minStreak: 8 },

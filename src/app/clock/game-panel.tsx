@@ -31,9 +31,9 @@ export function GamePanel({ game }: { game: GameState }) {
           </span>
           <div className="min-w-0">
             <p className="whitespace-nowrap text-[18px] font-black leading-none text-[#f5f2ed]">
-              {game.streak}<span className="ml-1.5 text-[11px] font-bold text-[#e6c2b8]">勤務連続</span>
+              {game.streak}<span className="ml-1.5 text-[11px] font-bold text-[#e6c2b8]">早出連続</span>
             </p>
-            <p className="mt-1 whitespace-nowrap text-[8px] font-bold text-[#aaa5a1]">連続シフト達成記録</p>
+            <p className="mt-1 whitespace-nowrap text-[8px] font-bold text-[#aaa5a1]">連続早出出勤の記録</p>
           </div>
         </div>
 
