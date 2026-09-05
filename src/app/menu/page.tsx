@@ -12,7 +12,7 @@ import { resolveAvatarSrc } from "@/lib/character-config";
 
 const GAME_MENU_ITEMS = [
   { href: "/titles", label: "獲得した称号", icon: Award, tone: "red" as const },
-  { href: "/my-room", label: "マイルーム", icon: Sofa, tone: "blue" as const },
+  { href: "/my-room", label: "キャラ変更", icon: Sofa, tone: "blue" as const },
   { href: "/town", label: "今日の出勤メンバー", icon: Users, tone: "green" as const },
 ] as const;
 

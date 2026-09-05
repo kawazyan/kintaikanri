@@ -27,9 +27,10 @@ export type ShiftSummary = {
 
 const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 
-export function ShiftCalendar({ days, shiftsByDate, todayDateKey, prevMonth, nextMonth, monthLabel }: {
+export function ShiftCalendar({ days, shiftsByDate, completedDates, todayDateKey, prevMonth, nextMonth, monthLabel }: {
   days: MonthDay[];
   shiftsByDate: Record<string, ShiftSummary[]>;
+  completedDates: Record<string, boolean>;
   todayDateKey: string;
   prevMonth: string;
   nextMonth: string;
@@ -60,24 +61,24 @@ export function ShiftCalendar({ days, shiftsByDate, todayDateKey, prevMonth, nex
           {leadingBlanks.map((_, i) => <div key={`blank-${i}`} />)}
           {days.map((day) => {
             const hasShift = (shiftsByDate[day.dateKey]?.length ?? 0) > 0;
-            const isToday = day.dateKey === todayDateKey;
+            const isCompleted = !!completedDates[day.dateKey];
             const isSelected = day.dateKey === selected;
             return (
               <button
                 key={day.dateKey}
                 type="button"
                 onClick={() => setSelected(day.dateKey)}
-                className={`app-calendar-day ${isSelected ? "is-selected" : ""} ${isToday ? "is-today" : ""} ${hasShift ? "has-shift" : ""}`}
+                className={`app-calendar-day ${isSelected ? "is-selected" : ""} ${hasShift ? "has-shift" : ""}`}
               >
                 <span>{day.day}</span>
                 {hasShift && <i aria-hidden="true" />}
+                {isCompleted && <em className="app-calendar-day__stamp">済</em>}
               </button>
             );
           })}
         </div>
         <div className="app-calendar-legend">
           <span><i className="dot shift" />シフトあり</span>
-          <span><i className="dot today" />今日</span>
           <span><i className="dot selected" />選択中</span>
         </div>
       </section>
@@ -88,7 +89,6 @@ export function ShiftCalendar({ days, shiftsByDate, todayDateKey, prevMonth, nex
             <p className="app-section-kicker">SELECTED DATE</p>
             <h2>{selectedMeta ? `${selectedMeta.day}日（${selectedMeta.weekdayLabel}）` : "選択日のシフト"}</h2>
           </div>
-          {selected === todayDateKey && <span className="app-pill app-pill--red">今日</span>}
         </div>
 
         {selected && selectedShifts.length === 0 && (

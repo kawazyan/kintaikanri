@@ -60,7 +60,7 @@ export default async function TitlesPage() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className={achieved ? "truncate text-[15px] font-black text-white" : "truncate text-[15px] font-black text-slate-600"}>{title.label}</p>
-                    <p className={achieved ? "mt-0.5 text-[11px] font-semibold text-white/70" : "mt-0.5 text-[11px] font-semibold text-slate-400"}>{title.minStreak}日連続の早出出勤で獲得</p>
+                    <p className={achieved ? "mt-0.5 text-[11px] font-semibold text-white/70" : "mt-0.5 text-[11px] font-semibold text-slate-400"}>{title.minStreak}日連続の無遅刻無欠席で獲得</p>
                   </div>
                   <div className="shrink-0 text-right">
                     {title.achievedAt ? (

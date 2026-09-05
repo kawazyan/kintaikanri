@@ -129,21 +129,23 @@ async function loadDailyStatusMap(staffId: string, now: Date): Promise<Map<strin
 }
 
 // 称号ランクアップ(CHALLENGER〜LEGEND)専用の判定。報酬・スタンプ・皆勤賞の
-// 「1勤務達成」(出勤+退勤)とは別物で、「シフトの勤務開始時刻より前に出勤打刻
-// したか」だけを見る(出勤時のみ判定。退勤の有無・時刻は問わない)。開始時刻を
-// 過ぎてもまだ早出出勤がなければ、その時点で不成立が確定する(退勤や稼働日
-// 終了を待つ必要はない)。
-function classifyDayForEarlyStreak(
-  shiftsThatDay: { startTime: Date; earlyIn: boolean }[],
+// 「1勤務達成」(出勤+退勤)とは別物で、「シフトの勤務開始予定時刻を超過せずに
+// 出勤打刻したか」だけを見る(出勤時のみ判定。退勤の有無・時刻は問わない)。
+// 管理者が打刻時刻を修正した場合も、修正後の時刻が開始予定時刻を超えていな
+// ければ対象になる(常に最新のClockRecordの時刻で判定するため)。開始時刻を
+// 過ぎてもまだ超過なしの出勤打刻がなければ、その時点で不成立(遅刻/欠勤)が
+// 確定する(退勤や稼働日終了を待つ必要はない)。
+function classifyDayForAttendanceStreak(
+  shiftsThatDay: { startTime: Date; onTime: boolean }[],
   now: Date
 ): DayStatus {
   if (shiftsThatDay.length === 0) return "OFF"; // 公休
-  if (shiftsThatDay.some((s) => s.earlyIn)) return "COMPLETED";
+  if (shiftsThatDay.some((s) => s.onTime)) return "COMPLETED";
   if (shiftsThatDay.some((s) => s.startTime > now)) return "PENDING"; // まだ開始前(判定待ち)
-  return "ABSENT"; // 開始時刻を過ぎても早出出勤なし
+  return "ABSENT"; // 開始時刻を過ぎても遅刻なしの出勤打刻なし(遅刻または欠勤)
 }
 
-async function loadEarlyStreakStatusMap(staffId: string, now: Date): Promise<Map<string, DayStatus>> {
+async function loadAttendanceStreakStatusMap(staffId: string, now: Date): Promise<Map<string, DayStatus>> {
   const todayKey = toJstDateValue(now);
   if (GAME_FEATURE_START_DATE > todayKey) return new Map();
 
@@ -155,12 +157,12 @@ async function loadEarlyStreakStatusMap(staffId: string, now: Date): Promise<Map
     select: { startTime: true, clockRecords: { select: { type: true, timestamp: true } } },
   });
 
-  const byDate = new Map<string, { startTime: Date; earlyIn: boolean }[]>();
+  const byDate = new Map<string, { startTime: Date; onTime: boolean }[]>();
   for (const s of shifts) {
     const key = toJstDateValue(s.startTime);
     const entry = {
       startTime: s.startTime,
-      earlyIn: s.clockRecords.some((r) => r.type === "IN" && r.timestamp < s.startTime),
+      onTime: s.clockRecords.some((r) => r.type === "IN" && r.timestamp <= s.startTime),
     };
     const list = byDate.get(key);
     if (list) list.push(entry);
@@ -169,13 +171,13 @@ async function loadEarlyStreakStatusMap(staffId: string, now: Date): Promise<Map
 
   const statuses = new Map<string, DayStatus>();
   for (const dateKey of enumerateDateKeys(GAME_FEATURE_START_DATE, todayKey)) {
-    statuses.set(dateKey, classifyDayForEarlyStreak(byDate.get(dateKey) ?? [], now));
+    statuses.set(dateKey, classifyDayForAttendanceStreak(byDate.get(dateKey) ?? [], now));
   }
   return statuses;
 }
 
 // 今月の連続記録を DayStatus のマップから汎用的に算出する。呼び出し元
-// (現在は称号ランクアップ用の早出出勤ストリークのみ)が渡す statuses の
+// (現在は称号ランクアップ用の無遅刻無欠席ストリークのみ)が渡す statuses の
 // 意味に従う: PENDING(判定待ち)の日に達したら、確定するまでカウントを
 // 一時停止する。ABSENT(不成立)の日は0にリセットして継続。OFF(公休)の
 // 日はスキップして継続扱い。
@@ -328,14 +330,15 @@ export async function syncAndGetGameState(staffId: string, now: Date = new Date(
   const todayKey = toJstDateValue(now);
   const yearMonth = currentJstYearMonth(now);
 
-  const [statuses, earlyStreakStatuses] = await Promise.all([
+  const [statuses, attendanceStreakStatuses] = await Promise.all([
     loadDailyStatusMap(staffId, now),
-    loadEarlyStreakStatusMap(staffId, now),
+    loadAttendanceStreakStatusMap(staffId, now),
   ]);
-  // 称号ランクアップ(CHALLENGER〜LEGEND)の連続記録は「早出出勤」専用の判定
-  // (earlyStreakStatuses)から算出する。報酬・スタンプ・皆勤賞は従来通り
-  // statuses(出勤+退勤の完了)から算出するため、この変更による影響はない。
-  const streak = computeCurrentMonthStreak(earlyStreakStatuses, yearMonth, todayKey);
+  // 称号ランクアップ(CHALLENGER〜LEGEND)の連続記録は「無遅刻無欠席」専用の
+  // 判定(attendanceStreakStatuses)から算出する。報酬・スタンプ・皆勤賞は
+  // 従来通りstatuses(出勤+退勤の完了)から算出するため、この変更による影響
+  // はない。
+  const streak = computeCurrentMonthStreak(attendanceStreakStatuses, yearMonth, todayKey);
   const monthCompletedDays = countCompletedDays(statuses, (k) => k.startsWith(yearMonth));
   const totalCompletedDays = countCompletedDays(statuses);
 

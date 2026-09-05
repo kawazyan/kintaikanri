@@ -170,7 +170,7 @@ export default async function ClockPage() {
                   <p className="text-[11px] font-black tracking-[.06em] text-[#e3342d]">NEXT TITLE</p>
                   <p className="mt-1 line-clamp-2 text-[19px] font-black leading-tight tracking-[-.03em] text-[#e9e9e6] [text-shadow:0_2px_0_#333,0_4px_6px_#000]">{nextTitle.label}</p>
                   <div className="mt-3 h-px bg-[linear-gradient(90deg,#8d8d88,rgba(141,141,136,.1))]" />
-                  <p className="mt-3 whitespace-nowrap text-[14px] font-bold text-[#c8c5c1]">{nextTitle.minStreak}日連続の早出出勤で獲得！</p>
+                  <p className="mt-3 whitespace-nowrap text-[14px] font-bold text-[#c8c5c1]">{nextTitle.minStreak}日連続の無遅刻無欠席で獲得！</p>
                 </div>
 
                 <div className="flex h-[112px] w-[74px] shrink-0 flex-col items-center justify-center border-l border-[#4b4f51] text-center">
@@ -185,7 +185,7 @@ export default async function ClockPage() {
           <section className="grid grid-cols-3 gap-2.5">
             {[
               { href: "/titles", label: "称号", sub: `${game.titles.length}個 獲得中`, Icon: Trophy, tone: "red" as const },
-              { href: "/my-room", label: "マイルーム", sub: "キャラ・設定", Icon: Sofa, tone: "blue" as const },
+              { href: "/my-room", label: "キャラ変更", sub: "キャラ・設定", Icon: Sofa, tone: "blue" as const },
               { href: "/town", label: "出勤メンバー", sub: `現在${memberCount}人出勤中`, Icon: Users, tone: "green" as const },
             ].map(({ href, label, sub, Icon, tone }) => (
               <Link

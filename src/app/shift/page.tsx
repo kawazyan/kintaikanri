@@ -35,10 +35,12 @@ export default async function ShiftListPage({
 
   const shifts = await prisma.shift.findMany({
     where: { staffId, startTime: { gte: start, lt: end } },
+    include: { clockRecords: { select: { type: true } } },
     orderBy: { startTime: "asc" },
   });
 
   const shiftsByDate: Record<string, ShiftSummary[]> = {};
+  const completedDates: Record<string, boolean> = {};
   for (const s of shifts) {
     const key = toJstDateValue(s.startTime);
     const entry: ShiftSummary = {
@@ -50,6 +52,11 @@ export default async function ShiftListPage({
       endTime: toJstTimeValue(s.endTime),
     };
     (shiftsByDate[key] ??= []).push(entry);
+
+    // 出勤・退勤の両方が打刻済みの日に「済」の判子を表示する。
+    const hasIn = s.clockRecords.some((r) => r.type === "IN");
+    const hasOut = s.clockRecords.some((r) => r.type === "OUT");
+    if (hasIn && hasOut) completedDates[key] = true;
   }
 
   return (
@@ -72,6 +79,7 @@ export default async function ShiftListPage({
       <ShiftCalendar
         days={listDaysInJstYearMonth(yearMonth)}
         shiftsByDate={shiftsByDate}
+        completedDates={completedDates}
         todayDateKey={toJstDateValue(new Date())}
         prevMonth={shiftYearMonth(yearMonth, -1)}
         nextMonth={shiftYearMonth(yearMonth, 1)}
