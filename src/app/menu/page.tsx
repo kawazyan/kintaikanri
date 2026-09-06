@@ -12,6 +12,7 @@ import { resolveAvatarSrc } from "@/lib/character-config";
 
 const GAME_MENU_ITEMS = [
   { href: "/titles", label: "獲得した称号", icon: Award, tone: "red" as const },
+  { href: "/coin-shop", label: "コイン交換所", icon: Gift, tone: "gold" as const },
   { href: "/my-room", label: "キャラ変更", icon: Sofa, tone: "blue" as const },
   { href: "/town", label: "今日の出勤メンバー", icon: Users, tone: "green" as const },
 ] as const;
@@ -64,7 +65,7 @@ export default async function MenuPage() {
             <Sparkles size={13} className="text-red-500" />
             <p className="text-[11px] font-black tracking-[.08em] text-slate-400">MY K.J</p>
           </div>
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5">
             {GAME_MENU_ITEMS.map(({ href, label, icon: Icon, tone }) => (
               <Link
                 key={href}

@@ -32,6 +32,7 @@ const links = [
   { href: "/admin/attendance-requests", label: "申請・報告管理", icon: Inbox },
   { href: "/admin/expenses", label: "経費", icon: ReceiptText },
   { href: "/admin/compensation", label: "別途報酬", icon: Gift },
+  { href: "/admin/coin-exchanges", label: "コイン交換", icon: Gift },
   { href: "/admin/invoices", label: "請求", icon: FileText },
   { href: "/admin/admins", label: "通知先", icon: Mail },
   { href: "/admin/bot", label: "BOT管理", icon: Bot },

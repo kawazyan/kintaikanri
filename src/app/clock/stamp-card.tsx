@@ -1,4 +1,4 @@
-import { CalendarDays, Gift, Check, Star } from "lucide-react";
+import { CalendarDays, Check, Star } from "lucide-react";
 import { yearMonthLabel } from "@/lib/time";
 import type { GameState } from "@/lib/game";
 
@@ -24,7 +24,7 @@ export function StampCard({ stamp }: { stamp: GameState["stamp"] }) {
         </h2>
         <div className="shrink-0 text-right text-[9px] font-bold leading-[1.55] text-[#aaa39a]">
           <div>今月の目標：{stamp.targetDays}勤務</div>
-          <div className="mt-0.5 flex items-center justify-end gap-1 text-[11px] font-black text-[#e23a30]"><Gift size={12} />達成で {stamp.bonusCoins}コイン</div>
+          <div className="mt-0.5 text-[11px] font-black text-[#e23a30]">20勤務を目指そう</div>
         </div>
       </div>
 
@@ -78,7 +78,7 @@ export function StampCard({ stamp }: { stamp: GameState["stamp"] }) {
           {stamp.completedDays}<span className="ml-1.5 font-sans text-[14px] text-[#e9e4db]">/ {stamp.targetDays} 勤務達成</span>
         </p>
         <p className="text-right text-[13px] font-black text-[#e8e2d9] [text-shadow:0_1px_0_#000]">
-          {stamp.bonusAwarded ? "目標達成！" : <>あと <span className="text-[22px] text-[#c92a22]">{remaining}</span> 勤務でボーナス！</>}
+          {stamp.bonusAwarded ? "目標達成！" : <>あと <span className="text-[22px] text-[#c92a22]">{remaining}</span> 勤務</>}
         </p>
       </div>
 
@@ -89,11 +89,6 @@ export function StampCard({ stamp }: { stamp: GameState["stamp"] }) {
         <span className="min-w-[34px] text-right text-[15px] font-black text-[#ddd7ce]">{percent}%</span>
       </div>
 
-      {stamp.bonusAwarded && (
-        <div className="relative mt-3 flex items-center justify-center gap-2 rounded-xl border border-[#a3781e]/50 bg-[linear-gradient(145deg,#241f10,#0d0a05)] px-3 py-2 text-xs font-bold text-[#e5c26a]">
-          <Gift size={16} /> ボーナスコイン獲得済み
-        </div>
-      )}
     </section>
   );
 }

@@ -220,16 +220,6 @@ function countCompletedDays(
   return count;
 }
 
-function completedCountsByMonth(statuses: Map<string, DayStatus>): Map<string, number> {
-  const map = new Map<string, number>();
-  for (const [dateKey, status] of statuses) {
-    if (status !== "COMPLETED") continue;
-    const ym = dateKey.slice(0, 7);
-    map.set(ym, (map.get(ym) ?? 0) + 1);
-  }
-  return map;
-}
-
 function levelFromXp(xp: number): { level: number; xpIntoLevel: number; xpForNextLevel: number } {
   let level = 1;
   let remaining = xp;
@@ -330,6 +320,69 @@ async function syncPerfectAttendance(
   }
 }
 
+
+// 終了済みの月について、皆勤(+100)とPERFECT(+100)を確定する。
+// 皆勤の判定は既存のisMonthFullyPunched(皆勤賞バッジと同じ基準)をそのまま
+// 再利用する。判定基準が独自実装とズレると「皆勤賞バッジは付いたのにコイン
+// は付かない」ような食い違いが起きるため。PERFECTはさらに厳しく、欠勤・
+// 遅刻・早退・打刻漏れ(管理者補正含む)が1件もないことを条件とする。
+async function syncMonthlyCoinBonuses(
+  staffId: string,
+  yearMonth: string,
+  now: Date,
+  statuses: Map<string, DayStatus>,
+  todayKey: string
+): Promise<void> {
+  const currentYm = currentJstYearMonth(now);
+  if (yearMonth >= currentYm) return; // 月末確定後のみ付与
+  if (yearMonth < GAME_FEATURE_START_DATE.slice(0, 7)) return; // ゲーム機能開始前の月は対象外
+
+  const attendance = await isMonthFullyPunched(staffId, yearMonth, statuses, todayKey);
+  if (!attendance) return;
+
+  await prisma.coinBonus.upsert({
+    where: { staffId_yearMonth_type: { staffId, yearMonth, type: "ATTENDANCE" } },
+    update: {},
+    create: { staffId, yearMonth, type: "ATTENDANCE", coins: 100 },
+  });
+
+  // PERFECTの対象範囲もゲーム機能開始日以降のシフトのみに限定する。
+  const { start, end } = jstMonthRange(yearMonth);
+  const gameStart = combineJstDateAndTime(GAME_FEATURE_START_DATE, "00:00");
+  const effectiveStart = gameStart > start ? gameStart : start;
+  const shifts = await prisma.shift.findMany({
+    where: { staffId, cancelledAt: null, startTime: { gte: effectiveStart, lt: end } },
+    select: { startTime: true, endTime: true, clockRecords: { select: { type: true, timestamp: true, editedByAdmin: true } } },
+  });
+  const byDay = new Map<string, typeof shifts>();
+  for (const shift of shifts) {
+    const key = toJstDateValue(shift.startTime);
+    const list = byDay.get(key) ?? [];
+    list.push(shift);
+    byDay.set(key, list);
+  }
+  let perfect = shifts.length > 0;
+  for (const dayShifts of byDay.values()) {
+    const strictOk = dayShifts.some((shift) => {
+      const inRec = shift.clockRecords.find((r) => r.type === "IN");
+      const outRec = shift.clockRecords.find((r) => r.type === "OUT");
+      if (!inRec || !outRec) return false;
+      if (inRec.editedByAdmin || outRec.editedByAdmin) return false;
+      return floorToMinute(inRec.timestamp) <= floorToMinute(shift.startTime)
+        && floorToMinute(outRec.timestamp) >= floorToMinute(shift.endTime);
+    });
+    if (!strictOk) { perfect = false; break; }
+  }
+
+  if (perfect) {
+    await prisma.coinBonus.upsert({
+      where: { staffId_yearMonth_type: { staffId, yearMonth, type: "PERFECT" } },
+      update: {},
+      create: { staffId, yearMonth, type: "PERFECT", coins: 100 },
+    });
+  }
+}
+
 // ホーム画面表示のたびに呼び出す唯一のエントリーポイント。ストリーク・XP・
 // コイン・スタンプ進捗を再計算しつつ、新たに条件を満たした称号・皆勤賞があれば
 // このタイミングでDB保存する(退勤打刻忘れの後日補正でも、次に画面を開いた
@@ -350,13 +403,19 @@ export async function syncAndGetGameState(staffId: string, now: Date = new Date(
   const monthCompletedDays = countCompletedDays(statuses, (k) => k.startsWith(yearMonth));
   const totalCompletedDays = countCompletedDays(statuses);
 
-  let careerBonusCoins = 0;
-  for (const count of completedCountsByMonth(statuses).values()) {
-    if (count >= STAMP_MONTHLY_TARGET_DAYS) careerBonusCoins += STAMP_MONTHLY_BONUS_COINS;
-  }
+  await syncMonthlyCoinBonuses(staffId, previousYearMonth(yearMonth), now, statuses, todayKey);
+  const [coinBonuses, spent] = await Promise.all([
+    prisma.coinBonus.aggregate({ where: { staffId }, _sum: { coins: true } }),
+    prisma.giftExchange.aggregate({
+      where: { staffId, status: { in: ["REQUESTED", "FULFILLED"] } },
+      _sum: { coinsUsed: true },
+    }),
+  ]);
+  const bonusCoins = coinBonuses._sum.coins ?? 0;
+  const spentCoins = spent._sum.coinsUsed ?? 0;
 
   const xp = totalCompletedDays * XP_PER_SHIFT;
-  const coins = totalCompletedDays * COINS_PER_SHIFT + careerBonusCoins;
+  const coins = Math.max(0, totalCompletedDays * COINS_PER_SHIFT + bonusCoins - spentCoins);
   const { level, xpIntoLevel, xpForNextLevel } = levelFromXp(xp);
 
   const scheduledShiftDays = await countScheduledShiftDaysInMonth(staffId, yearMonth);

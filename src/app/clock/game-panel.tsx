@@ -1,4 +1,5 @@
-import { Crown, Flame, Coins } from "lucide-react";
+import { Crown, Flame, Coins, ChevronRight } from "lucide-react";
+import Link from "next/link";
 import type { GameState } from "@/lib/game";
 import { TITLE_DEFINITIONS } from "@/lib/game-config";
 
@@ -37,7 +38,7 @@ export function GamePanel({ game }: { game: GameState }) {
           </div>
         </div>
 
-        <div className="game-cut-card flex min-h-[64px] items-center gap-2.5 border border-[#8a6a28] bg-[linear-gradient(135deg,#251f10_0%,#121009_52%,#07090a_100%)] px-3 shadow-[inset_0_1px_0_rgba(255,255,255,.08),inset_0_0_18px_rgba(135,99,21,.18)]">
+        <Link href="/coin-shop" className="game-cut-card flex min-h-[64px] items-center gap-2.5 border border-[#8a6a28] bg-[linear-gradient(135deg,#251f10_0%,#121009_52%,#07090a_100%)] px-3 shadow-[inset_0_1px_0_rgba(255,255,255,.08),inset_0_0_18px_rgba(135,99,21,.18)]">
           <span className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full border border-[#fff1b0] bg-[radial-gradient(circle_at_35%_26%,#ffe58a,#d79b26_55%,#68420c)] shadow-[inset_0_0_0_3px_rgba(107,69,10,.24),0_0_10px_rgba(245,158,11,.30)]">
             <Coins size={18} strokeWidth={2.3} className="text-[#412906]" />
           </span>
@@ -46,8 +47,8 @@ export function GamePanel({ game }: { game: GameState }) {
               {game.coins.toLocaleString("ja-JP")}<span className="ml-1.5 text-[11px] font-bold text-[#e6c873]">コイン</span>
             </p>
             <p className="mt-1 whitespace-nowrap text-[8px] font-bold text-[#aaa5a1]">貯まったコイン</p>
-          </div>
-        </div>
+          </div><ChevronRight size={14} className="ml-auto text-[#e6c873]" />
+        </Link>
       </div>
 
       <div className="game-cut-card relative mt-2.5 border border-white/10 bg-[linear-gradient(180deg,#111315,#07090a)] px-3.5 py-2.5">

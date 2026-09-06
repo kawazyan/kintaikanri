@@ -99,6 +99,8 @@ model Staff {
   compensationRequests  CompensationRequest[]
   irregularReports      IrregularReport[]
   shiftChangeRequests   ShiftChangeRequest[]
+  coinBonuses           CoinBonus[]
+  giftExchanges         GiftExchange[]
 }
 
 model MonthlyEarningTarget {
@@ -696,4 +698,45 @@ model ShiftChangeRequest {
 
   @@index([staffId, createdAt])
   @@index([status])
+}
+
+enum CoinBonusType {
+  ATTENDANCE
+  PERFECT
+}
+
+enum GiftExchangeStatus {
+  REQUESTED
+  FULFILLED
+  REJECTED
+}
+
+model CoinBonus {
+  id        String        @id @default(cuid())
+  staffId   String
+  staff     Staff         @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  yearMonth String
+  type      CoinBonusType
+  coins     Int
+  createdAt DateTime      @default(now())
+
+  @@unique([staffId, yearMonth, type])
+  @@index([staffId, createdAt])
+}
+
+model GiftExchange {
+  id          String             @id @default(cuid())
+  staffId     String
+  staff       Staff              @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  brand       String
+  amountYen   Int
+  coinsUsed   Int
+  status      GiftExchangeStatus @default(REQUESTED)
+  requestedAt DateTime           @default(now())
+  fulfilledAt DateTime?
+  rejectedAt  DateTime?
+  adminNote   String?
+
+  @@index([staffId, requestedAt])
+  @@index([status, requestedAt])
 }

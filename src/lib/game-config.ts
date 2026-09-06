@@ -16,7 +16,7 @@ export const LEVEL_XP_BASE = 100;
 // 月間スタンプカードの目標勤務達成数とボーナスコイン(stamp-card-mockup.htmlの
 // 表示例と一致させている: 「20日達成でボーナスコイン+200」)。
 export const STAMP_MONTHLY_TARGET_DAYS = 20;
-export const STAMP_MONTHLY_BONUS_COINS = 200;
+export const STAMP_MONTHLY_BONUS_COINS = 0;
 
 export type TitleDefinition = {
   code: GameTitleCode;
