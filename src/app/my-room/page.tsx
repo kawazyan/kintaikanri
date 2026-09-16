@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Sparkles, Sofa, Palette, CheckCircle2 } from "lucide-react";
+import { Sofa, Palette, CheckCircle2 } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
@@ -19,17 +19,6 @@ export default async function MyRoomPage() {
         <PageHeader icon={Sofa} title="キャラ変更" eyebrow={`${staff.name} さん`} />
 
         <NameEditor name={staff.name} />
-
-        <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#f8c85f] via-[#f59e0b] to-[#ea580c] p-5 text-white shadow-[0_12px_28px_rgba(234,88,12,.22)] ring-1 ring-white/20">
-          <span className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/20 blur-2xl" />
-          <span className="relative flex h-11 w-11 items-center justify-center rounded-[15px] bg-white/16 ring-1 ring-white/20 backdrop-blur-sm">
-            <Sparkles size={23} />
-          </span>
-          <h2 className="relative mt-3 text-[21px] font-black tracking-tight">自分らしいホーム画面に</h2>
-          <p className="relative mt-1 max-w-[290px] text-xs font-semibold leading-relaxed text-white/85">
-            キャラクターを選ぶと、出勤前・勤務中・退勤後のホーム演出に反映されます。
-          </p>
-        </section>
 
         <section className="rounded-[26px] bg-white p-4 shadow-[0_9px_26px_rgba(15,23,42,.07)] ring-1 ring-black/[.04]">
           <div className="mb-4 flex items-start justify-between gap-3">

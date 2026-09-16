@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { toJstInputValue } from "@/lib/time";
 import { AdminNav } from "../../admin-nav";
 import { createClockRecordByAdmin } from "../actions";
+import { SubmitButton } from "@/components/submit-button";
 
 const FIELD_CLASS =
   "rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none";
@@ -85,12 +86,11 @@ export default async function NewRecordPage({
           <input type="text" name="operatorName" className={FIELD_CLASS} />
         </label>
 
-        <button
-          type="submit"
-          className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-3 text-white shadow-lg shadow-blue-950/50 active:scale-[0.98]"
+        <SubmitButton
+          className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-3 text-white shadow-lg shadow-blue-950/50 active:scale-[0.98] disabled:opacity-60"
         >
           この内容で打刻を追加
-        </button>
+        </SubmitButton>
       </form>
     </main>
   );

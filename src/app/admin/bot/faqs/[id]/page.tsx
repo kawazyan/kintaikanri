@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AdminNav } from "../../../admin-nav";
 import { updateBotFaq } from "../actions";
+import { SubmitButton } from "@/components/submit-button";
 
 const FIELD_CLASS =
   "rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none";
@@ -63,12 +64,11 @@ export default async function EditBotFaqPage({
           <span className="text-xs text-slate-500">カンマ区切りで複数入力できます。</span>
         </label>
 
-        <button
-          type="submit"
-          className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-3 text-white shadow-lg shadow-blue-950/50 active:scale-[0.98]"
+        <SubmitButton
+          className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-3 text-white shadow-lg shadow-blue-950/50 active:scale-[0.98] disabled:opacity-60"
         >
           保存する
-        </button>
+        </SubmitButton>
       </form>
     </main>
   );

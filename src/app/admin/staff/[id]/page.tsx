@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AdminNav } from "../../admin-nav";
 import { updateStaffDetails } from "../actions";
+import { SubmitButton } from "@/components/submit-button";
 
 function toDateInputValue(d: Date | null): string {
   if (!d) return "";
@@ -184,12 +185,11 @@ export default async function AdminStaffDetailPage({
           </div>
         </div>
 
-        <button
-          type="submit"
+        <SubmitButton
           className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-3 text-white shadow-lg shadow-blue-950/50 active:scale-[0.98]"
         >
           保存
-        </button>
+        </SubmitButton>
       </form>
     </main>
   );

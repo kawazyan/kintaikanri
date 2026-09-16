@@ -59,7 +59,7 @@ export function ClientsList({ clients }: { clients: ClientRow[] }) {
             disabled={pending}
             className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-black text-red-600 disabled:opacity-50"
           >
-            選択した項目を削除
+            {pending ? "削除中…" : "選択した項目を削除"}
           </button>
         </div>
       )}

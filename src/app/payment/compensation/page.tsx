@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { formatJst, listMonthOptions, yearMonthLabel } from "@/lib/time";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { addCompensationRequest, deleteDraftCompensationRequest } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 const categoryLabel = (c: string) =>
   c === "REFERRAL" ? "リファラル報酬" : c === "INCENTIVE" ? "インセンティブ" : "その他";
@@ -59,7 +60,7 @@ export default async function CompensationRequestPage() {
             内訳
             <textarea name="description" rows={2} className="mt-1 w-full rounded-xl border p-3 text-sm" placeholder="対象や算定根拠など" />
           </label>
-          <button className="w-full rounded-2xl bg-[#b91c1c] py-3 font-black text-white shadow-[0_4px_0_#7f1d1d]">別途報酬を申請する</button>
+          <SubmitButton className="w-full rounded-2xl bg-[#b91c1c] py-3 font-black text-white shadow-[0_4px_0_#7f1d1d]">別途報酬を申請する</SubmitButton>
         </form>
 
         <section className="mt-5 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5">
@@ -79,7 +80,7 @@ export default async function CompensationRequestPage() {
                     <p className="mt-1 text-xs font-bold text-slate-400">{statusLabel(x.status)}</p>
                     {x.status === "DRAFT" && (
                       <form action={deleteDraftCompensationRequest.bind(null, x.id)}>
-                        <button className="mt-2 text-xs font-bold text-red-600">削除</button>
+                        <SubmitButton className="mt-2 text-xs font-bold text-red-600">削除</SubmitButton>
                       </form>
                     )}
                   </div>

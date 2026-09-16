@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Building2, CalendarDays, MapPin, Plus, Trash2, UserRound, WalletCards } from "lucide-react";
 import { submitClientRequest } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 const inputClass = "mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-[15px] font-bold text-slate-900 outline-none transition focus:border-[#24415c] focus:ring-4 focus:ring-[#24415c]/10";
 const labelClass = "block text-[13px] font-black text-slate-700";
@@ -78,7 +79,7 @@ export function ClientRequestForm() {
         </div>
       </section>
 
-      <button className="group flex w-full items-center justify-center gap-3 rounded-[22px] bg-[#b4232c] px-5 py-4.5 font-black text-white shadow-[0_6px_0_#74151b,0_12px_26px_rgba(180,35,44,.20)] transition active:translate-y-1 active:shadow-[0_2px_0_#74151b]"><UserRound size={20}/><span>この内容で稼働を依頼する</span></button>
+      <SubmitButton pendingText="送信中…" className="group flex w-full items-center justify-center gap-3 rounded-[22px] bg-[#b4232c] px-5 py-4.5 font-black text-white shadow-[0_6px_0_#74151b,0_12px_26px_rgba(180,35,44,.20)] transition active:translate-y-1 active:shadow-[0_2px_0_#74151b] disabled:opacity-70"><UserRound size={20}/><span>この内容で稼働を依頼する</span></SubmitButton>
       <p className="text-center text-xs font-bold leading-6 text-slate-400">送信後は管理者の確認・承認待ちになります。<br/>誤った内容で送信してしまった場合は、お手数ですが正しい内容で改めて送信してください。</p>
     </form>
   );

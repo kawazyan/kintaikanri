@@ -5,6 +5,7 @@ import { formatJst, toJstInputValue } from "@/lib/time";
 import { AdminNav } from "../../admin-nav";
 import { updateClockRecord } from "../actions";
 import { adminRestoreShift } from "../../shifts/actions";
+import { SubmitButton } from "@/components/submit-button";
 
 const FIELD_CLASS =
   "rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none";
@@ -72,9 +73,12 @@ export default async function EditRecordPage({
           </p>
           {restoreShiftAction && (
             <form action={restoreShiftAction} className="mt-2">
-              <button className="rounded-lg border border-amber-600 bg-amber-950/50 px-3 py-1.5 text-xs font-black text-amber-100">
+              <SubmitButton
+                pendingText="処理中…"
+                className="rounded-lg border border-amber-600 bg-amber-950/50 px-3 py-1.5 text-xs font-black text-amber-100 disabled:opacity-60"
+              >
                 このシフトのキャンセルを取り消す
-              </button>
+              </SubmitButton>
             </form>
           )}
         </div>
@@ -136,12 +140,11 @@ export default async function EditRecordPage({
           <input type="text" name="operatorName" className={FIELD_CLASS} />
         </label>
 
-        <button
-          type="submit"
-          className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-3 text-white shadow-lg shadow-blue-950/50 active:scale-[0.98]"
+        <SubmitButton
+          className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-3 text-white shadow-lg shadow-blue-950/50 active:scale-[0.98] disabled:opacity-60"
         >
           保存
-        </button>
+        </SubmitButton>
       </form>
     </main>
   );

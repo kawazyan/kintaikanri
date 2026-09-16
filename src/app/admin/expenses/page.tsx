@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { AdminNav } from "../admin-nav";
 import { reviewExpense } from "./actions";
 import { formatJst } from "@/lib/time";
+import { SubmitButton } from "@/components/submit-button";
 
 const categoryLabel = (c: string) => (c === "TRAVEL" ? "交通費" : c === "LODGING" ? "宿泊費" : "その他経費");
 const statusLabel = (s: string) =>
@@ -43,8 +44,8 @@ export default async function AdminExpenses() {
                 <input name="reviewerName" required placeholder="確認者名" className="rounded-lg bg-slate-800 px-3 py-2 text-sm" />
                 <input name="amountTaxInclusive" type="number" defaultValue={x.amountTaxInclusive} className="rounded-lg bg-slate-800 px-3 py-2 text-sm" />
                 <input name="reviewNote" placeholder="確認メモ" className="rounded-lg bg-slate-800 px-3 py-2 text-sm" />
-                <button formAction={reviewExpense.bind(null, x.id, "APPROVED")} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-black">承認</button>
-                <button formAction={reviewExpense.bind(null, x.id, "REJECTED")} className="rounded-lg bg-red-700 px-4 py-2 text-sm font-black">却下</button>
+                <SubmitButton formAction={reviewExpense.bind(null, x.id, "APPROVED")} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-black">承認</SubmitButton>
+                <SubmitButton formAction={reviewExpense.bind(null, x.id, "REJECTED")} className="rounded-lg bg-red-700 px-4 py-2 text-sm font-black">却下</SubmitButton>
               </form>
             )}
           </article>

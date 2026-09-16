@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { updateStaff, adminBulkDeleteStaff, adminForceDeleteStaff } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 const FIELD_CLASS =
   "rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none";
@@ -99,7 +100,7 @@ export function StaffList({
             disabled={pending}
             className="rounded-lg border border-red-700 bg-red-950/40 px-3 py-1.5 text-xs font-black text-red-300 disabled:opacity-50"
           >
-            選択した項目を削除
+            {pending ? "削除中…" : "選択した項目を削除"}
           </button>
         </div>
       )}
@@ -117,7 +118,7 @@ export function StaffList({
             disabled={pending}
             className="mt-2 rounded-lg border border-amber-600 bg-amber-950/40 px-3 py-1.5 text-xs font-black text-amber-200 disabled:opacity-50"
           >
-            履歴ごと強制削除する
+            {pending ? "削除中…" : "履歴ごと強制削除する"}
           </button>
         </div>
       )}
@@ -149,9 +150,9 @@ export function StaffList({
                   <option value="ACTIVE">在籍中</option>
                   <option value="RETIRED">退職済み</option>
                 </select>
-                <button type="submit" className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 active:scale-[0.98]">
+                <SubmitButton className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 active:scale-[0.98] disabled:opacity-60">
                   保存
-                </button>
+                </SubmitButton>
               </form>
             </div>
             <div className="mt-2 flex items-center justify-between text-xs text-slate-500">

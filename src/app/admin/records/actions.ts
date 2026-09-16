@@ -25,6 +25,8 @@ export async function deleteClockRecord(id: string, formData: FormData) {
 
   await prisma.clockRecord.delete({ where: { id } });
   revalidatePath("/admin/records");
+  revalidatePath("/clock");
+  revalidatePath("/titles");
 }
 
 // スタッフが出退勤の打刻を押し忘れた場合などに、管理者が代わりに打刻記録を
@@ -149,5 +151,7 @@ export async function updateClockRecord(id: string, formData: FormData) {
   });
 
   revalidatePath("/admin/records");
+  revalidatePath("/clock");
+  revalidatePath("/titles");
   redirect("/admin/records");
 }

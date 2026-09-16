@@ -255,10 +255,12 @@ export default async function ClockPage() {
                     </p>
                   </>
                 ) : (
-                  <>
-                    <p className="payment-metal-label">振込申請可能額</p>
+                  <Link href="/payment/request" className="block active:opacity-80">
+                    <p className="payment-metal-label flex items-center gap-1">
+                      振込申請可能額 <ChevronRight size={12} />
+                    </p>
                     <p className="payment-metal-date">¥{transferBalance?.availableAmount.toLocaleString("ja-JP") || 0}</p>
-                  </>
+                  </Link>
                 )}
               </div>
             </div>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatJst } from "@/lib/time";
+import { SubmitButton } from "@/components/submit-button";
 import {
   updateClientOrder,
   addClientDailyOverride,
@@ -103,7 +104,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ toke
               <label className="text-xs font-black">交通費<select name="travelExpense" defaultValue={o.staffAssignments[0]?.travelExpense || "CONSULT"} className="mt-1 w-full rounded-xl border p-3"><option value="INCLUDED">込み</option><option value="SEPARATE">別</option><option value="CONSULT">要相談</option></select></label>
               <input name="actorName" required placeholder="変更する担当者名" className="rounded-xl border p-3" />
               <input name="reason" placeholder="変更理由" className="rounded-xl border p-3" />
-              <button className="sm:col-span-2 rounded-2xl bg-slate-900 py-3 font-black text-white">変更内容を送信</button>
+              <SubmitButton className="sm:col-span-2 rounded-2xl bg-slate-900 py-3 font-black text-white">変更内容を送信</SubmitButton>
             </form>
           </section>
 
@@ -120,7 +121,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ toke
               <input name="otherExpenseNote" placeholder="その他追加経費など" className="rounded-xl border p-3" />
               <input name="actorName" required placeholder="担当者名" className="rounded-xl border p-3" />
               <textarea name="reason" required placeholder="変更理由" className="sm:col-span-2 rounded-xl border p-3" />
-              <button className="sm:col-span-2 rounded-2xl bg-[#b91c1c] py-3 font-black text-white">当日変更を登録</button>
+              <SubmitButton className="sm:col-span-2 rounded-2xl bg-[#b91c1c] py-3 font-black text-white">当日変更を登録</SubmitButton>
             </form>
           </section>
 
@@ -134,7 +135,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ toke
                   <form key={s.id} action={clientCancelAssignment.bind(null, token, id, s.id)} className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_2fr_auto]">
                     <div className="rounded-xl bg-slate-50 p-3 text-sm font-bold">{s.staff?.name ?? s.requestedName}</div>
                     <input name="actorName" required placeholder="担当者名" className="rounded-xl border p-3" /><input name="reason" required placeholder="理由" className="rounded-xl border p-3" />
-                    <button className="rounded-xl border border-red-300 px-3 font-black text-red-700">キャンセル</button>
+                    <SubmitButton className="rounded-xl border border-red-300 px-3 font-black text-red-700">キャンセル</SubmitButton>
                   </form>
                 ))}
               </div>
@@ -145,7 +146,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ toke
                   <form key={sh.id} action={clientCancelShift.bind(null, token, id, sh.id)} className="mt-2 grid gap-2 sm:grid-cols-[1.3fr_1fr_2fr_auto]">
                     <div className="rounded-xl bg-slate-50 p-3 text-sm font-bold">{formatJst(sh.startTime).slice(0, 10)} / {s.staff?.name ?? s.requestedName}</div>
                     <input name="actorName" required placeholder="担当者名" className="rounded-xl border p-3" /><input name="reason" required placeholder="理由" className="rounded-xl border p-3" />
-                    <button className="rounded-xl border border-red-300 px-3 font-black text-red-700">この日をキャンセル</button>
+                    <SubmitButton className="rounded-xl border border-red-300 px-3 font-black text-red-700">この日をキャンセル</SubmitButton>
                   </form>
                 )))}
               </div>
@@ -156,7 +157,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ toke
                   <form key={site.id} action={clientCancelSite.bind(null, token, id, site.id)} className="mt-2 grid gap-2 sm:grid-cols-[1.3fr_1fr_2fr_auto]">
                     <div className="rounded-xl bg-slate-50 p-3 text-sm font-bold">{site.storeName}</div>
                     <input name="actorName" required placeholder="担当者名" className="rounded-xl border p-3" /><input name="reason" required placeholder="理由" className="rounded-xl border p-3" />
-                    <button className="rounded-xl border border-red-300 px-3 font-black text-red-700">現場をキャンセル</button>
+                    <SubmitButton className="rounded-xl border border-red-300 px-3 font-black text-red-700">現場をキャンセル</SubmitButton>
                   </form>
                 ))}
               </div>
@@ -168,7 +169,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ toke
             <p className="mt-1 text-xs text-slate-400">キャンセル料は自動で加算しません。元の依頼内容は履歴として残ります。</p>
             <form action={clientCancelOrder.bind(null, token, id)} className="mt-3 grid gap-2 sm:grid-cols-[1fr_2fr_auto]">
               <input name="actorName" required placeholder="担当者名" className="rounded-xl border p-3" /><input name="reason" required placeholder="キャンセル理由" className="rounded-xl border p-3" />
-              <button className="rounded-xl border border-red-300 px-4 font-black text-red-700">キャンセル</button>
+              <SubmitButton className="rounded-xl border border-red-300 px-4 font-black text-red-700">キャンセル</SubmitButton>
             </form>
           </section>
 

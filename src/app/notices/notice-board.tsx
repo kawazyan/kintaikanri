@@ -95,7 +95,7 @@ export function NoticeBoard({ notices, staffName }: { notices: NoticeItem[]; sta
             disabled={pending || !newBody.trim()}
             className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-red-400 via-[#e0272e] to-red-800 px-4 py-3 text-sm font-black text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_4px_12px_rgba(220,38,38,0.4)] active:scale-[0.98] disabled:opacity-50"
           >
-            <Send size={15} /> 投稿する
+            {pending ? "送信中…" : (<><Send size={15} /> 投稿する</>)}
           </button>
         </form>
       )}
@@ -116,7 +116,7 @@ export function NoticeBoard({ notices, staffName }: { notices: NoticeItem[]; sta
                   disabled={pending || !editBody.trim()}
                   className="flex-1 rounded-xl bg-gradient-to-b from-red-400 via-[#e0272e] to-red-800 px-4 py-2.5 text-sm font-black text-white shadow-[0_4px_12px_rgba(220,38,38,0.3)] active:scale-[0.98] disabled:opacity-50"
                 >
-                  保存する
+                  {pending ? "送信中…" : "保存する"}
                 </button>
                 <button
                   type="button"

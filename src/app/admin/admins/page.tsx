@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AdminNav } from "../admin-nav";
 import { addAdminEmail, deleteAdminEmail } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 export default async function AdminAdminsPage() {
   await requireAdmin();
@@ -25,12 +26,11 @@ export default async function AdminAdminsPage() {
           required
           className="flex-1 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
         />
-        <button
-          type="submit"
+        <SubmitButton
           className="rounded-lg bg-gradient-to-r from-blue-600 to-cyan-500 px-3 py-2 text-sm text-white shadow-md shadow-blue-950/50 active:scale-[0.98]"
         >
           追加
-        </button>
+        </SubmitButton>
       </form>
 
       <ul className="flex flex-col gap-2">
@@ -41,9 +41,9 @@ export default async function AdminAdminsPage() {
           >
             <span>{a.email}</span>
             <form action={deleteAdminEmail.bind(null, a.id)}>
-              <button type="submit" className="text-red-400 underline">
+              <SubmitButton className="text-red-400 underline">
                 削除
-              </button>
+              </SubmitButton>
             </form>
           </li>
         ))}

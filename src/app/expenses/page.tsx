@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { currentJstYearMonth, formatJst } from "@/lib/time";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { addExpense, deleteDraftExpense } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 const label = (c: string) => (c === "TRAVEL" ? "交通費" : c === "LODGING" ? "宿泊費" : "その他経費");
 
@@ -67,7 +68,7 @@ export default async function ExpensesPage() {
             内容・備考
             <textarea name="description" rows={2} className="mt-1 w-full rounded-xl border p-3 text-sm" placeholder="その他経費は必須" />
           </label>
-          <button className="w-full rounded-2xl bg-[#b91c1c] py-3 font-black text-white shadow-[0_4px_0_#7f1d1d]">経費を申請する</button>
+          <SubmitButton className="w-full rounded-2xl bg-[#b91c1c] py-3 font-black text-white shadow-[0_4px_0_#7f1d1d]">経費を申請する</SubmitButton>
         </form>
 
         <section className="mt-5 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5">
@@ -89,7 +90,7 @@ export default async function ExpensesPage() {
                     <p className="mt-1 text-xs font-bold text-slate-400">{x.status}</p>
                     {x.status === "DRAFT" && (
                       <form action={deleteDraftExpense.bind(null, x.id)}>
-                        <button className="mt-2 text-xs font-bold text-red-600">削除</button>
+                        <SubmitButton className="mt-2 text-xs font-bold text-red-600">削除</SubmitButton>
                       </form>
                     )}
                   </div>

@@ -5,6 +5,7 @@ import { toJstDateValue, toJstTimeValue, TIME_OPTIONS } from "@/lib/time";
 import { CARRIERS, WORK_TYPE_LABEL } from "@/lib/carriers";
 import { AdminNav } from "../../admin-nav";
 import { adminUpdateShift } from "../actions";
+import { SubmitButton } from "@/components/submit-button";
 
 const FIELD_CLASS =
   "rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none";
@@ -124,12 +125,11 @@ export default async function AdminEditShiftPage({
           />
         </label>
 
-        <button
-          type="submit"
+        <SubmitButton
           className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-3 text-white shadow-lg shadow-blue-950/50 active:scale-[0.98]"
         >
           保存
-        </button>
+        </SubmitButton>
       </form>
     </main>
   );

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { createWorkOrder } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 export default async function NewRequestPage({params}:{params:Promise<{token:string}>}) {
   const {token}=await params; const access=await prisma.clientAccessToken.findUnique({where:{token},include:{client:true}}); if(!access?.active||!access.client.active) notFound();
@@ -14,6 +15,6 @@ export default async function NewRequestPage({params}:{params:Promise<{token:str
     <div className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-bold">契約区分<select name="contractType" className="mt-1 w-full rounded-xl border p-3"><option value="MONTHLY">月単価</option><option value="DAILY">日単価</option></select></label><label className="text-sm font-bold">単価（税抜）<input name="rateAmountExTax" type="number" min="0" required className="mt-1 w-full rounded-xl border p-3"/></label></div>
     <div className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-bold">欠勤時の減算<select name="absenceDeduction" className="mt-1 w-full rounded-xl border p-3"><option value="YES">あり</option><option value="NO">なし</option><option value="CONSULT">要相談</option></select></label><label className="text-sm font-bold">交通費<select name="travelExpense" className="mt-1 w-full rounded-xl border p-3"><option value="INCLUDED">込み</option><option value="SEPARATE">別</option><option value="CONSULT">要相談</option></select></label></div>
     <div className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-bold">ご担当者名<input name="clientContactName" required defaultValue={access.client.contactName||""} className="mt-1 w-full rounded-xl border p-3"/></label><label className="text-sm font-bold">電話番号<input name="clientContactPhone" defaultValue={access.client.phone||""} className="mt-1 w-full rounded-xl border p-3"/></label></div><label className="block text-sm font-bold">メールアドレス<input type="email" name="clientContactEmail" defaultValue={access.client.email||""} className="mt-1 w-full rounded-xl border p-3"/></label><label className="block text-sm font-bold">備考<textarea name="notes" rows={3} className="mt-1 w-full rounded-xl border p-3"/></label>
-    <button className="w-full rounded-2xl bg-[#b91c1c] px-4 py-4 font-black text-white shadow-[0_5px_0_#7f1d1d] active:translate-y-1 active:shadow-none">業務委託内容を確定して依頼する</button>
+    <SubmitButton className="w-full rounded-2xl bg-[#b91c1c] px-4 py-4 font-black text-white shadow-[0_5px_0_#7f1d1d] active:translate-y-1 active:shadow-none">業務委託内容を確定して依頼する</SubmitButton>
   </form></div></main>;
 }

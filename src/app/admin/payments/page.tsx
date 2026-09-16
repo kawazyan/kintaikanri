@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { formatJst } from "@/lib/time";
 import { AdminNav } from "../admin-nav";
 import { markTransferRequestPaid } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 export default async function AdminPaymentsPage({
   searchParams,
@@ -108,12 +109,11 @@ export default async function AdminPaymentsPage({
                         placeholder="処理者名"
                         className="w-28 rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-xs text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
                       />
-                      <button
-                        type="submit"
+                      <SubmitButton
                         className="rounded-md bg-gradient-to-r from-blue-600 to-cyan-500 px-2 py-1 text-xs text-white shadow-md shadow-blue-950/50 active:scale-[0.98]"
                       >
                         振込済みにする
-                      </button>
+                      </SubmitButton>
                     </form>
                   )}
                 </td>

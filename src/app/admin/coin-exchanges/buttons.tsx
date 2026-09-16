@@ -16,11 +16,11 @@ export function Buttons({ id }: { id: string }) {
 
   return (
     <div className="flex gap-2">
-      <button disabled={p} onClick={() => go("FULFILLED")} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black text-white">
-        送付完了
+      <button disabled={p} onClick={() => go("FULFILLED")} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black text-white disabled:opacity-60">
+        {p ? "処理中…" : "送付完了"}
       </button>
-      <button disabled={p} onClick={() => go("REJECTED")} className="rounded-lg bg-slate-200 px-3 py-2 text-xs font-black">
-        却下
+      <button disabled={p} onClick={() => go("REJECTED")} className="rounded-lg bg-slate-200 px-3 py-2 text-xs font-black disabled:opacity-60">
+        {p ? "処理中…" : "却下"}
       </button>
     </div>
   );

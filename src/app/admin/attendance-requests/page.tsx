@@ -11,6 +11,7 @@ import {
 import { AdminNav } from "../admin-nav";
 import { updateIrregularReportStatus, approveShiftChangeRequest, rejectShiftChangeRequest } from "./actions";
 import type { IrregularReportStatus } from "@prisma/client";
+import { SubmitButton } from "@/components/submit-button";
 
 const FIELD_CLASS =
   "rounded-lg border border-slate-700 bg-slate-900/60 px-2 py-1 text-slate-100 text-sm focus:border-blue-500 focus:outline-none";
@@ -177,9 +178,9 @@ function SubmitStatusButton({
     tone === "amber" ? "bg-amber-600" : tone === "emerald" ? "bg-emerald-600" : "bg-slate-700";
   const boundAction = updateIrregularReportStatus.bind(null, reportId, status);
   return (
-    <button formAction={boundAction} className={`rounded-lg px-3 py-1.5 text-xs font-black text-white ${toneClass}`}>
+    <SubmitButton formAction={boundAction} className={`rounded-lg px-3 py-1.5 text-xs font-black text-white ${toneClass}`}>
       {label}
-    </button>
+    </SubmitButton>
   );
 }
 
@@ -224,12 +225,12 @@ function RequestRow({
         <form className="mt-4 grid gap-2 md:grid-cols-[1fr_1fr_auto_auto]">
           <input name="reviewerName" required placeholder="承認者名" className={FIELD_CLASS} />
           <input name="rejectionReason" placeholder="却下理由(却下時は必須)" className={FIELD_CLASS} />
-          <button formAction={approveAction} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-black text-white">
+          <SubmitButton formAction={approveAction} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-black text-white">
             承認
-          </button>
-          <button formAction={rejectAction} className="rounded-lg bg-red-700 px-4 py-2 text-sm font-black text-white">
+          </SubmitButton>
+          <SubmitButton formAction={rejectAction} className="rounded-lg bg-red-700 px-4 py-2 text-sm font-black text-white">
             却下
-          </button>
+          </SubmitButton>
         </form>
       )}
     </article>
