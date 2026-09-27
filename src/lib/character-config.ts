@@ -23,6 +23,7 @@ export const CHARACTER_DEFINITIONS: CharacterDefinition[] = [
   { id: "vice-girl", label: "ViceGirl" },
   { id: "boss-boy", label: "BossBoy" },
   { id: "boss-girl", label: "BossGirl" },
+  { id: "seal", label: "あざらし" },
   { id: NONE_CHARACTER_ID, label: "表示なし" },
   { id: CUSTOM_CHARACTER_ID, label: "自分の写真" },
 ];
