@@ -22,6 +22,7 @@ export function CharacterAvatar({
   staffName: string;
   children?: ReactNode;
 }) {
+  const isSeal = imageSrc?.startsWith("/characters/seal/");
   return (
     <section id="punch" className={`app-character-hero app-character-hero--${state.toLowerCase()}`}>
       {imageSrc && (
@@ -31,7 +32,7 @@ export function CharacterAvatar({
           fill
           sizes="(max-width: 430px) 100vw, 430px"
           unoptimized={imageSrc.startsWith("data:")}
-          className={`app-character-hero__image ${state === "WORK" ? "object-[center_30%]" : "object-[center_22%]"}`}
+          className={`app-character-hero__image ${isSeal ? "object-[center_70%]" : state === "WORK" ? "object-[center_30%]" : "object-[center_22%]"}`}
           priority
         />
       )}

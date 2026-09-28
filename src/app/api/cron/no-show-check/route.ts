@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 import { formatJst } from "@/lib/time";
 import { WORK_TYPE_LABEL } from "@/lib/carriers";
+import { sendLinePush } from "@/lib/line";
+import { sendDailyShiftSummary, sendUpcomingShiftAlerts } from "@/lib/line-schedule";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +23,8 @@ export async function GET(req: NextRequest) {
   }
 
   const now = new Date();
+  const upcoming = await sendUpcomingShiftAlerts(now);
+  const dailySummary = await sendDailyShiftSummary(now);
   const deadline = new Date(now.getTime() - GRACE_PERIOD_MS);
   const earliest = new Date(now.getTime() - LOOKBACK_MS);
 
@@ -31,11 +35,13 @@ export async function GET(req: NextRequest) {
       noShowAlert: null,
       clockRecords: { none: { type: "IN" } },
     },
-    include: { staff: true },
+    include: { staff: true, lineAlert: true },
   });
 
   const admins = await prisma.adminEmail.findMany();
   let sent = 0;
+  let lineSent = 0;
+  let lineFailed = 0;
 
   for (const shift of overdueShifts) {
     if (shift.staff.status !== "ACTIVE") continue;
@@ -55,7 +61,26 @@ export async function GET(req: NextRequest) {
 
     await prisma.noShowAlert.create({ data: { shiftId: shift.id } });
     sent += 1;
+
+    if (!shift.lineAlert && shift.staff.lineGroupId && process.env.LINE_CHANNEL_ACCESS_TOKEN) {
+      // 送信前にレコードを確保しておき、失敗時のみ取り消す(=重複送信の防止)。
+      let claimed = false;
+      try {
+        await prisma.lineAlert.create({ data: { shiftId: shift.id } });
+        claimed = true;
+      } catch (error) {
+        if (typeof error !== "object" || error === null || !("code" in error) || error.code !== "P2002") throw error;
+      }
+      if (claimed) {
+        if (await sendLinePush(shift.staff.lineGroupId, `${subject}\n${text}`, shift.id)) {
+          lineSent += 1;
+        } else {
+          await prisma.lineAlert.delete({ where: { shiftId: shift.id } });
+          lineFailed += 1;
+        }
+      }
+    }
   }
 
-  return NextResponse.json({ checked: overdueShifts.length, sent });
+  return NextResponse.json({ checked: overdueShifts.length, sent, lineSent, lineFailed, preShiftLineSent: upcoming.sent, preShiftLineFailed: upcoming.failed, dailySummary });
 }

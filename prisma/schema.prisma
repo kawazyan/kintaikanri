@@ -48,6 +48,10 @@ model Staff {
   email        String
   status       StaffStatus @default(ACTIVE)
 
+  // LINEグループ連携(未出勤アラートのLINE通知用)
+  lineGroupId  String? @unique
+  lineLinkCode String? @unique
+
   // 個人情報(item 4)
   birthDate    DateTime?
   phoneNumber  String?
@@ -131,6 +135,8 @@ model Shift {
   histories    ShiftHistory[]
   clockRecords ClockRecord[]
   noShowAlert  NoShowAlert?
+  lineAlert    LineAlert?
+  preShiftLineAlert PreShiftLineAlert?
   workOrderStaffId String?
   workOrderStaff WorkOrderStaff? @relation(fields: [workOrderStaffId], references: [id], onDelete: SetNull)
   cancelledAt DateTime?
@@ -228,6 +234,32 @@ model AdminEmail {
   id        String   @id @default(cuid())
   email     String   @unique
   createdAt DateTime @default(now())
+}
+
+model LineAlert {
+  id      String   @id @default(cuid())
+  shiftId String   @unique
+  shift   Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  sentAt  DateTime @default(now())
+}
+
+model PreShiftLineAlert {
+  id      String   @id @default(cuid())
+  shiftId String   @unique
+  shift   Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  sentAt  DateTime @default(now())
+}
+
+model LineDailySummaryGroup {
+  id       String  @id
+  groupId  String? @unique
+  linkCode String? @unique
+}
+
+model LineDailySummary {
+  dateKey String   @id // YYYY-MM-DD (JST)
+  groupId String
+  sentAt  DateTime @default(now())
 }
 
 // サポートBOTのFAQ。管理画面(BOT管理 → FAQ管理)から質問・回答・表示対象

@@ -1,11 +1,10 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Award, ChevronRight, Menu, Sofa, Users, Wallet, Sparkles, ReceiptText, Gift, User, AlertTriangle, CalendarClock } from "lucide-react";
+import { Award, ChevronRight, Menu, Sofa, Users, Wallet, ReceiptText, Gift, User, AlertTriangle, CalendarClock } from "lucide-react";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
-import { HexIcon } from "@/components/hex-icon";
 import { PageHeader } from "@/components/page-header";
 import { LogoutButton } from "./logout-button";
 import { resolveAvatarSrc } from "@/lib/character-config";
@@ -31,7 +30,7 @@ export default async function MenuPage() {
 
   return (
     <main className="staff-screen">
-      <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28">
+      <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[calc(72px_+_env(safe-area-inset-top))] pb-28">
         <PageHeader icon={Menu} title="メニュー" centered />
 
         <section className="app-profile-card app-profile-card--static">
@@ -61,21 +60,15 @@ export default async function MenuPage() {
         </section>
 
         <section>
-          <div className="mb-2 flex items-center gap-2 px-1">
-            <Sparkles size={13} className="text-red-500" />
-            <p className="text-[11px] font-black tracking-[.08em] text-slate-400">MY K.J</p>
-          </div>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="menu-feature-grid">
             {GAME_MENU_ITEMS.map(({ href, label, icon: Icon, tone }) => (
               <Link
                 key={href}
                 href={href}
-                className="flex min-h-[112px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-[20px] border border-white/10 bg-[linear-gradient(160deg,#14171b,#07090a)] px-1.5 py-4 text-center text-white transition active:scale-[.965]"
+                className={`menu-feature menu-feature--${tone}`}
               >
-                <HexIcon icon={Icon} tone={tone} size={25} />
-                <span className="mt-1 w-full whitespace-nowrap text-[clamp(9px,2.7vw,12px)] font-black tracking-[-.03em]">
-                  {label}
-                </span>
+                <span className="menu-feature__icon"><Icon size={28} strokeWidth={1.8} /></span>
+                <span className="menu-feature__label">{label}</span>
               </Link>
             ))}
           </div>

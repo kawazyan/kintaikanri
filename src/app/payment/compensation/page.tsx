@@ -25,8 +25,8 @@ export default async function CompensationRequestPage() {
   const monthOptions = listMonthOptions(6, 0);
 
   return (
-    <main className="min-h-dvh bg-[#f5f6f8] text-slate-900">
-      <div className="mx-auto max-w-md px-4 pb-28 pt-6">
+    <main className="request-screen min-h-dvh text-slate-100">
+      <div className="mx-auto max-w-md px-4 pb-28 pt-[calc(72px_+_env(safe-area-inset-top))]">
         <Link href="/menu" className="text-sm font-bold text-slate-500">
           ← メニューへ戻る
         </Link>

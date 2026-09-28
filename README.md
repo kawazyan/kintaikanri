@@ -34,6 +34,8 @@ cp .env.example .env
 | `RESEND_API_KEY` | Resend の APIキー |
 | `MAIL_FROM` | 送信元メールアドレス(Resendで検証済みドメイン) |
 | `CRON_SECRET` | 未出勤アラートAPI(`/api/cron/no-show-check`)を保護する秘密文字列 |
+| `LINE_CHANNEL_ACCESS_TOKEN` | LINE公式アカウントからグループへ送るためのアクセストークン |
+| `LINE_CHANNEL_SECRET` | LINE webhook の署名検証に使うチャネルシークレット |
 
 ### 3. DBスキーマの反映
 
@@ -184,7 +186,16 @@ cloudflared tunnel --url http://localhost:3000
 
 代わりに、無料の外部Cronサービス(例: [cron-job.org](https://cron-job.org))から
 `https://<your-domain>/api/cron/no-show-check` に `Authorization: Bearer <CRON_SECRET>` ヘッダー付きで
-1〜2分間隔にGETリクエストを送る運用としています。
+1分間隔にGETリクエストを送る運用としています。
+
+同じ定期実行で、連携済みの従業員LINEグループへ出勤予定時刻の5分前から開始時刻までに出勤前通知を1回送ります。
+また、日本時間9:00〜9:59の最初の実行で、管理者用LINEグループへ当日の出勤予定者・時間・店舗を1回送ります。
+通知時刻は定期実行の時刻に依存するため、1分間隔に設定してください。送信済みの記録で重複を防ぎます。
+
+管理画面の「LINE通知」で、従業員ごとのグループは「勤怠連携」コード、毎朝の一覧を受け取るグループは「日報連携」コードを発行します。
+LINE公式アカウントを招待済みの各グループで、表示された連携文を送信してください。
+`LINE_CHANNEL_ACCESS_TOKEN`、`LINE_CHANNEL_SECRET`、`CRON_SECRET`、LINE webhook URL の本番設定が必要です。
+新しい通知テーブルを追加する Prisma migration を適用してから、更新したアプリを起動してください。
 
 (将来 Vercel **Pro プラン**に切り替える場合は、`vercel.json` に
 `{ "crons": [{ "path": "/api/cron/no-show-check", "schedule": "*/1 * * * *" }] }`

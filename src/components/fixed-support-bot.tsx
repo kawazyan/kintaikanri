@@ -48,6 +48,15 @@ function toItem(faq: BotFaqData): Item {
   };
 }
 
+// 表示用の見出しだけを導出する。FAQのカテゴリ・質問・回答・キーワードは変更しない。
+function salesTopicGroup(item: Item): string {
+  const text = [item.title, ...item.keywords].join(" ");
+  if (/MNP|乗り換え|転出|転入|予約番号/i.test(text)) return "乗り換え・MNP";
+  if (/料金|プラン|割引|ギガ|GB|データ量/i.test(text)) return "料金・プラン";
+  if (/機種|端末|iPhone|Android|Pixel|eSIM|SIM|設定/i.test(text)) return "端末・設定";
+  return "その他の販売サポート";
+}
+
 const SMALL_TALK: Array<{ keywords: string[]; answer: string }> = [
   { keywords: ["おはよう", "おはよ"], answer: "おはようございます。今日もよろしくお願いします。" },
   { keywords: ["こんにちは", "こんちは"], answer: "こんにちは。何か確認したいことはありますか？" },
@@ -135,6 +144,13 @@ export function FixedSupportBot({ faqs }: { faqs: BotFaqData[] }) {
     () => (currentCategory ? items.filter((item) => item.category === currentCategory) : []),
     [items, currentCategory]
   );
+  const topicGroups = useMemo(() => {
+    if (currentCategory !== "販売サポート") return [{ heading: "", topics: topicsInCategory }];
+    const headings = ["乗り換え・MNP", "料金・プラン", "端末・設定", "その他の販売サポート"];
+    return headings
+      .map((heading) => ({ heading, topics: topicsInCategory.filter((item) => salesTopicGroup(item) === heading) }))
+      .filter((group) => group.topics.length > 0);
+  }, [currentCategory, topicsInCategory]);
 
   if (!audience) return null;
 
@@ -179,7 +195,16 @@ export function FixedSupportBot({ faqs }: { faqs: BotFaqData[] }) {
             }`}
           >
             <div className="grid h-10 w-10 place-items-center rounded-2xl border border-white/20 bg-white/10">
-              <Bot size={22} />
+              {audience === "staff" ? (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 4v3" />
+                  <circle cx="12" cy="3" r="1" fill="currentColor" stroke="none" />
+                  <rect x="4" y="7" width="16" height="13" rx="4" />
+                  <circle cx="9" cy="13" r="1" fill="currentColor" stroke="none" />
+                  <circle cx="15" cy="13" r="1" fill="currentColor" stroke="none" />
+                  <path d="M10 17h4" />
+                </svg>
+              ) : <Bot size={22} />}
             </div>
             <div className="min-w-0 flex-1">
               <div className="font-black">{title}</div>
@@ -247,20 +272,25 @@ export function FixedSupportBot({ faqs }: { faqs: BotFaqData[] }) {
                       <ArrowLeft size={14} />
                       カテゴリ一覧へ戻る
                     </button>
-                    {topicsInCategory.map((item) => (
-                      <button
-                        type="button"
-                        key={item.id}
-                        onClick={() => ask(item.title)}
-                        className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-black transition active:scale-[.99] ${
-                          audience === "staff"
-                            ? "border border-white/10 bg-white/[.045] text-slate-100"
-                            : "border border-slate-200 bg-white text-slate-800 shadow-sm"
-                        }`}
-                      >
-                        <span className="flex-1">{item.title}</span>
-                        <ChevronRight size={17} className="opacity-60" />
-                      </button>
+                    {topicGroups.map((group) => (
+                      <div key={group.heading || currentCategory} className="space-y-2">
+                        {group.heading && <h3 className="px-1 pt-3 text-xs font-black tracking-wide text-amber-300">{group.heading}</h3>}
+                        {group.topics.map((item) => (
+                          <button
+                            type="button"
+                            key={item.id}
+                            onClick={() => ask(item.title)}
+                            className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-black transition active:scale-[.99] ${
+                              audience === "staff"
+                                ? "border border-white/10 bg-white/[.045] text-slate-100"
+                                : "border border-slate-200 bg-white text-slate-800 shadow-sm"
+                            }`}
+                          >
+                            <span className="flex-1">{item.title}</span>
+                            <ChevronRight size={17} className="opacity-60" />
+                          </button>
+                        ))}
+                      </div>
                     ))}
                   </div>
                 )}

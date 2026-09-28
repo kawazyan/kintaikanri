@@ -16,7 +16,7 @@ export default async function PaymentRequestPage() {
   const balance = await computeTransferBalance(staffId);
 
   return (
-    <main className="min-h-dvh bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb]">
+    <main className="request-screen min-h-dvh text-slate-100">
     <div className="mx-auto flex max-w-md flex-col gap-6 px-4 py-8">
       <Link href="/clock" className="text-sm text-red-600 underline">
         ← ホームへ戻る

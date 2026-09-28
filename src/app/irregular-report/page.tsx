@@ -26,8 +26,8 @@ export default async function IrregularReportPage() {
   });
 
   return (
-    <main className="min-h-dvh bg-[#f5f6f8] text-slate-900">
-      <div className="mx-auto max-w-md px-4 pb-28 pt-6">
+    <main className="request-screen min-h-dvh text-slate-100">
+      <div className="mx-auto max-w-md px-4 pb-28 pt-[calc(72px_+_env(safe-area-inset-top))]">
         <h1 className="text-2xl font-black">イレギュラー報告</h1>
         <p className="mt-1 text-sm text-slate-500">予定どおりの勤務ができない場合の報告窓口です</p>
 
