@@ -16,7 +16,7 @@ export default async function TownPage() {
 
   return (
     <main className="staff-screen">
-      <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28">
+      <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[calc(72px_+_env(safe-area-inset-top))] pb-28">
         <PageHeader icon={Users} title="今日の出勤メンバー" eyebrow="TODAY" />
 
         <section className="relative overflow-hidden rounded-[26px] bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-700 p-5 text-white shadow-[0_12px_28px_rgba(5,150,105,.20)] ring-1 ring-white/20">

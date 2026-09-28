@@ -23,7 +23,7 @@ export default async function TitlesPage() {
 
   return (
     <main className="staff-screen">
-      <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28">
+      <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[calc(72px_+_env(safe-area-inset-top))] pb-28">
         <PageHeader icon={Award} title="獲得した称号" eyebrow="TITLE COLLECTION" />
 
         <section className="relative overflow-hidden rounded-[26px] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-5 text-white shadow-[0_12px_28px_rgba(15,23,42,.20)] ring-1 ring-white/10">

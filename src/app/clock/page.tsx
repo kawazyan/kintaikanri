@@ -116,7 +116,7 @@ export default async function ClockPage() {
 
   return (
     <main className="staff-screen">
-      <div className="mx-auto max-w-[430px] pb-28">
+      <div className="mx-auto max-w-[430px] pb-28 pt-[calc(72px_+_env(safe-area-inset-top))]">
         <div className="flex flex-col">
           <CharacterAvatar
             state={avatarState}

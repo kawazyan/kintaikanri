@@ -15,7 +15,7 @@ export default async function MyRoomPage() {
 
   return (
     <main className="staff-screen">
-      <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28">
+      <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[calc(72px_+_env(safe-area-inset-top))] pb-28">
         <PageHeader icon={Sofa} title="キャラ変更" eyebrow={`${staff.name} さん`} />
 
         <NameEditor name={staff.name} />

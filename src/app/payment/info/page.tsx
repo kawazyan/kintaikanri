@@ -17,7 +17,7 @@ export default async function PaymentInfoPage() {
 
   return (
     <main className="staff-screen min-h-dvh text-slate-100">
-      <div className="mx-auto max-w-[430px] px-4 pb-28 pt-[max(1rem,env(safe-area-inset-top))]">
+      <div className="mx-auto max-w-[430px] px-4 pb-28 pt-[calc(72px_+_env(safe-area-inset-top))]">
         <div className="flex items-center gap-3 py-3">
           <Link href="/clock" className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-black/30" aria-label="ホームへ戻る">
             <ChevronLeft size={20} />
