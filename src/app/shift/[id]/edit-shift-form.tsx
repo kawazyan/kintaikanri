@@ -137,7 +137,7 @@ export function EditShiftForm({
 
       <div className="flex items-center gap-3">
         <label className="flex flex-1 flex-col gap-1 text-sm text-slate-600">
-          開始時間
+          開始時間（JST）
           <select
             value={startTime}
             onChange={(e) => setStartTime(e.target.value)}
@@ -152,7 +152,7 @@ export function EditShiftForm({
         </label>
         <span className="mt-5 text-slate-400">〜</span>
         <label className="flex flex-1 flex-col gap-1 text-sm text-slate-600">
-          終業時間
+          終業時間（JST）
           <select
             value={endTime}
             onChange={(e) => setEndTime(e.target.value)}
@@ -166,6 +166,9 @@ export function EditShiftForm({
           </select>
         </label>
       </div>
+      <p className="text-xs text-slate-500">
+        ⚠️ 入力した時間は日本時間（JST）です。
+      </p>
 
       {workType === "SPOT" && (
         <label className="flex flex-col gap-1 text-sm text-slate-600">

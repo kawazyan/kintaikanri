@@ -66,6 +66,9 @@ export function ShiftWizard({
   const [storeName, setStoreName] = useState(initial?.storeName ?? "");
   const [startTime, setStartTime] = useState(initial?.startTime ?? "10:00");
   const [endTime, setEndTime] = useState(initial?.endTime ?? "19:00");
+
+  // ⚠️ 重要: 全ての時間入力は日本時間（JST）です
+  // 例：選択した "10:00" は JST の 10:00 を意味し、UTC の 01:00 として保存されます
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
   const [lockedDates, setLockedDates] = useState<Set<string>>(new Set());
   const [targetAmount, setTargetAmount] = useState<number | null>(null);
@@ -348,10 +351,10 @@ export function ShiftWizard({
 
       {step === 5 && (
         <div className="flex flex-col gap-3">
-          <h2 className="text-base font-semibold text-slate-900">稼働予定時間を選択してください</h2>
+          <h2 className="text-base font-semibold text-slate-900">稼働予定時間を選択してください（日本時間）</h2>
           <div className="flex items-center gap-3">
             <label className="flex flex-1 flex-col gap-1 text-sm text-slate-600">
-              開始時間
+              開始時間（JST）
               <select
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
@@ -366,7 +369,7 @@ export function ShiftWizard({
             </label>
             <span className="mt-5 text-slate-500">〜</span>
             <label className="flex flex-1 flex-col gap-1 text-sm text-slate-600">
-              終業時間
+              終業時間（JST）
               <select
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
@@ -381,7 +384,7 @@ export function ShiftWizard({
             </label>
           </div>
           <p className="text-xs text-slate-500">
-            終業時間が開始時間より前の場合、翌日終業として登録されます。
+            ⚠️ 入力した時間は日本時間（JST）です。終業時間が開始時間より前の場合、翌日終業として登録されます。
           </p>
           <div className="flex gap-3">
             <button type="button" onClick={goBack} className={OUTLINE_BUTTON}>
@@ -498,7 +501,7 @@ export function ShiftWizard({
             <dd>{carrier}</dd>
             <dt className="text-slate-500">店舗名</dt>
             <dd>{storeName}</dd>
-            <dt className="text-slate-500">時間</dt>
+            <dt className="text-slate-500">時間（JST）</dt>
             <dd>
               {startTime} 〜 {endTime}
             </dd>
