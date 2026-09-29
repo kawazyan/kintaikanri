@@ -66,7 +66,7 @@ export default async function NewRecordPage({
         </label>
 
         <label className="flex flex-col gap-1 text-sm text-slate-400">
-          日時
+          日時（JST）
           <input
             type="datetime-local"
             name="timestamp"
@@ -75,6 +75,9 @@ export default async function NewRecordPage({
             className={FIELD_CLASS}
           />
         </label>
+        <p className="text-xs text-slate-500">
+          ⚠️ 入力する時間は日本時間（JST）です。
+        </p>
 
         <label className="flex flex-col gap-1 text-sm text-slate-400">
           店舗名(任意・未入力なら当日のシフトから自動設定)

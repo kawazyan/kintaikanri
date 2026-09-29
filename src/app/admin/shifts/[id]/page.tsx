@@ -83,7 +83,7 @@ export default async function AdminEditShiftPage({
 
         <div className="flex items-center gap-3">
           <label className="flex flex-1 flex-col gap-1 text-sm text-slate-400">
-            開始時間
+            開始時間（JST）
             <select
               name="startTime"
               defaultValue={toJstTimeValue(shift.startTime)}
@@ -98,7 +98,7 @@ export default async function AdminEditShiftPage({
           </label>
           <span className="mt-5 text-slate-500">〜</span>
           <label className="flex flex-1 flex-col gap-1 text-sm text-slate-400">
-            終業時間
+            終業時間（JST）
             <select
               name="endTime"
               defaultValue={toJstTimeValue(shift.endTime)}
@@ -112,6 +112,9 @@ export default async function AdminEditShiftPage({
             </select>
           </label>
         </div>
+        <p className="text-xs text-slate-500">
+          ⚠️ 入力する時間は日本時間（JST）です。
+        </p>
 
         <label className="flex flex-col gap-1 text-sm text-slate-400">
           単価(スポット稼働のみ使用。帯稼働では未使用)
