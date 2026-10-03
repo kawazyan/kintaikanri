@@ -113,20 +113,8 @@ export default async function AdminEditShiftPage({
           </label>
         </div>
         <p className="text-xs text-slate-500">
-          ⚠️ 入力する時間は日本時間（JST）です。
+          ⚠️ 入力する時間は日本時間（JST）です。単価はスタッフ設定に基づいて自動適用されます。
         </p>
-
-        <label className="flex flex-col gap-1 text-sm text-slate-400">
-          単価(スポット稼働のみ使用。帯稼働では未使用)
-          <input
-            type="number"
-            name="unitAmount"
-            min={0}
-            step={1}
-            defaultValue={shift.unitAmount ?? ""}
-            className={FIELD_CLASS}
-          />
-        </label>
 
         <SubmitButton
           className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-3 text-white shadow-lg shadow-blue-950/50 active:scale-[0.98]"

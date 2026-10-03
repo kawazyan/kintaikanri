@@ -15,7 +15,6 @@ export async function adminUpdateShift(shiftId: string, formData: FormData) {
   const date = String(formData.get("date") ?? "");
   const startTimeStr = String(formData.get("startTime") ?? "");
   const endTimeStr = String(formData.get("endTime") ?? "");
-  const unitAmountRaw = String(formData.get("unitAmount") ?? "").trim();
 
   if (
     (workType !== "BAND" && workType !== "SPOT") ||
@@ -27,7 +26,6 @@ export async function adminUpdateShift(shiftId: string, formData: FormData) {
   ) {
     return;
   }
-  if (unitAmountRaw && (!/^\d+$/.test(unitAmountRaw))) return;
 
   const existing = await prisma.shift.findUnique({ where: { id: shiftId } });
   if (!existing) return;
@@ -38,7 +36,8 @@ export async function adminUpdateShift(shiftId: string, formData: FormData) {
     endTime = new Date(endTime.getTime() + 24 * 60 * 60 * 1000);
   }
 
-  const unitAmount = workType === "SPOT" && unitAmountRaw ? Number(unitAmountRaw) : null;
+  // 単価はスタッフの支払い設定に基づいて自動適用されるため、常に null
+  const unitAmount = null;
 
   const updated = await prisma.shift.update({
     where: { id: shiftId },

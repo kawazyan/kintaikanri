@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CARRIERS, CARRIER_OTHER, WORK_TYPE_LABEL, isPresetCarrier } from "@/lib/carriers";
 import { TIME_OPTIONS } from "@/lib/time";
-import { YenInput } from "@/components/yen-input";
 import { updateShift } from "../actions";
 
 type WorkType = "BAND" | "SPOT";
@@ -24,7 +23,6 @@ export function EditShiftForm({
     date: string;
     startTime: string;
     endTime: string;
-    unitAmount: number | null;
   };
 }) {
   const router = useRouter();
@@ -40,7 +38,6 @@ export function EditShiftForm({
   const [date, setDate] = useState(defaultValues.date);
   const [startTime, setStartTime] = useState(defaultValues.startTime);
   const [endTime, setEndTime] = useState(defaultValues.endTime);
-  const [unitAmount, setUnitAmount] = useState<number | null>(defaultValues.unitAmount);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -57,7 +54,7 @@ export function EditShiftForm({
         date,
         startTime,
         endTime,
-        unitAmount: workType === "SPOT" ? unitAmount : null,
+        unitAmount: null,
       });
       if ("error" in result) {
         setError(result.error);
@@ -167,15 +164,8 @@ export function EditShiftForm({
         </label>
       </div>
       <p className="text-xs text-slate-500">
-        ⚠️ 入力した時間は日本時間（JST）です。
+        ⚠️ 入力した時間は日本時間（JST）です。単価はスタッフ設定に基づいて自動適用されます。
       </p>
-
-      {workType === "SPOT" && (
-        <label className="flex flex-col gap-1 text-sm text-slate-600">
-          単価
-          <YenInput value={unitAmount} onChange={setUnitAmount} />
-        </label>
-      )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

@@ -74,7 +74,6 @@ export function ShiftWizard({
   const [targetAmount, setTargetAmount] = useState<number | null>(null);
   const [amountMode, setAmountMode] = useState<"MONTHLY" | "DAILY">("MONTHLY");
   const [dailyRate, setDailyRate] = useState<number | null>(null);
-  const [spotAmounts, setSpotAmounts] = useState<Record<string, number | null>>({});
   const [error, setError] = useState<string | null>(null);
   const [loadingMonth, setLoadingMonth] = useState(true);
   const [pending, startTransition] = useTransition();
@@ -138,28 +137,12 @@ export function ShiftWizard({
       const next = new Set(prev);
       if (next.has(key)) {
         next.delete(key);
-        setSpotAmounts((amounts) => {
-          const rest = { ...amounts };
-          delete rest[key];
-          return rest;
-        });
       } else {
         next.add(key);
-        if (workType === "SPOT") {
-          setSpotAmounts((amounts) => ({ ...amounts, [key]: initial?.unitAmount ?? null }));
-        }
       }
       return next;
     });
   }
-
-  // 単価は任意。入力されている場合のみ0以上の整数かを確認する。
-  const spotAmountsValid =
-    workType !== "SPOT" ||
-    sortedSelectedDates.every((d) => {
-      const amount = spotAmounts[d];
-      return amount === null || amount === undefined || (Number.isInteger(amount) && amount >= 0);
-    });
 
   function goNext() {
     setError(null);
@@ -177,7 +160,7 @@ export function ShiftWizard({
   }
 
   function submit() {
-    if (!workType || !carrier || !storeName.trim() || totalDayCount === 0 || !spotAmountsValid) {
+    if (!workType || !carrier || !storeName.trim() || totalDayCount === 0) {
       setError("入力内容を確認してください");
       return;
     }
@@ -191,10 +174,6 @@ export function ShiftWizard({
         endTime,
         dates: sortedSelectedDates,
         targetAmount: workType === "BAND" ? effectiveTargetAmount : null,
-        spotAmounts:
-          workType === "SPOT"
-            ? Object.fromEntries(sortedSelectedDates.map((d) => [d, spotAmounts[d] ?? null]))
-            : undefined,
       };
       const result = staffId
         ? await adminCreateShiftsBulk(staffId, input)
@@ -402,20 +381,11 @@ export function ShiftWizard({
           <h2 className="text-base font-semibold text-slate-900">
             {yearMonthLabel(yearMonth)}の稼働日を選択してください({totalDayCount}日選択中)
           </h2>
-          {workType === "SPOT" && (
-            <p className="text-xs text-slate-500">稼働日ごとに単価を入力できます(未定の場合は空欄のままでも登録できます)。</p>
-          )}
           <DayChecklist
             days={monthDays}
             selected={selectedDates}
             lockedDates={lockedDates}
             onToggle={toggleDate}
-            amounts={workType === "SPOT" ? spotAmounts : undefined}
-            onAmountChange={
-              workType === "SPOT"
-                ? (key, value) => setSpotAmounts((prev) => ({ ...prev, [key]: value }))
-                : undefined
-            }
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-3">
@@ -424,7 +394,7 @@ export function ShiftWizard({
             </button>
             <button
               type="button"
-              disabled={totalDayCount === 0 || !spotAmountsValid}
+              disabled={totalDayCount === 0}
               onClick={goNext}
               className={PRIMARY_BUTTON}
             >
@@ -533,24 +503,22 @@ export function ShiftWizard({
               </>
             ) : (
               <>
-                <dt className="text-slate-500">稼働日・単価</dt>
+                <dt className="text-slate-500">稼働予定日</dt>
                 <dd>
-                  <ul className="flex flex-col gap-0.5">
-                    {sortedSelectedDates.map((d) => (
-                      <li key={d}>
-                        {d.slice(5).replace("-", "/")}:{" "}
-                        {spotAmounts[d] != null ? `${spotAmounts[d]!.toLocaleString("ja-JP")}円` : "未定"}
-                      </li>
-                    ))}
-                    {lockedDates.size > 0 && (
-                      <li className="text-xs text-slate-500">
-                        (登録済み: {[...lockedDates].sort().map((d) => d.slice(5).replace("-", "/")).join("・")})
-                      </li>
-                    )}
-                  </ul>
+                  {[...sortedSelectedDates, ...lockedDates]
+                    .sort()
+                    .map((d) => d.slice(5).replace("-", "/"))
+                    .join("・")}
+                  {lockedDates.size > 0 && (
+                    <span className="ml-1 text-xs text-slate-500">(登録済み分含む)</span>
+                  )}
                 </dd>
                 <dt className="text-slate-500">稼働合計日数</dt>
                 <dd>{totalDayCount}日</dd>
+                <dt className="text-slate-500">単価</dt>
+                <dd className="text-xs text-slate-600">
+                  スタッフ設定に基づく単価が自動適用されます
+                </dd>
               </>
             )}
           </dl>
