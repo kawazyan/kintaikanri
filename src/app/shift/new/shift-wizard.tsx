@@ -211,7 +211,6 @@ export function ShiftWizard({
               const ym = e.target.value;
               setYearMonth(ym);
               setSelectedDates(new Set());
-              setSpotAmounts({});
               setTargetAmount(null);
               loadMonthData(ym);
             }}

@@ -24,7 +24,10 @@ export default async function AdminStaffDetailPage({
   const { id } = await params;
   const { saved } = await searchParams;
 
-  const staff = await prisma.staff.findUnique({ where: { id } });
+  const staff = await prisma.staff.findUnique({
+    where: { id },
+    include: { paymentSetting: true },
+  });
   if (!staff) notFound();
 
   const boundAction = updateStaffDetails.bind(null, staff.id);
