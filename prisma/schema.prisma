@@ -26,18 +26,6 @@ enum PaymentMethod {
   REQUEST // 申請支払
 }
 
-enum PaymentType {
-  DAILY    // 日当（日数 × 単価）
-  MONTHLY  // 月固定
-}
-
-enum PaymentSchedule {
-  REQUEST       // 申請支払い
-  FIXED_20      // 毎月20日
-  FIXED_25      // 毎月25日
-  FIXED_MONTH_END // 月末日
-}
-
 enum TransferRequestStatus {
   REQUESTING
   PAID
@@ -117,7 +105,6 @@ model Staff {
   shiftChangeRequests   ShiftChangeRequest[]
   coinBonuses           CoinBonus[]
   giftExchanges         GiftExchange[]
-  paymentSetting        StaffPaymentSetting?
 }
 
 model MonthlyEarningTarget {
@@ -786,20 +773,17 @@ model GiftExchange {
   @@index([status, requestedAt])
 }
 
-// スタッフごとの支払い設定（日当/月固定、交通費、支払日など）
 model StaffPaymentSetting {
-  id                    String   @id @default(cuid())
-  staffId               String   @unique
-  staff                 Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  id                   String   @id @default(cuid())
+  staffId              String   @unique
+  staff                Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  bankAccountName      String?
+  bankAccountNumber    String?
+  bankCode             String?
+  branchCode           String?
+  accountType          String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  paymentType           PaymentType  // DAILY or MONTHLY
-  dailyRate             Int?         // 日当の場合の単価（円/日）
-  monthlyAmount         Int?         // 月固定の場合の金額
-
-  travelExpenseIncluded Boolean      // 交通費が単価に含まれるか
-
-  paymentSchedule       PaymentSchedule // REQUEST / FIXED_20 / FIXED_25 / FIXED_MONTH_END
-
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  @@index([staffId])
 }
