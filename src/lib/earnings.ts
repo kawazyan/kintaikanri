@@ -27,16 +27,13 @@ export async function computeMonthlyEarnings(
 ): Promise<MonthlyEarnings> {
   const { start, end } = jstMonthRange(yearMonth);
 
-  const [target, shifts, paymentSetting] = await Promise.all([
+  const [target, shifts] = await Promise.all([
     prisma.monthlyEarningTarget.findUnique({
       where: { staffId_yearMonth: { staffId, yearMonth } },
     }),
     prisma.shift.findMany({
       where: { staffId, cancelledAt: null, startTime: { gte: start, lt: end } },
       include: { clockRecords: true },
-    }),
-    prisma.staffPaymentSetting.findUnique({
-      where: { staffId },
     }),
   ]);
 
@@ -51,22 +48,9 @@ export async function computeMonthlyEarnings(
   const bandShifts = shifts.filter((s) => s.workType === "BAND");
   const spotShifts = shifts.filter((s) => s.workType === "SPOT");
 
-  // SPOT shifts: calculate amount from StaffPaymentSetting
-  let spotConfirmedAmount = 0;
-  const spotConfirmedCount = spotShifts.filter(isConfirmed).length;
-
-  if (paymentSetting?.paymentType === "DAILY" && spotConfirmedCount > 0) {
-    // DAILY: 日当を確定した日数分加算
-    spotConfirmedAmount = (paymentSetting.dailyRate ?? 0) * spotConfirmedCount;
-  } else if (paymentSetting?.paymentType === "MONTHLY" && spotConfirmedCount > 0) {
-    // MONTHLY: 月固定金額（稼働日数に関わらず同じ）
-    spotConfirmedAmount = paymentSetting.monthlyAmount ?? 0;
-  } else {
-    // paymentSetting がない、または SPOT が無い場合は既存の unitAmount に頼る（互換性のため）
-    spotConfirmedAmount = spotShifts
-      .filter(isConfirmed)
-      .reduce((sum, s) => sum + (s.unitAmount ?? 0), 0);
-  }
+  const spotConfirmedAmount = spotShifts
+    .filter(isConfirmed)
+    .reduce((sum, s) => sum + (s.unitAmount ?? 0), 0);
 
   if (bandShifts.length > 0) {
     const targetAmount = target?.targetAmount ?? null;

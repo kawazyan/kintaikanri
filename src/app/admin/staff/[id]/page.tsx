@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AdminNav } from "../../admin-nav";
-import { updateStaffDetails, updateStaffPaymentSetting } from "../actions";
+import { updateStaffDetails } from "../actions";
 import { SubmitButton } from "@/components/submit-button";
 
 function toDateInputValue(d: Date | null): string {
@@ -24,10 +24,7 @@ export default async function AdminStaffDetailPage({
   const { id } = await params;
   const { saved } = await searchParams;
 
-  const staff = await prisma.staff.findUnique({
-    where: { id },
-    include: { paymentSetting: true },
-  });
+  const staff = await prisma.staff.findUnique({ where: { id } });
   if (!staff) notFound();
 
   const boundAction = updateStaffDetails.bind(null, staff.id);
@@ -192,83 +189,6 @@ export default async function AdminStaffDetailPage({
           className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-3 text-white shadow-lg shadow-blue-950/50 active:scale-[0.98]"
         >
           保存
-        </SubmitButton>
-      </form>
-
-      {/* 支払い設定フォーム */}
-      <form
-        key={staff.paymentSetting?.updatedAt.getTime() || "new"}
-        action={updateStaffPaymentSetting.bind(null, staff.id)}
-        className="mt-8 flex flex-col gap-4"
-      >
-        <h2 className="text-lg font-bold text-blue-400">支払い単価設定</h2>
-
-        <label className="flex flex-col gap-1 text-sm text-slate-400">
-          支払い方式
-          <select
-            name="paymentType"
-            defaultValue={staff.paymentSetting?.paymentType ?? "DAILY"}
-            className={FIELD_CLASS}
-          >
-            <option value="DAILY">日当（日数 × 単価）</option>
-            <option value="MONTHLY">月固定（稼働日数に関わらず同じ金額）</option>
-          </select>
-        </label>
-
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-3">
-          {staff.paymentSetting?.paymentType === "DAILY" || !staff.paymentSetting ? (
-            <label className="flex flex-col gap-1 text-sm text-slate-400">
-              日当単価（円/日）
-              <input
-                type="number"
-                name="dailyRate"
-                defaultValue={staff.paymentSetting?.dailyRate ?? ""}
-                placeholder="例: 8000"
-                className={FIELD_CLASS}
-              />
-            </label>
-          ) : (
-            <label className="flex flex-col gap-1 text-sm text-slate-400">
-              月固定金額（円）
-              <input
-                type="number"
-                name="monthlyAmount"
-                defaultValue={staff.paymentSetting?.monthlyAmount ?? ""}
-                placeholder="例: 180000"
-                className={FIELD_CLASS}
-              />
-            </label>
-          )}
-        </div>
-
-        <label className="flex items-center gap-2 text-sm text-slate-400">
-          <input
-            type="checkbox"
-            name="travelExpenseIncluded"
-            defaultChecked={staff.paymentSetting?.travelExpenseIncluded ?? false}
-            className="h-4 w-4 rounded border border-slate-600 bg-slate-800"
-          />
-          交通費が単価に含まれる（チェック時は含まれる、未チェック時は別）
-        </label>
-
-        <label className="flex flex-col gap-1 text-sm text-slate-400">
-          支払日
-          <select
-            name="paymentSchedule"
-            defaultValue={staff.paymentSetting?.paymentSchedule ?? "REQUEST"}
-            className={FIELD_CLASS}
-          >
-            <option value="REQUEST">申請支払い（スタッフが都度申請）</option>
-            <option value="FIXED_20">毎月20日</option>
-            <option value="FIXED_25">毎月25日</option>
-            <option value="FIXED_MONTH_END">月末日</option>
-          </select>
-        </label>
-
-        <SubmitButton
-          className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 px-4 py-3 text-white shadow-lg shadow-emerald-950/50 active:scale-[0.98]"
-        >
-          支払い設定を保存
         </SubmitButton>
       </form>
     </main>

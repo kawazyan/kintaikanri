@@ -36,6 +36,7 @@ export default async function EditShiftPage({
           date: toJstDateValue(shift.startTime),
           startTime: toJstTimeValue(shift.startTime),
           endTime: toJstTimeValue(shift.endTime),
+          unitAmount: shift.unitAmount,
         }}
       />
     </div>

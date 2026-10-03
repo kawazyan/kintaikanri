@@ -169,8 +169,7 @@ async function runCreateShiftsBulk(
           storeName,
           startTime,
           endTime,
-          // unitAmount は管理画面でスタッフごとに設定するため、シフト登録時は null で保存
-          unitAmount: null,
+          unitAmount: input.workType === "SPOT" && spotAmount !== undefined ? spotAmount : null,
         },
       });
     })

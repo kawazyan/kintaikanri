@@ -139,39 +139,3 @@ export async function updateStaffDetails(staffId: string, formData: FormData) {
   // 画面上は変更前の値のまま据え置かれてしまうため、遷移で作り直す。)
   redirect(`/admin/staff/${staffId}?saved=1`);
 }
-
-export async function updateStaffPaymentSetting(staffId: string, formData: FormData) {
-  await requireAdmin();
-
-  const paymentType = String(formData.get("paymentType") ?? "DAILY") as "DAILY" | "MONTHLY";
-  const dailyRate = paymentType === "DAILY" ? intOrNull(formData, "dailyRate") : null;
-  const monthlyAmount = paymentType === "MONTHLY" ? intOrNull(formData, "monthlyAmount") : null;
-  const travelExpenseIncluded = String(formData.get("travelExpenseIncluded") ?? "") === "on";
-  const paymentSchedule = String(formData.get("paymentSchedule") ?? "REQUEST") as
-    | "REQUEST"
-    | "FIXED_20"
-    | "FIXED_25"
-    | "FIXED_MONTH_END";
-
-  await prisma.staffPaymentSetting.upsert({
-    where: { staffId },
-    create: {
-      staffId,
-      paymentType,
-      dailyRate,
-      monthlyAmount,
-      travelExpenseIncluded,
-      paymentSchedule,
-    },
-    update: {
-      paymentType,
-      dailyRate,
-      monthlyAmount,
-      travelExpenseIncluded,
-      paymentSchedule,
-    },
-  });
-
-  revalidatePath(`/admin/staff/${staffId}`);
-  redirect(`/admin/staff/${staffId}?saved=1`);
-}
