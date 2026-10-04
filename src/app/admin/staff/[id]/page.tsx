@@ -27,6 +27,21 @@ export default async function AdminStaffDetailPage({
   const staff = await prisma.staff.findUnique({ where: { id } });
   if (!staff) notFound();
 
+  // スタッフがシフト登録時に入力した単価(SPOTのみ)。管理者が日当を決める際の参考表示。
+  const enteredPrices = (
+    await prisma.shift.groupBy({
+      by: ["unitAmount"],
+      where: { staffId: staff.id, workType: "SPOT", cancelledAt: null, unitAmount: { not: null } },
+      _count: { _all: true },
+      _max: { startTime: true },
+    })
+  )
+    .filter((g) => g.unitAmount !== null)
+    .sort((a, b) => b._count._all - a._count._all || b._max.startTime!.getTime() - a._max.startTime!.getTime());
+  const suggestedDailyRate = enteredPrices[0]?.unitAmount ?? null;
+  const fmtDate = (d: Date | null) =>
+    d ? new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric" }).format(d) : "-";
+
   const boundAction = updateStaffDetails.bind(null, staff.id);
 
   return (
@@ -190,7 +205,26 @@ export default async function AdminStaffDetailPage({
           <p className="mb-2 text-xs text-slate-500">
             未設定の場合は、従来どおりシフトに入力された単価で計算します。設定した場合、単価が入っていないシフトにこの設定が使われます。
           </p>
-          <div className="flex flex-col gap-3">
+          <div className="rounded-xl border border-amber-700/40 bg-amber-950/20 p-3 text-xs text-amber-200">
+            <p className="mb-1 font-semibold">スタッフが入力した単価(参考・管理者のみ表示)</p>
+            {enteredPrices.length === 0 ? (
+              <p className="text-amber-200/70">入力された単価はありません。</p>
+            ) : (
+              <ul className="flex flex-col gap-0.5">
+                {enteredPrices.map((g) => (
+                  <li key={g.unitAmount}>
+                    {g.unitAmount!.toLocaleString("ja-JP")}円 × {g._count._all}回(最終 {fmtDate(g._max.startTime)})
+                  </li>
+                ))}
+              </ul>
+            )}
+            {suggestedDailyRate !== null && staff.dailyRate === null && (
+              <p className="mt-1 text-amber-200/70">
+                日当が未入力の間は、最も多い金額({suggestedDailyRate.toLocaleString("ja-JP")}円)を日当欄に仮表示しています。変更して保存できます。
+              </p>
+            )}
+          </div>
+          <div className="mt-3 flex flex-col gap-3">
             <label className="flex flex-col gap-1 text-xs text-slate-400">
               報酬タイプ
               <select
@@ -212,7 +246,7 @@ export default async function AdminStaffDetailPage({
                   min={0}
                   step={1}
                   inputMode="numeric"
-                  defaultValue={staff.dailyRate ?? ""}
+                  defaultValue={staff.dailyRate ?? suggestedDailyRate ?? ""}
                   className={`${FIELD_CLASS} py-2 text-sm`}
                 />
               </label>
