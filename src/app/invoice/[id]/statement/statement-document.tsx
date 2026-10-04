@@ -99,8 +99,7 @@ const st = StyleSheet.create({
   summaryHead: { backgroundColor: NAVY, color: "#fff", textAlign: "center", paddingVertical: 4, fontSize: 10, letterSpacing: 3 },
   sRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 4, paddingHorizontal: 10, borderTopWidth: 1, borderTopColor: "#d0d0d0" },
   sTotal: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8, paddingHorizontal: 10, backgroundColor: NAVY },
-  sSub: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 6, paddingHorizontal: 10, borderTopWidth: 1.5, borderTopColor: NAVY, backgroundColor: BLUE },
-  sTax: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 4, paddingHorizontal: 10, backgroundColor: "#f4f4f4" },
+  totalBox: { width: "52%", borderWidth: 1, borderColor: NAVY },
   note: { marginTop: 10, fontSize: 8, color: "#555", lineHeight: 1.5 },
 });
 
@@ -204,7 +203,8 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
           </View>
         )}
 
-        <View style={st.summary} wrap={false}>
+        <View wrap={false}>
+        <View style={st.summary}>
           <Text style={st.summaryHead}>ご請求金額のまとめ</Text>
           {data.staff.map((s, i) => (
             <View key={i} style={st.sRow}>
@@ -218,18 +218,24 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
               <Text>{yen((data.clientExtras ?? []).reduce((a, e) => a + e.amountExTax, 0))}</Text>
             </View>
           )}
-          <View style={st.sSub}>
-            <Text style={{ fontSize: 10.5, color: NAVY }}>小計（税抜）　※上記すべての合計</Text>
-            <Text style={{ fontSize: 12, color: NAVY }}>{yen(totals.subtotalExTax)}</Text>
+        </View>
+
+        <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 6 }}>
+          <View style={st.totalBox}>
+            <View style={[st.sRow, { borderTopWidth: 0 }]}>
+              <Text>小計（税抜）</Text>
+              <Text>{yen(totals.subtotalExTax)}</Text>
+            </View>
+            <View style={st.sRow}>
+              <Text>消費税（10%）</Text>
+              <Text>{yen(totals.taxAmount)}</Text>
+            </View>
+            <View style={st.sTotal}>
+              <Text style={{ fontSize: 10.5, color: "#fff" }}>ご請求金額（税込）</Text>
+              <Text style={{ fontSize: 14, color: "#fff" }}>{yen(totals.totalInclTax)}</Text>
+            </View>
           </View>
-          <View style={st.sTax}>
-            <Text style={{ fontSize: 9, color: "#666" }}>消費税（10%）　＋</Text>
-            <Text style={{ fontSize: 10, color: "#666" }}>{yen(totals.taxAmount)}</Text>
-          </View>
-          <View style={st.sTotal}>
-            <Text style={{ fontSize: 11, color: "#fff" }}>ご請求金額（税込）</Text>
-            <Text style={{ fontSize: 16, color: "#fff" }}>{yen(totals.totalInclTax)}</Text>
-          </View>
+        </View>
         </View>
       </Page>
     </Document>
