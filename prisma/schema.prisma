@@ -369,6 +369,7 @@ enum TravelExpenseRule {
   INCLUDED
   SEPARATE
   CONSULT
+  FLAT // 一律(クライアントへ毎月定額で請求。スタッフ申請額は請求しない)
 }
 enum OverrideApprovalStatus {
   PENDING
@@ -490,6 +491,7 @@ model WorkOrderStaff {
   rateAmountExTax Int
   absenceDeduction AbsenceDeductionRule
   travelExpense TravelExpenseRule
+  flatTravelAmountExTax Int? // travelExpense=FLAT の月額(税抜)
   active Boolean @default(true)
   cancelledAt DateTime?
   cancellationReason String?
@@ -635,6 +637,7 @@ model Invoice {
   totalInclTax Int @default(0)
   finalizedAt DateTime?
   finalizedBy String?
+  statement Json? // 稼働明細書用スナップショット(請求下書き作成時点の内容)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   lines InvoiceLine[]

@@ -15,7 +15,7 @@ import {
 
 const contractLabel = (v: string) => (v === "MONTHLY" ? "月単価" : "日単価");
 const absenceLabel = (v: string) => (v === "YES" ? "あり" : v === "NO" ? "なし" : "要相談");
-const travelLabel = (v: string) => (v === "INCLUDED" ? "込み" : v === "SEPARATE" ? "別" : "要相談");
+const travelLabel = (v: string) => (v === "INCLUDED" ? "込み" : v === "SEPARATE" ? "別" : v === "FLAT" ? "一律（月額）" : "要相談");
 
 export default async function RequestDetail({ params }: { params: Promise<{ token: string; id: string }> }) {
   const { token, id } = await params;
