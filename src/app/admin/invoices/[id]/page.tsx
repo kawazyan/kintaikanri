@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatJst } from "@/lib/time";
+import { invoiceRecipients } from "@/lib/invoice-defaults";
 import { AdminNav } from "../../admin-nav";
 import { ApproveButtons } from "./approve-buttons";
 
@@ -18,7 +19,7 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
   if (!i) notFound();
 
   const admins = await prisma.adminEmail.findMany({ select: { email: true } });
-  const to = (i.client.email ?? "").trim();
+  const to = invoiceRecipients(i.client).join(", ");
   const recipients = to
     ? `${to}${admins.length ? `（CC: ${admins.map((a) => a.email).join(", ")}）` : ""}`
     : "（取引先のメールアドレス未登録）";

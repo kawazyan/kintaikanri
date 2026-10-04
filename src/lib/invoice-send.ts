@@ -1,16 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { sendMailStrict } from "@/lib/mail";
 import { renderInvoicePdf, renderStatementPdf } from "@/lib/invoice-render";
-import { monthEndOf, nextMonthEnd } from "@/lib/invoice-defaults";
+import { invoiceRecipients, monthEndOf, nextMonthEnd } from "@/lib/invoice-defaults";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function splitEmails(raw: string | null | undefined) {
-  return (raw ?? "")
-    .split(/[,;、\s]+/)
-    .map((x) => x.trim())
-    .filter(Boolean);
-}
 
 // 承認: 請求書PDFと稼働明細書PDFを作り、取引先の登録メールへ送信(管理者アドレスをCC)する。
 // 送信に成功したときだけ請求を確定する(失敗したら下書きのまま。何も変わらない)。
@@ -28,7 +21,7 @@ export async function approveAndSendInvoice(id: string, approverName: string) {
     throw new Error("稼働明細書のデータがありません。請求下書きを作り直してください。");
   }
 
-  const to = splitEmails(invoice.client.email);
+  const to = invoiceRecipients(invoice.client);
   if (!to.length) {
     throw new Error(`取引先「${invoice.client.name}」にメールアドレスが登録されていません。取引先窓口の画面で登録してから、もう一度承認してください。`);
   }

@@ -28,3 +28,17 @@ export function nextMonthEnd(issueDate: string) {
   const d = new Date(Date.UTC(y, m + 1, 0)); // 翌月の0日 = 翌月末
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
 }
+
+// メールアドレスの区切り(カンマ・セミコロン・読点・空白・改行)で分ける。
+export function splitEmails(raw: string | null | undefined) {
+  return (raw ?? "")
+    .split(/[,;、\s]+/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
+// 請求書メールの宛先。請求用の宛先(invoiceEmails)があればそれを、なければ従来の email を使う。重複は除く。
+export function invoiceRecipients(client: { invoiceEmails?: string | null; email?: string | null }) {
+  const list = splitEmails(client.invoiceEmails);
+  return [...new Set(list.length ? list : splitEmails(client.email))];
+}

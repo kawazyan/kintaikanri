@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { DEFAULT_INVOICE_NOTE, defaultSubject } from "@/lib/invoice-defaults";
+import { DEFAULT_INVOICE_NOTE, defaultSubject, invoiceRecipients } from "@/lib/invoice-defaults";
 import type { StatementSnapshot } from "@/lib/invoice-draft";
 import { AdminNav } from "../../../admin-nav";
 import { EditInvoiceForm } from "./edit-form";
@@ -18,7 +18,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   if (i.status !== "DRAFT") redirect(`/admin/invoices/${id}`);
 
   const admins = await prisma.adminEmail.findMany({ select: { email: true } });
-  const to = (i.client.email ?? "").trim();
+  const to = invoiceRecipients(i.client).join(", ");
   const recipients = to
     ? `${to}${admins.length ? `（CC: ${admins.map((a) => a.email).join(", ")}）` : ""}`
     : "（取引先のメールアドレス未登録）";

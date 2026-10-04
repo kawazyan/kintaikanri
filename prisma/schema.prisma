@@ -410,6 +410,7 @@ model Client {
   contactDepartment String?
   phone String?
   email String?
+  invoiceEmails String? // 請求書メールの宛先(複数可。カンマ区切り)。未設定なら email を使う
   active Boolean @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
