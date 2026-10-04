@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildInvoiceDraft, staffBillableExTax, type StatementSnapshot } from "@/lib/invoice-draft";
-import { approveAndSendInvoice } from "@/lib/invoice-send";
+import { approveDraftInvoice, sendApprovedInvoice } from "@/lib/invoice-send";
 import { addTax, computeInvoiceTotals, splitInclusiveTax } from "@/lib/billing";
 
 export type CreateDraftResult = { ok: true; id: string } | { ok: false; error: string };
@@ -23,33 +23,43 @@ export async function createInvoiceDraft(formData: FormData): Promise<CreateDraf
   }
 }
 
-export async function finalizeInvoice(id: string, formData: FormData) {
-  await requireAdmin();
-  const name = String(formData.get("finalizedBy") || "").trim();
-  if (!name) throw new Error("請求確定者名は必須です。");
-  const current = await prisma.invoice.findUnique({ where: { id }, select: { revision: true } });
-  if (!current) throw new Error("請求書が見つかりません。");
-  await prisma.invoice.update({
-    where: { id },
-    data: { status: current.revision > 1 ? "REISSUED" : "FINALIZED", finalizedAt: new Date(), finalizedBy: name },
-  });
-  revalidatePath(`/admin/invoices/${id}`);
-  revalidatePath("/admin/invoices");
-}
-
 export type ActionResult = { ok: true; message: string } | { ok: false; error: string };
 
-// 「承認」: 請求書PDF・稼働明細書PDFを取引先の登録メールへ送信し(管理者CC)、送信できたら確定する。
+// 「承認」: 下書き → 承認済み(メールは送らない)。
 export async function approveInvoice(id: string, approverName: string): Promise<ActionResult> {
   await requireAdmin();
   try {
-    const { to, cc } = await approveAndSendInvoice(id, approverName);
+    await approveDraftInvoice(id, approverName);
+    revalidatePath(`/admin/invoices/${id}`);
+    revalidatePath("/admin/invoices");
+    return { ok: true, message: "承認しました。承認済みの一覧から送信できます。" };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "承認に失敗しました。" };
+  }
+}
+
+// 「送信」: 承認済み → 送付済み(取引先へメール送信。管理者CC)。
+export async function sendInvoice(id: string): Promise<ActionResult> {
+  await requireAdmin();
+  try {
+    const { to, cc } = await sendApprovedInvoice(id);
     revalidatePath(`/admin/invoices/${id}`);
     revalidatePath("/admin/invoices");
     return { ok: true, message: `送信しました（宛先: ${to.join(", ")}${cc.length ? ` / CC: ${cc.join(", ")}` : ""}）` };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "送信に失敗しました。" };
   }
+}
+
+// 「削除」: 下書き・承認済みのみ。送付済みは削除できない(記録を残すため)。
+export async function deleteInvoice(id: string): Promise<ActionResult> {
+  await requireAdmin();
+  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true } });
+  if (!invoice) return { ok: false, error: "請求書が見つかりません。" };
+  if (invoice.status !== "DRAFT" && invoice.status !== "APPROVED") return { ok: false, error: "送付済みの請求は削除できません。" };
+  await prisma.invoice.delete({ where: { id } });
+  revalidatePath("/admin/invoices");
+  return { ok: true, message: "削除しました。" };
 }
 
 export type InvoiceEditPayload = {
@@ -64,17 +74,17 @@ export type InvoiceEditPayload = {
 
 // 「修正」画面の保存。請求書は税率(10%固定)と発行日(稼働月の月末日に自動)以外を直せる。
 // 請求書の品目は「業務委託費一式」のみ。内訳(計算方法・交通費など)は稼働明細書で直す。
-// sendAfter=true のときは保存後にそのまま承認(PDF送信)まで行う。
+// approveAfter=true(下書きのみ)のときは、保存後にそのまま承認まで行う。メール送信は別操作。
 export async function saveInvoiceEdit(
   id: string,
   payload: InvoiceEditPayload,
-  sendAfter: boolean,
+  approveAfter: boolean,
   approverName: string
 ): Promise<ActionResult> {
   await requireAdmin();
   const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true, yearMonth: true, statement: true } });
   if (!invoice) return { ok: false, error: "請求書が見つかりません。" };
-  if (invoice.status !== "DRAFT") return { ok: false, error: "確定・送信済みの請求は修正できません。" };
+  if (invoice.status !== "DRAFT" && invoice.status !== "APPROVED") return { ok: false, error: "送付済みの請求は修正できません。" };
 
   const addressee = payload.addressee.trim();
   const subject = payload.subject.trim();
@@ -159,6 +169,6 @@ export async function saveInvoiceEdit(
   revalidatePath(`/admin/invoices/${id}`);
   revalidatePath("/admin/invoices");
 
-  if (!sendAfter) return { ok: true, message: "修正を保存しました。" };
+  if (!approveAfter || invoice.status !== "DRAFT") return { ok: true, message: "修正を保存しました。" };
   return approveInvoice(id, approverName);
 }

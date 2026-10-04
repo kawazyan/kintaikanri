@@ -15,7 +15,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
     include: { client: true, lines: { orderBy: { sortOrder: "asc" } } },
   });
   if (!i) notFound();
-  if (i.status !== "DRAFT") redirect(`/admin/invoices/${id}`);
+  if (i.status !== "DRAFT" && i.status !== "APPROVED") redirect(`/admin/invoices/${id}`);
 
   const admins = await prisma.adminEmail.findMany({ select: { email: true } });
   const to = invoiceRecipients(i.client).join(", ");
@@ -54,6 +54,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
           })),
         }}
         yearMonth={i.yearMonth}
+        status={i.status}
       />
     </main>
   );

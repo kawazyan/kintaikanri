@@ -30,9 +30,11 @@ export function EditInvoiceForm({
   recipients,
   initial,
   yearMonth,
+  status,
 }: {
   invoiceId: string;
   recipients: string;
+  status: "DRAFT" | "APPROVED";
   initial: Initial;
   yearMonth: string;
 }) {
@@ -68,14 +70,11 @@ export function EditInvoiceForm({
     };
   }
 
-  function submit(sendAfter: boolean) {
+  function submit(approveAfter: boolean) {
     setMsg(null);
-    if (sendAfter) {
-      if (!approver.trim()) return setMsg({ ok: false, text: "承認者名を入力してください。" });
-      if (!window.confirm(`修正内容を保存し、請求書と稼働明細書（税込 ¥${(subtotal + tax).toLocaleString("ja-JP")}）を\n${recipients}\nへメール送信して確定します。よろしいですか？`)) return;
-    }
+    if (approveAfter && !approver.trim()) return setMsg({ ok: false, text: "承認者名を入力してください。" });
     startTransition(async () => {
-      const res = await saveInvoiceEdit(invoiceId, payload(), sendAfter, approver);
+      const res = await saveInvoiceEdit(invoiceId, payload(), approveAfter, approver);
       if (res.ok) {
         setMsg({ ok: true, text: res.message });
         router.push(`/admin/invoices/${invoiceId}`);
@@ -195,16 +194,28 @@ export function EditInvoiceForm({
         </dl>
       </section>
 
-      {/* 送信 */}
+      {/* 保存 */}
       <section className="rounded-2xl border border-red-900 bg-red-950/20 p-5">
-        <p className="text-xs text-slate-400">送信先: {recipients}</p>
-        <label className={`${field} mt-3`}>
-          承認者名
-          <input value={approver} onChange={(e) => setApprover(e.target.value)} placeholder="承認者名" className={`${input} mt-1`} />
-        </label>
-        <button type="button" disabled={pending} onClick={() => submit(true)} className="mt-4 w-full rounded-xl bg-emerald-600 px-6 py-3 font-black text-white disabled:opacity-50 md:w-auto">
-          {pending ? "処理中..." : "修正を保存してPDFをメール送信"}
-        </button>
+        <p className="text-xs text-slate-400">
+          {status === "APPROVED" ? "この請求は承認済みです。保存しても承認済みのままです。メールは送信されません。" : "保存しても下書きのままです。メールは送信されません。"}
+        </p>
+        <p className="mt-1 text-xs text-slate-500">送信先（送信するとき）: {recipients}</p>
+        {status === "DRAFT" && (
+          <label className={`${field} mt-3`}>
+            承認者名（「保存して承認」を使うときだけ入力）
+            <input value={approver} onChange={(e) => setApprover(e.target.value)} placeholder="承認者名" className={`${input} mt-1`} />
+          </label>
+        )}
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button type="button" disabled={pending} onClick={() => submit(false)} className="rounded-xl bg-slate-100 px-6 py-3 font-black text-slate-900 disabled:opacity-50">
+            {pending ? "処理中..." : "保存"}
+          </button>
+          {status === "DRAFT" && (
+            <button type="button" disabled={pending} onClick={() => submit(true)} className="rounded-xl bg-emerald-600 px-6 py-3 font-black text-white disabled:opacity-50">
+              保存して承認
+            </button>
+          )}
+        </div>
         {msg && <p className={`mt-3 text-sm font-bold ${msg.ok ? "text-emerald-400" : "text-red-400"}`}>{msg.text}</p>}
       </section>
     </div>

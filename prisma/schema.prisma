@@ -398,6 +398,7 @@ enum ExpenseStatus {
 }
 enum InvoiceStatus {
   DRAFT
+  APPROVED // 承認済み(まだ取引先へ送っていない)。FINALIZED/REISSUED = 送付済み
   FINALIZED
   REISSUED
 }
@@ -636,7 +637,9 @@ model Invoice {
   subtotalExTax Int @default(0)
   taxAmount Int @default(0)
   totalInclTax Int @default(0)
-  finalizedAt DateTime?
+  approvedAt DateTime? // 承認した日時
+  approvedBy String? // 承認者名
+  finalizedAt DateTime? // 送付(確定)した日時
   finalizedBy String?
   statement Json? // 稼働明細書用スナップショット(請求下書き作成時点の内容)
   addressee String? // 宛名(未設定なら取引先名)

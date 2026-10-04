@@ -5,25 +5,33 @@ import { invoiceRecipients, monthEndOf, nextMonthEnd } from "@/lib/invoice-defau
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// 承認: 請求書PDFと稼働明細書PDFを作り、取引先の登録メールへ送信(管理者アドレスをCC)する。
-// 送信に成功したときだけ請求を確定する(失敗したら下書きのまま。何も変わらない)。
-export async function approveAndSendInvoice(id: string, approverName: string) {
+// 承認: 下書き → 承認済み。メールはまだ送らない(承認済みの一覧から「送信」する)。
+export async function approveDraftInvoice(id: string, approverName: string) {
   const name = approverName.trim();
   if (!name) throw new Error("承認者名を入力してください。");
+  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true, statement: true } });
+  if (!invoice) throw new Error("請求書が見つかりません。");
+  if (invoice.status !== "DRAFT") throw new Error("下書きの請求だけ承認できます。");
+  if (!invoice.statement) throw new Error("稼働明細書のデータがありません。請求下書きを作り直してください。");
+  await prisma.invoice.update({ where: { id }, data: { status: "APPROVED", approvedAt: new Date(), approvedBy: name } });
+}
 
+// 送信: 承認済み → 送付済み。請求書PDFと稼働明細書PDFを取引先の登録メールへ送信(管理者アドレスをCC)する。
+// 送信に成功したときだけ送付済みにする(失敗したら承認済みのまま。何も変わらない)。
+export async function sendApprovedInvoice(id: string) {
   const invoice = await prisma.invoice.findUnique({
     where: { id },
     include: { client: true },
   });
   if (!invoice) throw new Error("請求書が見つかりません。");
-  if (invoice.status !== "DRAFT") throw new Error("この請求はすでに確定・送信済みです。");
+  if (invoice.status !== "APPROVED") throw new Error("承認済みの請求だけ送信できます。");
   if (!invoice.statement) {
     throw new Error("稼働明細書のデータがありません。請求下書きを作り直してください。");
   }
 
   const to = invoiceRecipients(invoice.client);
   if (!to.length) {
-    throw new Error(`取引先「${invoice.client.name}」にメールアドレスが登録されていません。取引先窓口の画面で登録してから、もう一度承認してください。`);
+    throw new Error(`取引先「${invoice.client.name}」にメールアドレスが登録されていません。取引先窓口の画面で登録してから、もう一度送信してください。`);
   }
   const badTo = to.find((x) => !EMAIL_RE.test(x));
   if (badTo) throw new Error(`取引先のメールアドレスの形式が正しくありません: ${badTo}`);
@@ -31,7 +39,7 @@ export async function approveAndSendInvoice(id: string, approverName: string) {
   const admins = await prisma.adminEmail.findMany({ select: { email: true } });
   const cc = [...new Set(admins.map((a) => a.email.trim()).filter((x) => EMAIL_RE.test(x) && !to.includes(x)))];
 
-  const issuedAt = new Date(); // 確定した実際の日時(記録用)。請求書の発行日は稼働月の月末日。
+  const issuedAt = new Date(); // 送付した実際の日時(記録用)。請求書の発行日は稼働月の月末日。
   const inv = await renderInvoicePdf(id);
   const stmt = await renderStatementPdf(id);
   if (!inv || !stmt) throw new Error("PDFの作成に失敗しました。");
@@ -74,7 +82,7 @@ export async function approveAndSendInvoice(id: string, approverName: string) {
     data: {
       status: invoice.revision > 1 ? "REISSUED" : "FINALIZED",
       finalizedAt: issuedAt,
-      finalizedBy: name,
+      finalizedBy: invoice.approvedBy,
       sentAt: new Date(),
       sentTo: [...to, ...cc].join(", "),
     },

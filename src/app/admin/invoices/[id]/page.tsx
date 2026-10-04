@@ -5,9 +5,10 @@ import { prisma } from "@/lib/prisma";
 import { formatJst } from "@/lib/time";
 import { invoiceRecipients } from "@/lib/invoice-defaults";
 import { AdminNav } from "../../admin-nav";
-import { ApproveButtons } from "./approve-buttons";
+import { InvoiceActions } from "./invoice-actions";
+import { PdfPreview } from "./pdf-preview";
 
-const STATUS_LABEL: Record<string, string> = { DRAFT: "下書き（承認待ち）", FINALIZED: "確定・送信済み", REISSUED: "再発行・送信済み" };
+const STATUS_LABEL: Record<string, string> = { DRAFT: "下書き", APPROVED: "承認済み（未送信）", FINALIZED: "送付済み", REISSUED: "送付済み（再発行）" };
 
 export default async function InvoiceDetail({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
@@ -37,9 +38,12 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
         <span className="h-fit rounded-full bg-slate-800 px-3 py-1 text-xs font-black">{STATUS_LABEL[i.status] ?? i.status}</span>
       </div>
 
-      {i.sentAt && (
+      {i.approvedAt && (
+        <p className="mt-3 text-xs text-slate-400">承認: {formatJst(i.approvedAt)}（{i.approvedBy}）</p>
+      )}
+      {(i.sentAt || i.finalizedAt) && i.status !== "DRAFT" && i.status !== "APPROVED" && (
         <p className="mt-3 rounded-xl border border-emerald-900 bg-emerald-950/30 p-3 text-sm text-emerald-300">
-          {formatJst(i.sentAt)} にメール送信済み（{i.sentTo}）
+          {formatJst((i.sentAt ?? i.finalizedAt)!)} に送付済み{i.sentTo ? `（${i.sentTo}）` : ""}
         </p>
       )}
 
@@ -85,19 +89,19 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
             <h2 className="font-black">請求書</h2>
             <Link href={`/invoice/${i.id}/pdf`} target="_blank" className="text-sm text-blue-400 underline">別タブで開く</Link>
           </div>
-          <iframe src={`/invoice/${i.id}/pdf`} title="請求書プレビュー" className="h-[680px] w-full rounded-xl bg-white" />
+          <PdfPreview url={`/invoice/${i.id}/pdf?t=${i.updatedAt.getTime()}`} title="請求書" />
         </section>
         <section>
           <div className="mb-2 flex items-center justify-between">
             <h2 className="font-black">稼働明細書</h2>
             <Link href={`/invoice/${i.id}/statement`} target="_blank" className="text-sm text-blue-400 underline">別タブで開く</Link>
           </div>
-          <iframe src={`/invoice/${i.id}/statement`} title="稼働明細書プレビュー" className="h-[680px] w-full rounded-xl bg-white" />
+          <PdfPreview url={`/invoice/${i.id}/statement?t=${i.updatedAt.getTime()}`} title="稼働明細書" />
         </section>
       </div>
 
-      {i.status === "DRAFT" ? (
-        <ApproveButtons invoiceId={i.id} recipients={recipients} total={i.totalInclTax} />
+      {i.status === "DRAFT" || i.status === "APPROVED" ? (
+        <InvoiceActions invoiceId={i.id} status={i.status} recipients={recipients} total={i.totalInclTax} clientName={i.client.name} />
       ) : (
         <div className="mt-5 flex flex-wrap gap-3">
           <Link href={`/invoice/${i.id}/print`} className="rounded-xl bg-white px-4 py-3 font-black text-slate-900">請求書を開く</Link>
