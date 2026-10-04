@@ -158,7 +158,7 @@ export function StaffList({
             <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
               <span>支払方法: {s.paymentMethod === "FIXED" ? "固定支払" : "申請支払"}</span>
               <Link href={`/admin/staff/${s.id}`} className="text-blue-400 underline">
-                詳細・銀行口座・支払方法を編集
+                詳細・支払方法を編集
               </Link>
             </div>
           </li>

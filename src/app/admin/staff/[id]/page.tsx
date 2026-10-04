@@ -91,43 +91,6 @@ export default async function AdminStaffDetailPage({
           />
         </label>
 
-        <h2 className="mt-2 text-sm font-semibold text-blue-400/80">報酬振込先口座</h2>
-        <label className="flex flex-col gap-1 text-sm text-slate-400">
-          銀行名
-          <input
-            type="text"
-            name="bankName"
-            defaultValue={staff.bankName ?? ""}
-            className={FIELD_CLASS}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm text-slate-400">
-          支店名
-          <input
-            type="text"
-            name="bankBranchName"
-            defaultValue={staff.bankBranchName ?? ""}
-            className={FIELD_CLASS}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm text-slate-400">
-          口座番号
-          <input
-            type="text"
-            name="bankAccountNumber"
-            defaultValue={staff.bankAccountNumber ?? ""}
-            className={FIELD_CLASS}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm text-slate-400">
-          口座名義人
-          <input
-            type="text"
-            name="bankAccountHolder"
-            defaultValue={staff.bankAccountHolder ?? ""}
-            className={FIELD_CLASS}
-          />
-        </label>
         <label className="flex flex-col gap-1 text-sm text-slate-400">
           インボイス登録番号(任意)
           <input
