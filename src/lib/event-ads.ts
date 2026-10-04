@@ -3,7 +3,7 @@ import { addTax } from "@/lib/billing";
 // K.J EVENT(別Supabaseプロジェクト)から、対象月に開始したイベントの広告支出実績(spent)を取得する。
 // 接続先URL・キーは環境変数。未設定・取得失敗のときは例外を投げ、請求下書きを作らない(広告費の入れ忘れ防止)。
 //   KJ_EVENT_SUPABASE_URL      例: https://ecuxuudjxkdbsxrvnild.supabase.co
-//   KJ_EVENT_SUPABASE_ANON_KEY K.J EVENT の anon キー
+//   KJ_EVENT_SUPABASE_SERVICE_KEY K.J EVENT の service_role キー(サーバー専用の秘密キー。RLSを越えて読めるので、ブラウザ側へは絶対に出さない)
 
 export type EventAdLine = { label: string; amountExTax: number; amountInclTax: number; calc: string };
 
@@ -21,9 +21,9 @@ const md = (d: string) => {
 
 export async function fetchEventAds(agencyId: string, yearMonth: string): Promise<EventAdLine[]> {
   const url = process.env.KJ_EVENT_SUPABASE_URL;
-  const key = process.env.KJ_EVENT_SUPABASE_ANON_KEY;
+  const key = process.env.KJ_EVENT_SUPABASE_SERVICE_KEY;
   if (!url || !key) {
-    throw new Error("K.J EVENT の接続情報(KJ_EVENT_SUPABASE_URL / KJ_EVENT_SUPABASE_ANON_KEY)が未設定です。");
+    throw new Error("K.J EVENT の接続情報(KJ_EVENT_SUPABASE_URL / KJ_EVENT_SUPABASE_SERVICE_KEY)が未設定です。");
   }
 
   const [y, m] = yearMonth.split("-").map(Number);
