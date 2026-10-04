@@ -30,7 +30,7 @@ const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
 
 const s = StyleSheet.create({
   page: { fontFamily: "NotoSerifJP", fontSize: 9.5, color: INK, paddingHorizontal: 44, paddingTop: 42, paddingBottom: 36 },
-  title: { fontSize: 26, letterSpacing: 12, color: NAVY },
+  title: { fontSize: 26, letterSpacing: 12, color: NAVY, textAlign: "center" },
   titleRule: { marginTop: 8, height: 2, backgroundColor: NAVY },
   top: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginTop: 26 },
   left: { width: "55%" },
