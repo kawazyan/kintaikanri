@@ -98,7 +98,9 @@ const st = StyleSheet.create({
   summary: { marginTop: 18, borderWidth: 1, borderColor: NAVY },
   summaryHead: { backgroundColor: NAVY, color: "#fff", textAlign: "center", paddingVertical: 4, fontSize: 10, letterSpacing: 3 },
   sRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 4, paddingHorizontal: 10, borderTopWidth: 1, borderTopColor: "#d0d0d0" },
-  sTotal: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8, paddingHorizontal: 10, borderTopWidth: 1.5, borderTopColor: NAVY, backgroundColor: "#eef3fa" },
+  sTotal: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8, paddingHorizontal: 10, backgroundColor: NAVY },
+  sSub: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 6, paddingHorizontal: 10, borderTopWidth: 1.5, borderTopColor: NAVY, backgroundColor: BLUE },
+  sTax: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 4, paddingHorizontal: 10, backgroundColor: "#f4f4f4" },
   note: { marginTop: 10, fontSize: 8, color: "#555", lineHeight: 1.5 },
 });
 
@@ -216,17 +218,17 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
               <Text>{yen((data.clientExtras ?? []).reduce((a, e) => a + e.amountExTax, 0))}</Text>
             </View>
           )}
-          <View style={st.sRow}>
-            <Text>小計（税抜）</Text>
-            <Text>{yen(totals.subtotalExTax)}</Text>
+          <View style={st.sSub}>
+            <Text style={{ fontSize: 10.5, color: NAVY }}>小計（税抜）　※上記すべての合計</Text>
+            <Text style={{ fontSize: 12, color: NAVY }}>{yen(totals.subtotalExTax)}</Text>
           </View>
-          <View style={st.sRow}>
-            <Text>消費税（10%）</Text>
-            <Text>{yen(totals.taxAmount)}</Text>
+          <View style={st.sTax}>
+            <Text style={{ fontSize: 9, color: "#666" }}>消費税（10%）　＋</Text>
+            <Text style={{ fontSize: 10, color: "#666" }}>{yen(totals.taxAmount)}</Text>
           </View>
           <View style={st.sTotal}>
-            <Text style={{ fontSize: 11 }}>ご請求金額（税込）</Text>
-            <Text style={{ fontSize: 15 }}>{yen(totals.totalInclTax)}</Text>
+            <Text style={{ fontSize: 11, color: "#fff" }}>ご請求金額（税込）</Text>
+            <Text style={{ fontSize: 16, color: "#fff" }}>{yen(totals.totalInclTax)}</Text>
           </View>
         </View>
       </Page>

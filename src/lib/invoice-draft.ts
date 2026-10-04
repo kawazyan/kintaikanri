@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { addTax, computeInvoiceTotals, expenseLabel } from "@/lib/billing";
 import { jstMonthRange, toJstDateValue } from "@/lib/time";
+import { unifyStoreNames, withShopSuffix } from "@/lib/store-names";
 import { activeShiftRules, normName, ruleMatchesShift, type BillingTerms, type TravelByStore } from "@/lib/billing-terms";
 import { syncWorkOrderShiftLinks } from "@/lib/work-order-linking";
 import { fetchEventAds } from "@/lib/event-ads";
@@ -211,12 +212,13 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
         amountInclTax: g.incl,
       }));
 
+      const uni = ((m) => (n: string) => (terms.shopSuffix ? withShopSuffix(m.get(n) ?? n) : (m.get(n) ?? n)))(unifyStoreNames(completedShifts.map((s) => s.storeName)));
       statementStaff.push({
         name: assignment.staff.name,
-        places: [...new Set(completedShifts.map((s) => s.storeName))],
-        carriers: [...new Set(completedShifts.map((s) => s.carrier))],
+        places: [...new Set(completedShifts.map((s) => uni(s.storeName)))],
+        carriers: terms.carriers?.length ? terms.carriers : [...new Set(completedShifts.map((s) => s.carrier))],
         dates: [...completedDates].sort(),
-        dayPlaces: Object.fromEntries(completedShifts.map((sh) => [toJstDateValue(sh.startTime), sh.storeName])),
+        dayPlaces: Object.fromEntries(completedShifts.map((sh) => [toJstDateValue(sh.startTime), uni(sh.storeName)])),
         days,
         serviceExTax: amountExTax,
         serviceCalc: calc,
@@ -282,12 +284,13 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
         travel = r.travel;
       }
 
+      const uni = ((m) => (n: string) => (terms.shopSuffix ? withShopSuffix(m.get(n) ?? n) : (m.get(n) ?? n)))(unifyStoreNames(done.map((s) => s.storeName)));
       statementStaff.push({
         name: person.name,
-        places: [...new Set(done.map((s) => s.storeName))],
-        carriers: [...new Set(done.map((s) => s.carrier))],
+        places: [...new Set(done.map((s) => uni(s.storeName)))],
+        carriers: terms.carriers?.length ? terms.carriers : [...new Set(done.map((s) => s.carrier))],
         dates,
-        dayPlaces: Object.fromEntries(dayStore),
+        dayPlaces: Object.fromEntries([...dayStore].map(([d, n]) => [d, uni(n)])),
         days: dates.length,
         serviceExTax: service,
         serviceCalc,
@@ -313,7 +316,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
     // 失敗時は例外のまま(広告費が抜けた請求書を作らないため)
     const eventAgencyId = (terms as { eventAgencyId?: string }).eventAgencyId;
     if (eventAgencyId) {
-      for (const ad of await fetchEventAds(eventAgencyId, yearMonth)) clientExtras.push(ad);
+      for (const ad of await fetchEventAds(eventAgencyId, yearMonth, !!terms.shopSuffix)) clientExtras.push(ad);
     }
   }
 

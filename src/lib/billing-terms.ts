@@ -22,6 +22,10 @@ export type BillingTerms = {
   // 稼働が1日でもあれば毎月加算する固定項目(税抜)。例: 新幹線代。
   monthlyExtras?: { label: string; amountExTax: number; calc: string }[];
   shiftBilling?: ShiftBillingRule[];
+  // 請求内訳書のキャリア欄に固定で出す表記(例: ["au", "UQ"])。指定がなければシフトのキャリアから拾う。
+  carriers?: string[];
+  // true なら、請求内訳書の店名(稼働場所・広告のイベント主催店舗)の末尾に「店」を付けて表示する。
+  shopSuffix?: boolean;
 };
 
 export const normName = (s: string) => s.replace(/[\s　]/g, "");
