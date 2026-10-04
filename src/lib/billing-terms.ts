@@ -15,6 +15,8 @@ export type ShiftBillingRule = {
   flatTravelExTax?: number; // 月額一律の交通費(税抜)
   travelByStore?: TravelByStore[]; // 店舗ごとの1日あたり交通費(税抜・往復)。なければ取引先共通のものを使う
   note?: string; // 計算方法に足す一言(例: 16稼働)
+  // 月ごとに交通費へ加算する固定額(税抜)。例: 新幹線代。稼働が1日でもある月だけ、このスタッフの交通費に足す。
+  extraTravel?: { label: string; amountExTax: number; calc: string }[];
 };
 
 export type BillingTerms = {

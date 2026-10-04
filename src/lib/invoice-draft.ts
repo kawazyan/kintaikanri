@@ -24,7 +24,7 @@ export type StatementStaff = {
   serviceCalc: string; // 業務委託費の計算方法(例: 日額 ¥20,000 × 3日)
   // 交通費: NONE=請求しない(単価に込み等) / ACTUAL=スタッフ申請額で請求 / FLAT=クライアントへ一律請求
   // PER_DAY=取引先との取り決めで稼働日×店舗ごとに計算
-  travel: { mode: "NONE" | "ACTUAL" | "FLAT" | "PER_DAY"; amountExTax: number; amountInclTax: number; calc?: string };
+  travel: { mode: "NONE" | "ACTUAL" | "FLAT" | "PER_DAY"; amountExTax: number; amountInclTax: number; calc?: string; lines?: { label: string; calc: string; amountExTax: number }[] };
   extras?: StatementExtra[]; // 宿泊費・その他経費のうちクライアントへ請求するもの
 };
 
@@ -66,18 +66,20 @@ function perStoreTravel(rules: TravelByStore[], dayStore: Map<string, string>, s
     else counts.set(idx, (counts.get(idx) ?? 0) + 1);
   }
   const parts: string[] = [];
+  const lines: { label: string; calc: string; amountExTax: number }[] = [];
   let ex = 0;
   for (const [idx, n] of [...counts].sort((a, b) => a[0] - b[0])) {
     const r = rules[idx];
     ex += r.perDayExTax * n;
     parts.push(`${r.match} ${yen(r.perDayExTax)}（${r.detail}）× ${n}日`);
+    lines.push({ label: `交通費相当額\n${r.match}`, calc: `${yen(r.perDayExTax)} × ${n}日\n（${r.detail}）`, amountExTax: r.perDayExTax * n });
   }
   const warning = unmatched.size
     ? `${staffName}さんの稼働店舗「${[...unmatched].join("、")}」は交通費の取り決めがないため、交通費を0円で作成しました。必要なら修正画面で入力してください。`
     : null;
   const travel: StatementStaff["travel"] =
     ex > 0
-      ? { mode: "PER_DAY", amountExTax: ex, amountInclTax: addTax(ex).amountIncl, calc: `${parts.join(" ＋ ")} ＝ ${yen(ex)}＋税で計算` }
+      ? { mode: "PER_DAY", amountExTax: ex, amountInclTax: addTax(ex).amountIncl, calc: `${parts.join(" ＋ ")} ＝ ${yen(ex)}＋税で計算`, lines }
       : { mode: "NONE", amountExTax: 0, amountInclTax: 0 };
   return { travel, warning };
 }
@@ -283,6 +285,22 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
         if (r.warning) warnings.push(r.warning);
         travel = r.travel;
       }
+      // 新幹線代など、月ごとの固定の交通費をこのスタッフの交通費に足す
+      if (rule.extraTravel?.length) {
+        const add = rule.extraTravel.reduce((a, e) => a + e.amountExTax, 0);
+        const total = travel.amountExTax + add;
+        const parts = [travel.calc ? travel.calc.replace(/ ＝ [^＝]*$/, "") : "", ...rule.extraTravel.map((e) => `${e.label} ${e.calc}`)].filter(Boolean);
+        travel = {
+          mode: travel.mode === "NONE" ? "FLAT" : travel.mode,
+          amountExTax: total,
+          amountInclTax: addTax(total).amountIncl,
+          calc: `${parts.join(" ＋ ")} ＝ ${yen(total)}＋税で計算`,
+          lines: [
+            ...(travel.lines ?? (travel.amountExTax > 0 ? [{ label: "交通費相当額", calc: travel.calc ?? "", amountExTax: travel.amountExTax }] : [])),
+            ...rule.extraTravel.map((e) => ({ label: `交通費相当額\n${e.label}`, calc: e.calc, amountExTax: e.amountExTax })),
+          ],
+        };
+      }
 
       const uni = ((m) => (n: string) => (terms.shopSuffix ? withShopSuffix(m.get(n) ?? n) : (m.get(n) ?? n)))(unifyStoreNames(done.map((s) => s.storeName)));
       statementStaff.push({
@@ -302,6 +320,15 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
   if (conflicted.size) warnings.push(`次のシフトは2社以上の契約に当てはまるため、請求に含めていません。契約の店舗名を見直してください: ${[...conflicted].slice(0, 8).join(" / ")}`);
   if (!orders.length && !statementStaff.length) {
     throw new Error("対象月の承認済み稼働依頼も、シフトからの請求ルールに合う稼働実績もありません。");
+  }
+
+  // スタッフをまたいで、同じ店舗の表記ゆれ(例: 「西多賀店」と「auショップ西多賀店」)を統一する。
+  {
+    const m = unifyStoreNames(statementStaff.flatMap((s) => [...s.places, ...Object.values(s.dayPlaces ?? {})]));
+    for (const s of statementStaff) {
+      s.places = [...new Set(s.places.map((n) => m.get(n) ?? n))];
+      if (s.dayPlaces) s.dayPlaces = Object.fromEntries(Object.entries(s.dayPlaces).map(([d, n]) => [d, m.get(n) ?? n]));
+    }
   }
 
   // 取引先全体の固定加算(新幹線代など)。稼働が1日でもある月だけ載せる。
