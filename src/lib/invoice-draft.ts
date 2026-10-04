@@ -8,7 +8,8 @@ import { loadRuleIndex } from "@/lib/client-shifts";
 
 // 稼働明細書に載せるスナップショット(請求下書き作成時点の内容を Invoice.statement に保存する)。
 // 請求書は「業務委託費一式」の1行だけ。計算方法と内訳はすべてこの明細書に書く。
-export type StatementExtra = { label: string; amountExTax: number; amountInclTax: number; calc?: string };
+// store/period は広告費(K.J EVENT)の行だけ持つ。あれば明細書で「イベント主催店舗／イベント開催期間」の表にする。
+export type StatementExtra = { label: string; amountExTax: number; amountInclTax: number; calc?: string; store?: string; period?: string };
 
 
 export type StatementStaff = {

@@ -89,6 +89,8 @@ const st = StyleSheet.create({
   itemRow: { flexDirection: "row", borderTopWidth: 1, borderTopColor: "#d0d0d0" },
   cItem: { width: "30%", paddingVertical: 3.5, paddingHorizontal: 6 },
   cCalc: { width: "48%", paddingVertical: 3.5, paddingHorizontal: 6, lineHeight: 1.1 },
+  cStore: { width: "42%", paddingVertical: 3.5, paddingHorizontal: 6 },
+  cPeriod: { width: "36%", paddingVertical: 3.5, paddingHorizontal: 6 },
   cAmt: { width: "22%", paddingVertical: 3.5, paddingHorizontal: 6, textAlign: "right" },
   small: { fontSize: 8.5, color: "#444" },
   summary: { marginTop: 18, borderWidth: 1, borderColor: NAVY },
@@ -157,18 +159,38 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
               <Text style={st.staffName}>広告費</Text>
               <Text style={st.small}>小計（税抜）　{yen((data.clientExtras ?? []).reduce((a, e) => a + e.amountExTax, 0))}</Text>
             </View>
-            <View style={st.itemHead}>
-              <Text style={[st.cItem, st.small]}>項目</Text>
-              <Text style={[st.cCalc, st.small]}>計算方法</Text>
-              <Text style={[st.cAmt, st.small]}>金額（税抜）</Text>
-            </View>
-            {(data.clientExtras ?? []).map((e, k) => (
-              <View key={k} style={st.itemRow}>
-                <Text style={st.cItem}>{e.label}</Text>
-                <Text style={st.cCalc}>{e.calc || `${yen(e.amountExTax)}＋税で計算`}</Text>
-                <Text style={st.cAmt}>{yen(e.amountExTax)}</Text>
+            {(data.clientExtras ?? []).some((e) => e.store && e.period) && (
+              <View>
+                <View style={st.itemHead}>
+                  <Text style={[st.cStore, st.small]}>イベント主催店舗</Text>
+                  <Text style={[st.cPeriod, st.small]}>イベント開催期間</Text>
+                  <Text style={[st.cAmt, st.small]}>金額（税抜）</Text>
+                </View>
+                {(data.clientExtras ?? []).filter((e) => e.store && e.period).map((e, k) => (
+                  <View key={k} style={st.itemRow}>
+                    <Text style={st.cStore}>{e.store}</Text>
+                    <Text style={st.cPeriod}>{e.period}</Text>
+                    <Text style={st.cAmt}>{yen(e.amountExTax)}</Text>
+                  </View>
+                ))}
               </View>
-            ))}
+            )}
+            {(data.clientExtras ?? []).some((e) => !(e.store && e.period)) && (
+              <View>
+                <View style={st.itemHead}>
+                  <Text style={[st.cItem, st.small]}>項目</Text>
+                  <Text style={[st.cCalc, st.small]}>計算方法</Text>
+                  <Text style={[st.cAmt, st.small]}>金額（税抜）</Text>
+                </View>
+                {(data.clientExtras ?? []).filter((e) => !(e.store && e.period)).map((e, k) => (
+                  <View key={k} style={st.itemRow}>
+                    <Text style={st.cItem}>{e.label}</Text>
+                    <Text style={st.cCalc}>{e.calc || `${yen(e.amountExTax)}＋税で計算`}</Text>
+                    <Text style={st.cAmt}>{yen(e.amountExTax)}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         )}
 
