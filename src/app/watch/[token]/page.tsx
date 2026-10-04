@@ -29,6 +29,7 @@ const BADGE: Record<ViewStatus, string> = {
   出勤中: "bg-emerald-100 text-emerald-800",
   退勤済み: "bg-sky-100 text-sky-800",
   退勤未打刻: "bg-orange-100 text-orange-800",
+  欠勤: "bg-rose-100 text-rose-800",
   キャンセル: "bg-slate-200 text-slate-500",
 };
 
@@ -36,7 +37,7 @@ function StatusBadge({ row }: { row: ViewRow }) {
   return (
     <span className="inline-flex items-center gap-1">
       <span className={`rounded-full px-2.5 py-0.5 text-xs font-black ${BADGE[row.status]}`}>{row.status}</span>
-      {row.corrected && <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-black text-violet-700">修正あり</span>}
+      {row.notes.map((n) => <span key={n} className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-black text-rose-800">{n}</span>)}
     </span>
   );
 }

@@ -5,7 +5,7 @@ import { currentJstYearMonth, jstMonthRange, toJstDateValue, toJstTimeValue } fr
 // 取引先向け「出退勤の閲覧専用ページ」用のデータ。
 // 位置情報(座標)などは返さない。見せるのは、スタッフ名・店舗・予定・出勤/退勤時刻・状態だけ。
 
-export type ViewStatus = "出勤前" | "未出勤" | "出勤中" | "退勤済み" | "退勤未打刻" | "キャンセル";
+export type ViewStatus = "出勤前" | "未出勤" | "出勤中" | "退勤済み" | "退勤未打刻" | "欠勤" | "キャンセル";
 
 export type ViewRow = {
   id: string;
@@ -16,7 +16,7 @@ export type ViewRow = {
   clockIn: string | null; // "09:58"
   clockOut: string | null;
   status: ViewStatus;
-  corrected: boolean; // 管理者が打刻を修正している
+  notes: string[]; // スタッフが申告した「遅刻」「早退」(申告があった日だけ。理由などは出さない)
 };
 
 export const newViewToken = () => randomBytes(24).toString("base64url");
@@ -38,12 +38,33 @@ export async function loadClientAttendance(clientId: string, yearMonth: string, 
     include: { staff: { select: { name: true } }, clockRecords: { orderBy: { timestamp: "asc" } } },
     orderBy: [{ startTime: "asc" }, { staffId: "asc" }],
   });
+  // 遅刻・早退・欠勤は、スタッフがアプリで申告したものだけを表示する(理由・詳細は取引先に出さない)。
+  const reports = shifts.length
+    ? await prisma.irregularReport.findMany({
+        where: {
+          staffId: { in: [...new Set(shifts.map((s) => s.staffId))] },
+          targetDate: { gte: start, lt: end },
+          reportType: { in: ["LATE", "EARLY_LEAVE", "ABSENCE", "SAME_DAY_ABSENCE"] },
+        },
+        select: { staffId: true, targetDate: true, reportType: true },
+      })
+    : [];
+  const reported = new Map<string, Set<string>>();
+  for (const r of reports) {
+    const key = `${r.staffId}|${toJstDateValue(r.targetDate)}`;
+    (reported.get(key) ?? reported.set(key, new Set()).get(key)!).add(r.reportType);
+  }
+
   return shifts.map((s) => {
+    const kinds = reported.get(`${s.staffId}|${toJstDateValue(s.startTime)}`);
+    const absent = !!kinds && (kinds.has("ABSENCE") || kinds.has("SAME_DAY_ABSENCE"));
     const inn = s.clockRecords.find((r) => r.type === "IN");
     const out = [...s.clockRecords].reverse().find((r) => r.type === "OUT");
     const status: ViewStatus = s.cancelledAt
       ? "キャンセル"
-      : inn && out
+      : absent && !inn
+        ? "欠勤"
+        : inn && out
         ? "退勤済み"
         : inn
           ? toJstDateValue(s.startTime) < toJstDateValue(now)
@@ -61,7 +82,7 @@ export async function loadClientAttendance(clientId: string, yearMonth: string, 
       clockIn: inn ? toJstTimeValue(inn.timestamp) : null,
       clockOut: out ? toJstTimeValue(out.timestamp) : null,
       status,
-      corrected: s.clockRecords.some((r) => r.editedByAdmin),
+      notes: [...(kinds?.has("LATE") ? ["遅刻"] : []), ...(kinds?.has("EARLY_LEAVE") ? ["早退"] : [])],
     };
   });
 }
