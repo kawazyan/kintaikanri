@@ -44,7 +44,7 @@ export async function fetchEventAds(agencyId: string, yearMonth: string): Promis
     headers: key.startsWith("eyJ") ? { apikey: key, Authorization: `Bearer ${key}` } : { apikey: key },
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(`K.J EVENT からの広告費取得に失敗しました(HTTP ${res.status})。`);
+  if (!res.ok) throw new Error(`K.J EVENT からの広告費取得に失敗しました(HTTP ${res.status})。登録されている鍵: 先頭「${key.slice(0, 3)}」・${key.length}文字(service_roleキーは通常「eyJ」始まりで200文字前後、新形式は「sb_」始まり)。`);
   const rows = (await res.json()) as Row[];
 
   const lines: EventAdLine[] = [];
