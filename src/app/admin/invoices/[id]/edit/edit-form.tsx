@@ -205,7 +205,7 @@ export function EditInvoiceForm({
               <div key={i} className="grid gap-2 rounded-xl border border-slate-800 bg-slate-950 p-3 md:grid-cols-[1fr_160px_auto]">
                 <label className={field}>
                   項目名
-                  <input value={e.label} onChange={(ev) => setExtras(extras.map((x, xi) => (xi === i ? { ...x, label: ev.target.value } : x)))} className={`${input} mt-1`} />
+                  <textarea rows={2} value={e.label} onChange={(ev) => setExtras(extras.map((x, xi) => (xi === i ? { ...x, label: ev.target.value } : x)))} className={`${input} mt-1`} />
                 </label>
                 <label className={field}>
                   金額（税抜・円）

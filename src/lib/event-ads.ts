@@ -63,7 +63,7 @@ export async function fetchEventAds(agencyId: string, yearMonth: string): Promis
     if (spent <= 0) continue;
     const store = r.kj_stores?.name ?? "店舗未定";
     lines.push({
-      label: `${store} ${md(r.start_date)}～${md(r.end_date)}開催分　広告掲載費`,
+      label: `イベント主催店舗　${store}\nイベント開催期間　${md(r.start_date)}～${md(r.end_date)}`,
       amountExTax: spent,
       amountInclTax: addTax(spent).amountIncl,
       calc: "K.J EVENT 広告支出実績",
