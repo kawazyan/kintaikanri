@@ -10,7 +10,7 @@ export function DeleteShiftButton({ shiftId }: { shiftId: string }) {
   const router = useRouter();
 
   function handleDelete() {
-    if (!window.confirm("このシフトを削除しますか?")) return;
+    if (!window.confirm("削除しますか？")) return;
     startTransition(async () => {
       const result = await deleteShift(shiftId);
       if ("error" in result) {

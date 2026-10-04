@@ -49,6 +49,7 @@ export function EditShiftForm({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!window.confirm("変更確定しますか？")) return;
     startTransition(async () => {
       const result = await updateShift(shiftId, {
         workType,
