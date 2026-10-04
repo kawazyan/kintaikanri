@@ -1,16 +1,22 @@
 import { prisma } from "@/lib/prisma";
-import { addTax, computeInvoiceTotals, expenseLabel, travelLineLabel } from "@/lib/billing";
+import { addTax, computeInvoiceTotals, expenseLabel } from "@/lib/billing";
 import { toJstDateValue } from "@/lib/time";
 
 // 稼働明細書に載せるスナップショット(請求下書き作成時点の内容を Invoice.statement に保存する)。
+// 請求書は「業務委託費一式」の1行だけ。計算方法と内訳はすべてこの明細書に書く。
+export type StatementExtra = { label: string; amountExTax: number; amountInclTax: number };
+
 export type StatementStaff = {
   name: string;
   places: string[]; // 稼働場所(店舗名)
   carriers: string[]; // キャリア
   dates: string[]; // 出勤した日(YYYY-MM-DD, 昇順)
   days: number; // 合計稼働日数
+  serviceExTax: number; // 業務委託費(税抜)
+  serviceCalc: string; // 業務委託費の計算方法(例: 日額 ¥20,000 × 3日)
   // 交通費: NONE=請求しない(単価に込み等) / ACTUAL=スタッフ申請額で請求 / FLAT=クライアントへ一律請求
   travel: { mode: "NONE" | "ACTUAL" | "FLAT"; amountExTax: number; amountInclTax: number };
+  extras?: StatementExtra[]; // 宿泊費・その他経費のうちクライアントへ請求するもの
 };
 
 export type StatementSnapshot = {
@@ -18,6 +24,17 @@ export type StatementSnapshot = {
   yearMonth: string;
   staff: StatementStaff[];
 };
+
+// スタッフ1人ぶんの請求対象(税抜)。請求書の「業務委託費一式」の内訳の合計になる。
+export function staffBillableExTax(s: StatementStaff) {
+  return (
+    (s.serviceExTax ?? 0) +
+    s.travel.amountExTax +
+    (s.extras ?? []).reduce((sum, e) => sum + e.amountExTax, 0)
+  );
+}
+
+const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
 
 type DraftResult = { id: string; invoiceNumber: string };
 
@@ -48,10 +65,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
     where: { yearMonth, status: "APPROVED", workOrderStaffId: { in: assignmentIds } },
   });
 
-  const serviceDetails: string[] = [];
-  let serviceTotalExTax = 0;
   const statementStaff: StatementStaff[] = [];
-  const flatTravelLines: { staffName: string; amountExTax: number }[] = [];
 
   for (const order of orders) {
     for (const assignment of order.staffAssignments.filter((x) => x.active)) {
@@ -67,152 +81,107 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
       const approvedOverrideByDate = new Map(
         assignment.dailyOverrides.map((ov) => [toJstDateValue(ov.workDate), ov] as const)
       );
+      const hasRateOverride = [...completedDates].some(
+        (d) => approvedOverrideByDate.get(d)?.changedRateExTax != null
+      );
+      const days = completedDates.size;
+      const baseDaily = order.plannedDays > 0 ? Math.floor(assignment.rateAmountExTax / order.plannedDays) : 0;
 
       let amountExTax = 0;
+      let calc = "";
       if (assignment.contractType === "DAILY") {
         for (const dateKey of completedDates) {
           const override = approvedOverrideByDate.get(dateKey);
           amountExTax += override?.changedRateExTax ?? assignment.rateAmountExTax;
         }
+        calc = `日額 ${yen(assignment.rateAmountExTax)} × ${days}日`;
       } else if (assignment.absenceDeduction === "YES") {
-        const baseDaily = order.plannedDays > 0 ? Math.floor(assignment.rateAmountExTax / order.plannedDays) : 0;
         for (const dateKey of completedDates) {
           const override = approvedOverrideByDate.get(dateKey);
           amountExTax += override?.changedRateExTax ?? baseDaily;
         }
+        calc = `月額 ${yen(assignment.rateAmountExTax)} ÷ 予定${order.plannedDays}日 = 1日 ${yen(baseDaily)} × ${days}日`;
       } else {
         amountExTax = assignment.rateAmountExTax;
         // 月単価固定でも、承認済みの当日単価変更がある場合は日割り基準との差額だけ加算/減算する。
-        const baseDaily = order.plannedDays > 0 ? Math.floor(assignment.rateAmountExTax / order.plannedDays) : 0;
         for (const [dateKey, override] of approvedOverrideByDate) {
           if (completedDates.has(dateKey) && override.changedRateExTax != null) {
             amountExTax += override.changedRateExTax - baseDaily;
           }
         }
+        calc = `月額 ${yen(assignment.rateAmountExTax)}（固定）`;
       }
+      if (hasRateOverride) calc += "（承認済みの当日単価変更を含む）";
 
-      serviceTotalExTax += amountExTax;
-      serviceDetails.push(`${assignment.staff.name} / ${completedDates.size}日稼働`);
-
-      // ---- 交通費の扱い(明細書用) ----
+      // ---- 交通費の扱い ----
       // FLAT: 稼働が1日でもあれば、設定した月額をクライアントへ一律請求する(スタッフ申請額は請求しない)。
       // INCLUDED: 請求しない。SEPARATE/CONSULT: スタッフが申請して承認された交通費を請求する。
+      // すべて税別計算(税抜額＋消費税)。例: 税込1,100円 → 1,000円＋税。
       let travel: StatementStaff["travel"] = { mode: "NONE", amountExTax: 0, amountInclTax: 0 };
       if (assignment.travelExpense === "FLAT") {
         const flat = assignment.flatTravelAmountExTax ?? 0;
-        if (completedDates.size > 0 && flat > 0) {
+        if (days > 0 && flat > 0) {
           travel = { mode: "FLAT", amountExTax: flat, amountInclTax: addTax(flat).amountIncl };
-          flatTravelLines.push({ staffName: assignment.staff.name, amountExTax: flat });
         }
       } else if (assignment.travelExpense !== "INCLUDED") {
         const actualExpenses = expenses
           .filter((e) => e.workOrderStaffId === assignment.id && e.category === "TRAVEL")
           .filter((e) => {
             // 日ごとの承認済み条件変更(込み/一律に変更された日)は請求対象から外す。
-            const dateKey = toJstDateValue(e.expenseDate);
-            const ov = approvedOverrideByDate.get(dateKey);
+            const ov = approvedOverrideByDate.get(toJstDateValue(e.expenseDate));
             const effective = ov?.changedTravelExpense ?? assignment.travelExpense;
             return effective !== "INCLUDED" && effective !== "FLAT";
           });
-        const actual = actualExpenses.reduce((sum, e) => sum + e.amountExTax, 0);
-        const actualIncl = actualExpenses.reduce((sum, e) => sum + e.amountTaxInclusive, 0);
-        if (actual > 0) travel = { mode: "ACTUAL", amountExTax: actual, amountInclTax: actualIncl };
+        const ex = actualExpenses.reduce((sum, e) => sum + e.amountExTax, 0);
+        const incl = actualExpenses.reduce((sum, e) => sum + e.amountTaxInclusive, 0);
+        if (ex > 0) travel = { mode: "ACTUAL", amountExTax: ex, amountInclTax: incl };
       }
+
+      // 宿泊費・その他経費(承認済み)もクライアントへ請求する分は内訳に載せる。
+      const extraMap = new Map<string, { ex: number; incl: number }>();
+      for (const e of expenses) {
+        if (e.workOrderStaffId !== assignment.id || e.category === "TRAVEL") continue;
+        const g = extraMap.get(e.category) ?? { ex: 0, incl: 0 };
+        g.ex += e.amountExTax;
+        g.incl += e.amountTaxInclusive;
+        extraMap.set(e.category, g);
+      }
+      const extras: StatementExtra[] = [...extraMap].map(([category, g]) => ({
+        label: `${expenseLabel(category)}（税込${g.incl}円）`,
+        amountExTax: g.ex,
+        amountInclTax: g.incl,
+      }));
 
       statementStaff.push({
         name: assignment.staff.name,
         places: [...new Set(completedShifts.map((s) => s.storeName))],
         carriers: [...new Set(completedShifts.map((s) => s.carrier))],
         dates: [...completedDates].sort(),
-        days: completedDates.size,
+        days,
+        serviceExTax: amountExTax,
+        serviceCalc: calc,
         travel,
+        extras,
       });
     }
   }
 
-  const serviceTax = addTax(serviceTotalExTax);
-  const lines: {
-    sortOrder: number;
-    itemType: string;
-    label: string;
-    description: string | null;
-    unitPriceExTax: number;
-    quantity: number;
-    subtotalExTax: number;
-    taxAmount: number;
-    totalInclTax: number;
-  }[] = [
+  // 請求書は「業務委託費一式」の1行だけ。交通費相当額なども含めた税抜合計を単価にする。
+  const unitPrice = statementStaff.reduce((sum, s) => sum + staffBillableExTax(s), 0);
+  const t = addTax(unitPrice);
+  const lines = [
     {
       sortOrder: 10,
       itemType: "SERVICE",
       label: "業務委託費一式",
-      description: serviceDetails.join(" / "),
-      unitPriceExTax: serviceTotalExTax,
+      description: "内訳は別紙「稼働明細書」のとおり",
+      unitPriceExTax: unitPrice,
       quantity: 1,
-      subtotalExTax: serviceTotalExTax,
-      taxAmount: serviceTax.tax,
-      totalInclTax: serviceTax.amountIncl,
-    },
-  ];
-
-  const assignmentById = new Map(orders.flatMap((o) => o.staffAssignments.map((a) => [a.id, a] as const)));
-  const expenseGroups = new Map<string, { ex: number; tax: number; incl: number }>();
-
-  for (const e of expenses) {
-    const assignment = e.workOrderStaffId ? assignmentById.get(e.workOrderStaffId) : null;
-    if (!assignment) continue;
-
-    if (e.category === "TRAVEL") {
-      const dateKey = toJstDateValue(e.expenseDate);
-      const dayOverride = assignment.dailyOverrides.find(
-        (ov) => toJstDateValue(ov.workDate) === dateKey && ov.approvalStatus === "APPROVED"
-      );
-      const effectiveTravel = dayOverride?.changedTravelExpense ?? assignment.travelExpense;
-      // 「込み」は請求しない。「一律」は月額を別行で請求するのでスタッフ申請額は請求しない。
-      // 「別」は請求。「要相談」はK.Jの経費承認をもって請求可とする。
-      if (effectiveTravel === "INCLUDED" || effectiveTravel === "FLAT") continue;
-    }
-
-    const g = expenseGroups.get(e.category) ?? { ex: 0, tax: 0, incl: 0 };
-    g.ex += e.amountExTax;
-    g.tax += e.taxAmount;
-    g.incl += e.amountTaxInclusive;
-    expenseGroups.set(e.category, g);
-  }
-
-  let sortOrder = 20;
-  for (const [category, g] of expenseGroups) {
-    lines.push({
-      sortOrder,
-      itemType: category,
-      // 交通費は「交通費相当額（税込N円）」。計算は税別(税抜額＋消費税)。
-      label: category === "TRAVEL" ? travelLineLabel(g.incl) : expenseLabel(category),
-      description: null,
-      unitPriceExTax: g.ex,
-      quantity: 1,
-      subtotalExTax: g.ex,
-      taxAmount: g.tax,
-      totalInclTax: g.incl,
-    });
-    sortOrder += 10;
-  }
-
-  // 一律交通費は、スタッフ別に1行ずつ請求する。
-  for (const f of flatTravelLines) {
-    const t = addTax(f.amountExTax);
-    lines.push({
-      sortOrder,
-      itemType: "TRAVEL_FLAT",
-      label: travelLineLabel(t.amountIncl),
-      description: `一律／${f.staffName}`,
-      unitPriceExTax: f.amountExTax,
-      quantity: 1,
-      subtotalExTax: f.amountExTax,
+      subtotalExTax: unitPrice,
       taxAmount: t.tax,
       totalInclTax: t.amountIncl,
-    });
-    sortOrder += 10;
-  }
+    },
+  ];
 
   // 請求書テンプレートと同じ方式: 消費税 = 税抜合計 × 10% を切り捨て。
   const { subtotalExTax, taxAmount, totalInclTax } = computeInvoiceTotals(lines);

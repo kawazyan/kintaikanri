@@ -8,8 +8,19 @@ type Initial = {
   addressee: string;
   subject: string;
   note: string;
-  lines: { label: string; description: string; quantity: number; unitPriceExTax: number }[];
-  staff: { name: string; places: string; carriers: string; dates: string[]; travelInclTax: number }[];
+  amountExTax: number;
+  hasStatement: boolean;
+  staff: {
+    name: string;
+    places: string;
+    carriers: string;
+    dates: string[];
+    serviceExTax: number;
+    serviceCalc: string;
+    travelInclTax: number;
+    extrasExTax: number;
+    extrasLabel: string;
+  }[];
 };
 
 const input = "w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-100";
@@ -29,13 +40,17 @@ export function EditInvoiceForm({
   const [addressee, setAddressee] = useState(initial.addressee);
   const [subject, setSubject] = useState(initial.subject);
   const [note, setNote] = useState(initial.note);
-  const [lines, setLines] = useState(initial.lines);
+  const [amount, setAmount] = useState(initial.amountExTax);
   const [staff, setStaff] = useState(initial.staff);
   const [approver, setApprover] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const subtotal = lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.unitPriceExTax) || 0), 0);
+  // 請求書は「業務委託費一式」1行。金額は稼働明細書の合計(業務委託費＋交通費相当額＋その他)。
+  const travelEx = (incl: number) => (incl > 0 ? Math.floor((incl * 100) / 110) : 0);
+  const subtotal = initial.hasStatement
+    ? staff.reduce((sum, st) => sum + (Number(st.serviceExTax) || 0) + travelEx(Number(st.travelInclTax) || 0) + st.extrasExTax, 0)
+    : Number(amount) || 0;
   const tax = Math.floor((subtotal * 10) / 100);
 
   function payload(): InvoiceEditPayload {
@@ -43,13 +58,13 @@ export function EditInvoiceForm({
       addressee,
       subject,
       note,
-      lines: lines.map((l) => ({
-        label: l.label,
-        description: l.description,
-        quantity: Number(l.quantity),
-        unitPriceExTax: Number(l.unitPriceExTax),
+      amountExTax: initial.hasStatement ? undefined : Number(amount),
+      staff: staff.map((s) => ({
+        dates: s.dates,
+        serviceExTax: Number(s.serviceExTax) || 0,
+        serviceCalc: s.serviceCalc,
+        travelInclTax: Number(s.travelInclTax) || 0,
       })),
-      staff: staff.map((s) => ({ dates: s.dates, travelInclTax: Number(s.travelInclTax) || 0 })),
     };
   }
 
@@ -71,9 +86,6 @@ export function EditInvoiceForm({
     });
   }
 
-  function setLine(i: number, patch: Partial<Initial["lines"][number]>) {
-    setLines(lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
-  }
   function setStaffDates(i: number, dates: string[]) {
     setStaff(staff.map((s, idx) => (idx === i ? { ...s, dates } : s)));
   }
@@ -93,25 +105,21 @@ export function EditInvoiceForm({
           </label>
         </div>
 
-        <h3 className="mt-5 text-sm font-black">明細行（税率は10%固定）</h3>
-        <div className="mt-2 space-y-3">
-          {lines.map((l, i) => (
-            <div key={i} className="rounded-xl bg-slate-950 p-3">
-              <div className="grid gap-2 md:grid-cols-[1fr_90px_140px_auto]">
-                <input value={l.label} onChange={(e) => setLine(i, { label: e.target.value })} placeholder="品名" className={input} />
-                <input type="number" min={1} value={l.quantity} onChange={(e) => setLine(i, { quantity: Number(e.target.value) })} placeholder="数量" className={input} />
-                <input type="number" value={l.unitPriceExTax} onChange={(e) => setLine(i, { unitPriceExTax: Number(e.target.value) })} placeholder="単価（税抜）" className={input} />
-                <button type="button" onClick={() => setLines(lines.filter((_, idx) => idx !== i))} className="rounded-lg border border-red-800 px-3 py-2 text-xs font-bold text-red-300">削除</button>
-              </div>
-              <input value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} placeholder="補足（任意）" className={`${input} mt-2`} />
-              <p className="mt-1 text-right text-xs text-slate-500">金額（税抜）¥{((Number(l.quantity) || 0) * (Number(l.unitPriceExTax) || 0)).toLocaleString("ja-JP")}</p>
-            </div>
-          ))}
+        <div className="mt-5 rounded-xl bg-slate-950 p-4">
+          <p className="text-sm font-black">品目：業務委託費一式（税率10%）</p>
+          <p className="mt-1 text-xs text-slate-500">請求書の品目はこの1行のみです。交通費相当額などは業務委託費に含まれ、内訳は稼働明細書に載ります。</p>
+          {initial.hasStatement ? (
+            <p className="mt-2 text-xs text-slate-400">金額は下の「稼働明細書」の合計から自動で計算されます。</p>
+          ) : (
+            <label className="mt-2 block text-xs text-slate-400">
+              業務委託費一式の金額（税抜）
+              <input type="number" min={0} value={amount} onChange={(e) => setAmount(Number(e.target.value))} className={`${input} mt-1 max-w-[220px]`} />
+            </label>
+          )}
+          <p className="mt-3 text-right text-sm text-slate-300">
+            小計 ¥{subtotal.toLocaleString("ja-JP")}　消費税 ¥{tax.toLocaleString("ja-JP")}　<b>合計 ¥{(subtotal + tax).toLocaleString("ja-JP")}</b>
+          </p>
         </div>
-        <button type="button" onClick={() => setLines([...lines, { label: "", description: "", quantity: 1, unitPriceExTax: 0 }])} className="mt-3 rounded-lg border border-slate-600 px-4 py-2 text-sm font-bold">＋ 行を追加</button>
-        <p className="mt-3 text-right text-sm text-slate-300">
-          小計 ¥{subtotal.toLocaleString("ja-JP")}　消費税 ¥{tax.toLocaleString("ja-JP")}　<b>合計 ¥{(subtotal + tax).toLocaleString("ja-JP")}</b>
-        </p>
 
         <label className="mt-4 block text-xs text-slate-400">
           振込先情報・備考
@@ -123,7 +131,7 @@ export function EditInvoiceForm({
         <section className="rounded-2xl border border-slate-700 bg-slate-900 p-5">
           <h2 className="text-lg font-black">稼働明細書</h2>
           <p className="mt-1 text-xs text-amber-300">
-            ここを直しても、請求書の金額は自動では変わりません。金額に影響する場合は、上の請求書の明細行も直してください。
+            ここで直した金額（業務委託費・交通費）は、請求書の「業務委託費一式」の金額に自動で反映されます。稼働日を変えても金額は自動では変わらないので、必要なら業務委託費も直してください。
           </p>
           <div className="mt-3 space-y-4">
             {staff.map((s, i) => (
@@ -147,8 +155,29 @@ export function EditInvoiceForm({
                   ))}
                   <button type="button" onClick={() => setStaffDates(i, [...s.dates, `${yearMonth}-01`])} className="rounded-lg border border-slate-600 px-3 py-1 text-xs font-bold">＋ 日を追加</button>
                 </div>
+                <div className="mt-3 grid gap-2 md:grid-cols-[180px_1fr]">
+                  <label className="block text-xs text-slate-400">
+                    業務委託費（税抜）
+                    <input
+                      type="number"
+                      min={0}
+                      value={s.serviceExTax}
+                      onChange={(e) => setStaff(staff.map((x, xi) => (xi === i ? { ...x, serviceExTax: Number(e.target.value) } : x)))}
+                      className={`${input} mt-1`}
+                    />
+                  </label>
+                  <label className="block text-xs text-slate-400">
+                    計算方法（明細書に表示）
+                    <input
+                      value={s.serviceCalc}
+                      onChange={(e) => setStaff(staff.map((x, xi) => (xi === i ? { ...x, serviceCalc: e.target.value } : x)))}
+                      className={`${input} mt-1`}
+                    />
+                  </label>
+                </div>
+                {s.extrasExTax > 0 && <p className="mt-2 text-xs text-slate-500">その他（変更不可）: {s.extrasLabel} 税抜¥{s.extrasExTax.toLocaleString("ja-JP")}</p>}
                 <label className="mt-3 block text-xs text-slate-400">
-                  交通費（税込）。0なら交通費の行を出しません。税抜と消費税は自動で計算します（例: 税込1,100円 → 1,000円＋税）
+                  交通費相当額（税込）。0なら載せません。税別で計算します（例: 税込1,100円 → 1,000円＋税）
                   <input
                     type="number"
                     min={0}

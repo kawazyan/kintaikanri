@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { buildInvoiceDraft, type StatementSnapshot } from "@/lib/invoice-draft";
+import { buildInvoiceDraft, staffBillableExTax, type StatementSnapshot } from "@/lib/invoice-draft";
 import { approveAndSendInvoice } from "@/lib/invoice-send";
 import { addTax, computeInvoiceTotals, splitInclusiveTax } from "@/lib/billing";
 
@@ -49,12 +49,14 @@ export type InvoiceEditPayload = {
   addressee: string;
   subject: string;
   note: string;
-  lines: { label: string; description: string; quantity: number; unitPriceExTax: number }[];
-  // 稼働明細書(スタッフの並びは作成時のまま)。稼働日と交通費(税込)を直せる。
-  staff: { dates: string[]; travelInclTax: number }[];
+  // 稼働明細書(スタッフの並びは作成時のまま)。請求書は「業務委託費一式」1行のみで、金額は明細書の合計から自動計算する。
+  staff: { dates: string[]; serviceExTax: number; serviceCalc: string; travelInclTax: number }[];
+  // 明細書データがない古い請求だけ使う(業務委託費一式の税抜金額)。
+  amountExTax?: number;
 };
 
 // 「修正」画面の保存。請求書は税率(10%固定)と発行日(稼働月の月末日に自動)以外を直せる。
+// 請求書の品目は「業務委託費一式」のみ。内訳(計算方法・交通費など)は稼働明細書で直す。
 // sendAfter=true のときは保存後にそのまま承認(PDF送信)まで行う。
 export async function saveInvoiceEdit(
   id: string,
@@ -72,17 +74,9 @@ export async function saveInvoiceEdit(
   if (!addressee) return { ok: false, error: "宛名を入力してください。" };
   if (!subject) return { ok: false, error: "件名を入力してください。" };
 
-  const lines = payload.lines
-    .map((l) => ({ ...l, label: l.label.trim(), description: l.description.trim() }))
-    .filter((l) => l.label !== "");
-  if (!lines.length) return { ok: false, error: "明細行を1行以上入力してください。" };
-  for (const l of lines) {
-    if (!Number.isInteger(l.quantity) || l.quantity < 1) return { ok: false, error: `「${l.label}」の数量は1以上の整数にしてください。` };
-    if (!Number.isInteger(l.unitPriceExTax)) return { ok: false, error: `「${l.label}」の単価は整数（税抜）で入力してください。` };
-  }
-
   const snapshot = invoice.statement as unknown as StatementSnapshot | null;
   let nextStatement: StatementSnapshot | undefined;
+  let unitPrice: number;
   if (snapshot) {
     if (payload.staff.length !== snapshot.staff.length) return { ok: false, error: "稼働明細書のスタッフ数が一致しません。画面を開き直してください。" };
     const datesByStaff: string[][] = [];
@@ -93,6 +87,8 @@ export async function saveInvoiceEdit(
           return { ok: false, error: `${snapshot.staff[i].name}さんの稼働日「${d}」は、対象月（${invoice.yearMonth}）の日付で入力してください。` };
         }
       }
+      const svc = payload.staff[i].serviceExTax;
+      if (!Number.isInteger(svc) || svc < 0) return { ok: false, error: `${snapshot.staff[i].name}さんの業務委託費（税抜）は0以上の整数で入力してください。` };
       datesByStaff.push(dates);
     }
     nextStatement = {
@@ -104,12 +100,26 @@ export async function saveInvoiceEdit(
         const ex = incl > 0 ? splitInclusiveTax(incl).amountEx : 0;
         const mode: StatementSnapshot["staff"][number]["travel"]["mode"] =
           incl === 0 ? "NONE" : st.travel.mode === "NONE" ? "ACTUAL" : st.travel.mode;
-        return { ...st, dates, days: dates.length, travel: { mode, amountExTax: ex, amountInclTax: incl } };
+        return {
+          ...st,
+          dates,
+          days: dates.length,
+          serviceExTax: payload.staff[i].serviceExTax,
+          serviceCalc: payload.staff[i].serviceCalc.trim() || st.serviceCalc,
+          travel: { mode, amountExTax: ex, amountInclTax: incl },
+        };
       }),
     };
+    unitPrice = nextStatement.staff.reduce((sum, st) => sum + staffBillableExTax(st), 0);
+  } else {
+    const v = payload.amountExTax;
+    if (v == null || !Number.isInteger(v) || v < 0) return { ok: false, error: "業務委託費一式の金額（税抜）は0以上の整数で入力してください。" };
+    unitPrice = v;
   }
 
-  const totals = computeInvoiceTotals(lines);
+  const line = { quantity: 1, unitPriceExTax: unitPrice };
+  const totals = computeInvoiceTotals([line]);
+  const t = addTax(unitPrice);
   await prisma.$transaction([
     prisma.invoice.update({
       where: { id },
@@ -124,23 +134,19 @@ export async function saveInvoiceEdit(
       },
     }),
     prisma.invoiceLine.deleteMany({ where: { invoiceId: id } }),
-    prisma.invoiceLine.createMany({
-      data: lines.map((l, i) => {
-        const sub = l.quantity * l.unitPriceExTax;
-        const t = addTax(sub);
-        return {
-          invoiceId: id,
-          sortOrder: (i + 1) * 10,
-          itemType: "CUSTOM",
-          label: l.label,
-          description: l.description || null,
-          unitPriceExTax: l.unitPriceExTax,
-          quantity: l.quantity,
-          subtotalExTax: sub,
-          taxAmount: t.tax,
-          totalInclTax: t.amountIncl,
-        };
-      }),
+    prisma.invoiceLine.create({
+      data: {
+        invoiceId: id,
+        sortOrder: 10,
+        itemType: "SERVICE",
+        label: "業務委託費一式",
+        description: "内訳は別紙「稼働明細書」のとおり",
+        unitPriceExTax: unitPrice,
+        quantity: 1,
+        subtotalExTax: unitPrice,
+        taxAmount: t.tax,
+        totalInclTax: t.amountIncl,
+      },
     }),
   ]);
   revalidatePath(`/admin/invoices/${id}`);

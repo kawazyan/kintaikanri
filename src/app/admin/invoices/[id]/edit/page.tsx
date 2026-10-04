@@ -39,18 +39,18 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
           addressee: i.addressee?.trim() || i.client.name,
           subject: i.subject?.trim() || defaultSubject(i.yearMonth),
           note: i.note?.trim() ? i.note : DEFAULT_INVOICE_NOTE,
-          lines: i.lines.map((l) => ({
-            label: l.label,
-            description: l.description ?? "",
-            quantity: l.quantity,
-            unitPriceExTax: l.unitPriceExTax,
-          })),
+          amountExTax: i.subtotalExTax,
+          hasStatement: !!statement,
           staff: (statement?.staff ?? []).map((s) => ({
             name: s.name,
             places: s.places.join("、"),
             carriers: s.carriers.join("、"),
             dates: s.dates,
+            serviceExTax: s.serviceExTax ?? 0,
+            serviceCalc: s.serviceCalc ?? "",
             travelInclTax: s.travel.amountInclTax,
+            extrasExTax: (s.extras ?? []).reduce((sum, e) => sum + e.amountExTax, 0),
+            extrasLabel: (s.extras ?? []).map((e) => e.label).join("、"),
           })),
         }}
         yearMonth={i.yearMonth}

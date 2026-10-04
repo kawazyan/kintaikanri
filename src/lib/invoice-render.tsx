@@ -1,6 +1,6 @@
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
-import { DEFAULT_INVOICE_NOTE, defaultSubject, monthEndOf } from "@/lib/invoice-defaults";
+import { DEFAULT_INVOICE_NOTE, defaultSubject, monthEndOf, nextMonthEnd } from "@/lib/invoice-defaults";
 import type { StatementSnapshot } from "@/lib/invoice-draft";
 import { InvoiceDocument, type InvoiceDocData } from "@/app/invoice/[id]/pdf/invoice-document";
 import { StatementDocument } from "@/app/invoice/[id]/statement/statement-document";
@@ -16,6 +16,7 @@ export async function loadInvoiceDoc(id: string) {
     subject: invoice.subject?.trim() || defaultSubject(invoice.yearMonth),
     // 発行日は稼働月の月末日(例: 9月分 → 2026/09/30)。下書き・確定後とも同じ。
     issuedAtLabel: monthEndOf(invoice.yearMonth).replaceAll("-", "/"),
+    dueLabel: nextMonthEnd(monthEndOf(invoice.yearMonth)).replaceAll("-", "/"),
     lines: invoice.lines.map((l) => ({
       label: l.label,
       description: l.description,
@@ -38,8 +39,9 @@ export async function renderInvoicePdf(id: string) {
 }
 
 export async function renderStatementPdf(id: string) {
-  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { invoiceNumber: true, statement: true } });
+  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { invoiceNumber: true, statement: true, subtotalExTax: true, taxAmount: true, totalInclTax: true } });
   if (!invoice?.statement) return null;
-  const buffer = await renderToBuffer(<StatementDocument data={invoice.statement as unknown as StatementSnapshot} />);
+  const totals = { subtotalExTax: invoice.subtotalExTax, taxAmount: invoice.taxAmount, totalInclTax: invoice.totalInclTax };
+  const buffer = await renderToBuffer(<StatementDocument data={invoice.statement as unknown as StatementSnapshot} totals={totals} />);
   return { buffer, invoiceNumber: invoice.invoiceNumber };
 }
