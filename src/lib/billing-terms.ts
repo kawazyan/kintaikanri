@@ -10,6 +10,8 @@ export type ShiftBillingRule = {
   toMonth?: string; // 適用終了月(YYYY-MM)
   contract: "DAILY" | "MONTHLY"; // DAILY=日額×稼働日 / MONTHLY=月額固定(稼働が1日でもあれば)
   rateExTax: number; // 日額 or 月額(税抜)
+  absenceDeduction?: "YES" | "NO"; // 月額のとき、欠勤で減算するか(YES=月額÷予定日数×稼働日数。省略はNO=固定)
+  plannedDays?: number; // 欠勤減算ありのときの予定日数
   flatTravelExTax?: number; // 月額一律の交通費(税抜)
   travelByStore?: TravelByStore[]; // 店舗ごとの1日あたり交通費(税抜・往復)。なければ取引先共通のものを使う
   note?: string; // 計算方法に足す一言(例: 16稼働)

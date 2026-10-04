@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { currentJstYearMonth, jstMonthRange, toJstDateValue, toJstTimeValue } from "@/lib/time";
 import { SHIFT_CHANGE_KIND_LABEL, SHIFT_CHANGE_STATUS_LABEL } from "@/lib/attendance-requests";
+import { findShiftsForClient, loadRuleIndex } from "@/lib/client-shifts";
 
 // 取引先向け「出退勤の閲覧専用ページ」用のデータ。
 // 位置情報(座標)などは返さない。見せるのは、スタッフ名・店舗・予定・出勤/退勤時刻・状態だけ。
@@ -45,8 +46,10 @@ export function normalizeYearMonth(raw: string | undefined) {
 
 export async function loadClientAttendance(clientId: string, yearMonth: string, now: Date = new Date()): Promise<ViewRow[]> {
   const { start, end } = jstMonthRange(yearMonth);
+  // 稼働依頼に紐付いたシフト + 契約(スタッフ×店舗)に当てはまるシフト
+  const mine = await findShiftsForClient(clientId, yearMonth);
   const shifts = await prisma.shift.findMany({
-    where: { startTime: { gte: start, lt: end }, workOrderStaff: { workOrder: { clientId } } },
+    where: { id: { in: mine.map((m) => m.id) } },
     include: { staff: { select: { name: true } }, clockRecords: { orderBy: { timestamp: "asc" } } },
     orderBy: [{ startTime: "asc" }, { staffId: "asc" }],
   });
@@ -129,13 +132,11 @@ export async function loadClientShiftChanges(clientId: string, yearMonth: string
   const { start, end } = jstMonthRange(yearMonth);
   const assignments = await prisma.workOrderStaff.findMany({ where: { workOrder: { clientId } }, select: { id: true, staffId: true } });
   const assignmentIds = new Set(assignments.map((a) => a.id));
-  const shifts = await prisma.shift.findMany({
-    where: { startTime: { gte: start, lt: end }, workOrderStaffId: { in: [...assignmentIds] } },
-    select: { id: true, staffId: true, startTime: true },
-  });
+  const ruleIndex = await loadRuleIndex(yearMonth);
+  const shifts = await findShiftsForClient(clientId, yearMonth, ruleIndex);
   const shiftIds = shifts.map((s) => s.id);
   const staffDates = new Set(shifts.map((s) => `${s.staffId}|${toJstDateValue(s.startTime)}`));
-  const staffIds = [...new Set(assignments.map((a) => a.staffId).filter((x): x is string => !!x))];
+  const staffIds = [...new Set([...assignments.map((a) => a.staffId).filter((x): x is string => !!x), ...shifts.map((s) => s.staffId)])];
   if (!staffIds.length) return [];
 
   const names = new Map((await prisma.staff.findMany({ where: { id: { in: staffIds } }, select: { id: true, name: true } })).map((x) => [x.id, x.name]));
@@ -182,9 +183,16 @@ export async function loadClientShiftChanges(clientId: string, yearMonth: string
       const st = isoText(v.startTime);
       return !!st && st >= start && st < end;
     };
+    const bst = isoText(before.startTime);
+    const ownedByContract =
+      h.changeType === "DELETE" && !before.workOrderStaffId && !!bst && inMonth(before) &&
+      (() => {
+        const owners = ruleIndex.owners(names.get(h.staffId) ?? "", String(before.storeName ?? ""), toJstDateValue(bst));
+        return owners.length === 1 && owners[0] === clientId;
+      })();
     const mine =
       h.changeType === "DELETE"
-        ? !!before.workOrderStaffId && assignmentIds.has(before.workOrderStaffId) && inMonth(before)
+        ? (!!before.workOrderStaffId && assignmentIds.has(before.workOrderStaffId) && inMonth(before)) || ownedByContract
         : !!h.shiftId && shiftIds.includes(h.shiftId);
     if (!mine) continue;
     if (h.changeType === "UPDATE") {

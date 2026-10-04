@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Building2, Copy, Eye, Mail, Phone, UserRound } from "lucide-react";
 import { adminBulkDeleteClients, adminIssueClientViewToken, adminRevokeClientViewToken } from "./actions";
@@ -150,6 +151,7 @@ export function ClientsList({ clients }: { clients: ClientRow[] }) {
                 </p>
               )}
             </div>
+            <Link href={`/admin/clients/${c.id}/contracts`} className="mt-4 block rounded-2xl bg-[#14283b] px-4 py-3 text-center text-sm font-black text-white">契約(スタッフ×店舗×単価)を登録・確認</Link>
             <ViewUrlBox client={c} />
           </article>
         ))}
