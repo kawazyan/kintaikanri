@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Pencil,
   Copy,
+  Plus,
   Clock,
   Building2,
   BriefcaseBusiness,
@@ -89,6 +90,14 @@ export function ShiftCalendar({ days, shiftsByDate, completedDates, todayDateKey
             <p className="app-section-kicker">SELECTED DATE</p>
             <h2>{selectedMeta ? `${selectedMeta.day}日（${selectedMeta.weekdayLabel}）` : "選択日のシフト"}</h2>
           </div>
+          {selected && selectedShifts.length === 0 && (
+            <Link
+              href={`/shift/new?date=${selected}`}
+              className="flex items-center gap-1.5 rounded-[14px] bg-gradient-to-b from-red-500 to-red-700 px-3 py-2 text-xs font-black text-white shadow-[0_6px_14px_rgba(220,38,38,.22)] transition active:scale-[.97]"
+            >
+              <Plus size={14} /> この日に新規登録
+            </Link>
+          )}
         </div>
 
         {selected && selectedShifts.length === 0 && (
