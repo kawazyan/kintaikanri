@@ -8,12 +8,14 @@ import { ShiftWizard, type WizardInitialValues } from "./shift-wizard";
 export default async function NewShiftPage({
   searchParams,
 }: {
-  searchParams: Promise<{ copy?: string }>;
+  searchParams: Promise<{ copy?: string; date?: string }>;
 }) {
   const staffId = await getStaffId();
   if (!staffId) redirect("/");
 
-  const { copy } = await searchParams;
+  const { copy, date } = await searchParams;
+  // カレンダーで選んだ日から来た場合は、その日をあらかじめ選択済みにする。
+  const initialDate = date && /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(date) ? date : undefined;
   let initial: WizardInitialValues | undefined;
 
   if (copy) {
@@ -39,7 +41,7 @@ export default async function NewShiftPage({
       <h1 className="bg-gradient-to-r from-red-600 to-slate-700 bg-clip-text text-xl font-bold text-transparent">
         シフト新規登録
       </h1>
-      <ShiftWizard initial={initial} />
+      <ShiftWizard initial={initial} initialDate={initialDate} />
     </div>
     </main>
   );

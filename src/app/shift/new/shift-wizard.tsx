@@ -43,16 +43,22 @@ const OUTLINE_BUTTON =
 
 export function ShiftWizard({
   initial,
+  initialDate,
   staffId,
 }: {
   initial?: WizardInitialValues;
+  /** カレンダーで選んだ日(YYYY-MM-DD)。月と日付をあらかじめ選択済みにする。 */
+  initialDate?: string;
   /** 管理者がスタッフの代わりに登録する場合に指定する。未指定なら現在ログイン中の本人。 */
   staffId?: string;
 }) {
   const router = useRouter();
   const [step, setStep] = useState(1);
 
-  const [yearMonth, setYearMonth] = useState(currentJstYearMonth());
+  // 選べる月の範囲内の日付だけ、あらかじめ選択済みにする(範囲外は無視)。
+  const presetDate =
+    initialDate && listMonthOptions(3, 6).some((o) => o.value === initialDate.slice(0, 7)) ? initialDate : undefined;
+  const [yearMonth, setYearMonth] = useState(presetDate ? presetDate.slice(0, 7) : currentJstYearMonth());
   const [workType, setWorkType] = useState<WorkType | null>(initial?.workType ?? null);
 
   const initialCarrierIsPreset = initial?.carrier ? isPresetCarrier(initial.carrier) : false;
@@ -69,7 +75,7 @@ export function ShiftWizard({
 
   // ⚠️ 重要: 全ての時間入力は日本時間（JST）です
   // 例：選択した "10:00" は JST の 10:00 を意味し、UTC の 01:00 として保存されます
-  const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
+  const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set(presetDate ? [presetDate] : []));
   const [lockedDates, setLockedDates] = useState<Set<string>>(new Set());
   const [targetAmount, setTargetAmount] = useState<number | null>(null);
   const [amountMode, setAmountMode] = useState<"MONTHLY" | "DAILY">("MONTHLY");
