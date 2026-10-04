@@ -154,7 +154,7 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
         {(data.clientExtras ?? []).length > 0 && (
           <View style={st.staffBlock} wrap={false}>
             <View style={st.staffHead}>
-              <Text style={st.staffName}>共通の項目（スタッフ別ではないもの）</Text>
+              <Text style={st.staffName}>広告費</Text>
               <Text style={st.small}>小計（税抜）　{yen((data.clientExtras ?? []).reduce((a, e) => a + e.amountExTax, 0))}</Text>
             </View>
             <View style={st.itemHead}>
@@ -182,12 +182,12 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
           ))}
           {(data.clientExtras ?? []).length > 0 && (
             <View style={st.sRow}>
-              <Text>共通の項目（{(data.clientExtras ?? []).map((e) => e.label).join("・")}）</Text>
+              <Text>広告掲載費</Text>
               <Text>{yen((data.clientExtras ?? []).reduce((a, e) => a + e.amountExTax, 0))}</Text>
             </View>
           )}
           <View style={st.sRow}>
-            <Text>小計（税抜）＝ 業務委託費一式</Text>
+            <Text>業務委託費一式</Text>
             <Text>{yen(totals.subtotalExTax)}</Text>
           </View>
           <View style={st.sRow}>
