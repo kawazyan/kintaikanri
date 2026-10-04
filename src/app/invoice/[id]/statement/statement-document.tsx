@@ -105,6 +105,24 @@ const st = StyleSheet.create({
   note: { marginTop: 10, fontSize: 8, color: "#555", lineHeight: 1.5 },
 });
 
+// ご請求金額のまとめ: 全スタッフ・全項目を種類ごとに合計する(0円の種類は出さない)。
+// 商材費 = 取引先全体の項目のうち、名前に「商材」を含むもの。その他 = 宿泊費など、どれにも当てはまらないもの。
+function summaryRows(data: StatementSnapshot): { label: string; amountExTax: number }[] {
+  const sum = (xs: { amountExTax: number }[]) => xs.reduce((a, e) => a + e.amountExTax, 0);
+  const ce = data.clientExtras ?? [];
+  const ads = ce.filter((e) => e.store && e.period);
+  const rest = ce.filter((e) => !(e.store && e.period));
+  const goods = rest.filter((e) => e.label.includes("商材"));
+  const others = [...rest.filter((e) => !e.label.includes("商材")), ...data.staff.flatMap((s) => s.extras ?? [])];
+  return [
+    { label: "業務委託費", amountExTax: sum(data.staff.map((s) => ({ amountExTax: s.serviceExTax ?? 0 }))) },
+    { label: "交通費相当額", amountExTax: sum(data.staff.map((s) => ({ amountExTax: s.travel.amountExTax }))) },
+    { label: "広告掲載費", amountExTax: sum(ads) },
+    { label: "商材費", amountExTax: sum(goods) },
+    { label: "その他", amountExTax: sum(others) },
+  ].filter((r) => r.amountExTax > 0 || r.label === "業務委託費");
+}
+
 export function StatementDocument({ data, totals }: { data: StatementSnapshot; totals: StatementTotals }) {
   const [y, m] = data.yearMonth.split("-").map(Number);
   return (
@@ -208,18 +226,15 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
         <View wrap={false}>
         <View style={st.summary}>
           <Text style={st.summaryHead}>ご請求金額のまとめ</Text>
-          {data.staff.map((s, i) => (
+          <View style={[st.sRow, { backgroundColor: "#f4f4f4" }]}>
+            <Text style={st.small}>全社</Text>
+          </View>
+          {summaryRows(data).map((r, i) => (
             <View key={i} style={st.sRow}>
-              <Text>{s.name}　（業務委託費{s.travel.mode !== "NONE" ? "・交通費相当額" : ""}{(s.extras ?? []).length ? "・その他" : ""}）</Text>
-              <Text>{yen(staffBillableExTax(s))}</Text>
+              <Text>{r.label}</Text>
+              <Text>{yen(r.amountExTax)}</Text>
             </View>
           ))}
-          {(data.clientExtras ?? []).length > 0 && (
-            <View style={st.sRow}>
-              <Text>広告掲載費</Text>
-              <Text>{yen((data.clientExtras ?? []).reduce((a, e) => a + e.amountExTax, 0))}</Text>
-            </View>
-          )}
         </View>
 
         <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 6 }}>
