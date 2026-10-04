@@ -21,7 +21,7 @@ const md = (d: string) => {
 
 export async function fetchEventAds(agencyId: string, yearMonth: string): Promise<EventAdLine[]> {
   const url = process.env.KJ_EVENT_SUPABASE_URL;
-  const key = process.env.KJ_EVENT_SUPABASE_SERVICE_KEY;
+  const key = process.env.KJ_EVENT_SUPABASE_SERVICE_KEY?.trim().replace(/^["']|["']$/g, "");
   if (!url || !key) {
     throw new Error("K.J EVENT の接続情報(KJ_EVENT_SUPABASE_URL / KJ_EVENT_SUPABASE_SERVICE_KEY)が未設定です。");
   }
@@ -40,7 +40,8 @@ export async function fetchEventAds(agencyId: string, yearMonth: string): Promis
   qs.append("start_date", `lt.${to}`);
 
   const res = await fetch(`${url.replace(/\/$/, "")}/rest/v1/kj_event_cases?${qs.toString()}`, {
-    headers: { apikey: key, Authorization: `Bearer ${key}` },
+    // 古い形式のキー(JWT: eyJ…)は Bearer でも送る。新形式(sb_secret_…)は apikey ヘッダーだけで送る(Bearer だと401になる)。
+    headers: key.startsWith("eyJ") ? { apikey: key, Authorization: `Bearer ${key}` } : { apikey: key },
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`K.J EVENT からの広告費取得に失敗しました(HTTP ${res.status})。`);
