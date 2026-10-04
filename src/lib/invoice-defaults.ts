@@ -1,12 +1,20 @@
 // 請求書テンプレート(K.J 請求書テンプレート.xlsx)の固定文言。
 export const INVOICE_REGISTRATION_NUMBER = "T8370001045322";
 
+// 請求書の振込先(PDFでは表にして表示する。備考欄の文章には入れない)。
+export const INVOICE_BANK = {
+  bank: "PayPay銀行",
+  branch: "ビジネス営業所",
+  accountType: "普通",
+  accountNumber: "3596034",
+  accountHolder: "カ）ケイジェイ",
+};
+
 // 「振込先情報・備考」欄の既定文(テンプレートのとおり)。請求ごとに修正画面で変更できる。
 export const DEFAULT_INVOICE_NOTE = [
   "いつも大変お世話になっております。",
   "",
   "お支払い期限：　当請求書発行日の翌月末日までにお願い致します。",
-  "振込先：　paypay銀行　ビジネス営業所　3596034　カ）ケイジェイ",
   "※お振込み手数料は御社ご負担にてお願いいたします。",
 ].join("\n");
 

@@ -1,6 +1,6 @@
 import path from "node:path";
 import { Document, Page, Text, View, Image, Font, StyleSheet } from "@react-pdf/renderer";
-import { INVOICE_REGISTRATION_NUMBER } from "@/lib/invoice-defaults";
+import { INVOICE_BANK, INVOICE_REGISTRATION_NUMBER } from "@/lib/invoice-defaults";
 
 // 日本語表示には実フォントの登録が必須(react-pdf は既定でCJKグリフを持たない)。
 Font.register({
@@ -62,10 +62,17 @@ const s = StyleSheet.create({
   sumTotal: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8, borderTopWidth: 1.5, borderTopColor: NAVY, marginTop: 2 },
   noteWrap: { marginTop: 34 },
   noteHead: { fontSize: 9, color: NAVY, letterSpacing: 2, paddingBottom: 4, borderBottomWidth: 1.2, borderBottomColor: NAVY },
-  noteBody: { marginTop: 8, paddingHorizontal: 2, lineHeight: 1.7, fontSize: 9.5 },
+  noteBody: { marginTop: 12, paddingHorizontal: 2, lineHeight: 1.7, fontSize: 9.5 },
+  bankBox: { marginTop: 10, borderWidth: 0.8, borderColor: HAIR },
+  bankRow: { flexDirection: "row" },
+  bankCell: { width: "50%", flexDirection: "row" },
+  bankLabel: { width: 66, backgroundColor: "#f3f5f9", paddingVertical: 5, paddingHorizontal: 8, fontSize: 8.5, color: NAVY },
+  bankValue: { flex: 1, paddingVertical: 5, paddingHorizontal: 8, fontSize: 10 },
 });
 
 export function InvoiceDocument({ data }: { data: InvoiceDocData }) {
+  // 以前の請求は備考に「振込先：…」の1行が入っている。振込先は表で出すので、その行だけ取り除く。
+  const noteText = data.note.split(/\r?\n/).filter((l) => !/^\s*振込先[：:]/.test(l)).join("\n").trim();
   return (
     <Document title={`請求書 ${data.addressee} ${data.subject}`}>
       <Page size="A4" style={s.page}>
@@ -98,7 +105,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocData }) {
             <Text style={s.metaValue}>{data.dueLabel ?? "―"}</Text>
           </View>
           <View style={s.metaCol}>
-            <Text style={s.metaLabel}>登録番号</Text>
+            <Text style={s.metaLabel}>適格請求書発行事業者登録番号</Text>
             <Text style={s.metaValue}>{INVOICE_REGISTRATION_NUMBER}</Text>
           </View>
         </View>
@@ -145,7 +152,20 @@ export function InvoiceDocument({ data }: { data: InvoiceDocData }) {
 
         <View style={s.noteWrap} wrap={false}>
           <Text style={s.noteHead}>振込先情報・備考</Text>
-          <Text style={s.noteBody}>{data.note}</Text>
+          <View style={s.bankBox}>
+            <View style={s.bankRow}>
+              <View style={s.bankCell}><Text style={s.bankLabel}>金融機関</Text><Text style={s.bankValue}>{INVOICE_BANK.bank}</Text></View>
+              <View style={s.bankCell}><Text style={s.bankLabel}>支店名</Text><Text style={s.bankValue}>{INVOICE_BANK.branch}</Text></View>
+            </View>
+            <View style={[s.bankRow, { borderTopWidth: 0.8, borderTopColor: HAIR }]}>
+              <View style={s.bankCell}><Text style={s.bankLabel}>預金種別</Text><Text style={s.bankValue}>{INVOICE_BANK.accountType}</Text></View>
+              <View style={s.bankCell}><Text style={s.bankLabel}>口座番号</Text><Text style={s.bankValue}>{INVOICE_BANK.accountNumber}</Text></View>
+            </View>
+            <View style={[s.bankRow, { borderTopWidth: 0.8, borderTopColor: HAIR }]}>
+              <View style={[s.bankCell, { width: "100%" }]}><Text style={s.bankLabel}>口座名義</Text><Text style={s.bankValue}>{INVOICE_BANK.accountHolder}</Text></View>
+            </View>
+          </View>
+          <Text style={s.noteBody}>{noteText}</Text>
         </View>
       </Page>
     </Document>
