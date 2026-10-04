@@ -1,12 +1,11 @@
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
-import { formatJst } from "@/lib/time";
-import { DEFAULT_INVOICE_NOTE, defaultSubject } from "@/lib/invoice-defaults";
+import { DEFAULT_INVOICE_NOTE, defaultSubject, monthEndOf } from "@/lib/invoice-defaults";
 import type { StatementSnapshot } from "@/lib/invoice-draft";
 import { InvoiceDocument, type InvoiceDocData } from "@/app/invoice/[id]/pdf/invoice-document";
 import { StatementDocument } from "@/app/invoice/[id]/statement/statement-document";
 
-export async function loadInvoiceDoc(id: string, issuedAtOverride?: Date) {
+export async function loadInvoiceDoc(id: string) {
   const invoice = await prisma.invoice.findUnique({
     where: { id },
     include: { client: true, lines: { orderBy: { sortOrder: "asc" } } },
@@ -15,7 +14,8 @@ export async function loadInvoiceDoc(id: string, issuedAtOverride?: Date) {
   const data: InvoiceDocData = {
     addressee: invoice.addressee?.trim() || invoice.client.name,
     subject: invoice.subject?.trim() || defaultSubject(invoice.yearMonth),
-    issuedAtLabel: (issuedAtOverride ?? invoice.finalizedAt) ? formatJst((issuedAtOverride ?? invoice.finalizedAt)!).slice(0, 10).replaceAll("-", "/") : "",
+    // 発行日は稼働月の月末日(例: 9月分 → 2026/09/30)。下書き・確定後とも同じ。
+    issuedAtLabel: monthEndOf(invoice.yearMonth).replaceAll("-", "/"),
     lines: invoice.lines.map((l) => ({
       label: l.label,
       description: l.description,
@@ -30,8 +30,8 @@ export async function loadInvoiceDoc(id: string, issuedAtOverride?: Date) {
   return { invoice, data };
 }
 
-export async function renderInvoicePdf(id: string, issuedAtOverride?: Date) {
-  const loaded = await loadInvoiceDoc(id, issuedAtOverride);
+export async function renderInvoicePdf(id: string) {
+  const loaded = await loadInvoiceDoc(id);
   if (!loaded) return null;
   const buffer = await renderToBuffer(<InvoiceDocument data={loaded.data} />);
   return { buffer, invoice: loaded.invoice, data: loaded.data };

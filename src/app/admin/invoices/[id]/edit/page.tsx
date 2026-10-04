@@ -31,7 +31,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
       <h1 className="mt-3 text-2xl font-black">
         請求書・稼働明細書の修正　{i.client.name} / {i.yearMonth}
       </h1>
-      <p className="mt-1 text-sm text-slate-400">税率（10%）と発行日（承認日が自動で入ります）は変更できません。</p>
+      <p className="mt-1 text-sm text-slate-400">税率（10%）と発行日（稼働月の月末日が自動で入ります）は変更できません。</p>
       <EditInvoiceForm
         invoiceId={id}
         recipients={recipients}

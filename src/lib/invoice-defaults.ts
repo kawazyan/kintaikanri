@@ -15,6 +15,13 @@ export const defaultSubject = (yearMonth: string) => {
   return `${y}年${m}月稼働分請求に関して`;
 };
 
+// 稼働月(YYYY-MM)の月末日(YYYY-MM-DD)。請求書の発行日はこの日付にする。
+export function monthEndOf(yearMonth: string) {
+  const [y, m] = yearMonth.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m, 0));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+
 // 発行日(JST日付 YYYY-MM-DD)の翌月末日(YYYY-MM-DD)。
 export function nextMonthEnd(issueDate: string) {
   const [y, m] = issueDate.split("-").map(Number);

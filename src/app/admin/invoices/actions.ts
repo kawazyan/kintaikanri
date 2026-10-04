@@ -54,7 +54,7 @@ export type InvoiceEditPayload = {
   staff: { dates: string[]; travelInclTax: number }[];
 };
 
-// 「修正」画面の保存。請求書は税率(10%固定)と発行日(承認日に自動)以外を直せる。
+// 「修正」画面の保存。請求書は税率(10%固定)と発行日(稼働月の月末日に自動)以外を直せる。
 // sendAfter=true のときは保存後にそのまま承認(PDF送信)まで行う。
 export async function saveInvoiceEdit(
   id: string,

@@ -96,7 +96,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocData }) {
             </View>
           </View>
           <View style={s.meta}>
-            <Text style={s.issued}>発行日:　{data.issuedAtLabel || "（承認日が入ります）"}</Text>
+            <Text style={s.issued}>発行日:　{data.issuedAtLabel}</Text>
             <Text style={s.reg}>登録番号 {INVOICE_REGISTRATION_NUMBER}</Text>
           </View>
         </View>

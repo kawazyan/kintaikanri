@@ -1,8 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { sendMailStrict } from "@/lib/mail";
 import { renderInvoicePdf, renderStatementPdf } from "@/lib/invoice-render";
-import { nextMonthEnd } from "@/lib/invoice-defaults";
-import { toJstDateValue } from "@/lib/time";
+import { monthEndOf, nextMonthEnd } from "@/lib/invoice-defaults";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -39,14 +38,14 @@ export async function approveAndSendInvoice(id: string, approverName: string) {
   const admins = await prisma.adminEmail.findMany({ select: { email: true } });
   const cc = [...new Set(admins.map((a) => a.email.trim()).filter((x) => EMAIL_RE.test(x) && !to.includes(x)))];
 
-  const issuedAt = new Date();
-  const inv = await renderInvoicePdf(id, issuedAt);
+  const issuedAt = new Date(); // 確定した実際の日時(記録用)。請求書の発行日は稼働月の月末日。
+  const inv = await renderInvoicePdf(id);
   const stmt = await renderStatementPdf(id);
   if (!inv || !stmt) throw new Error("PDFの作成に失敗しました。");
 
   const [y, m] = invoice.yearMonth.split("-").map(Number);
   const addressee = inv.data.addressee;
-  const due = nextMonthEnd(toJstDateValue(issuedAt)).replaceAll("-", "/");
+  const due = nextMonthEnd(monthEndOf(invoice.yearMonth)).replaceAll("-", "/");
   const subject = `【請求書】${addressee} ${y}年${m}月稼働分`;
   const text = [
     `${addressee} 御中`,
