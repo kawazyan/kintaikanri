@@ -81,7 +81,7 @@ export function AdminNav() {
         </button>
       </div>
 
-      <nav className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <nav className="flex flex-wrap gap-2">
         {links.map((item) => {
           const Icon = item.icon;
           const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
