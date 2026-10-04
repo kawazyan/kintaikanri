@@ -19,6 +19,16 @@ const md = (d: string) => {
   return `${m}月${day}日`;
 };
 
+// 切り分け用: JWT形式の鍵の「役割(role)」と「プロジェクトID(ref)」だけを取り出す(署名=秘密の部分は出さない)。
+function keyInfo(key: string) {
+  try {
+    const payload = JSON.parse(Buffer.from(key.split(".")[1] ?? "", "base64url").toString("utf8"));
+    return `role=${payload.role ?? "?"}・ref=${payload.ref ?? "?"}`;
+  } catch {
+    return "中身を読めません";
+  }
+}
+
 export async function fetchEventAds(agencyId: string, yearMonth: string): Promise<EventAdLine[]> {
   const url = process.env.KJ_EVENT_SUPABASE_URL;
   const key = process.env.KJ_EVENT_SUPABASE_SERVICE_KEY?.trim().replace(/^["']|["']$/g, "");
@@ -44,7 +54,7 @@ export async function fetchEventAds(agencyId: string, yearMonth: string): Promis
     headers: key.startsWith("eyJ") ? { apikey: key, Authorization: `Bearer ${key}` } : { apikey: key },
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(`K.J EVENT からの広告費取得に失敗しました(HTTP ${res.status})。登録されている鍵: 先頭「${key.slice(0, 3)}」・${key.length}文字(service_roleキーは通常「eyJ」始まりで200文字前後、新形式は「sb_」始まり)。`);
+  if (!res.ok) throw new Error(`K.J EVENT からの広告費取得に失敗しました(HTTP ${res.status})。登録されている鍵: 先頭「${key.slice(0, 3)}」・${key.length}文字・${keyInfo(key)}。`);
   const rows = (await res.json()) as Row[];
 
   const lines: EventAdLine[] = [];
