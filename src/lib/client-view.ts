@@ -5,7 +5,7 @@ import { currentJstYearMonth, jstMonthRange, toJstDateValue, toJstTimeValue } fr
 // 取引先向け「出退勤の閲覧専用ページ」用のデータ。
 // 位置情報(座標)などは返さない。見せるのは、スタッフ名・店舗・予定・出勤/退勤時刻・状態だけ。
 
-export type ViewStatus = "出勤前" | "未出勤" | "出勤中" | "退勤済み" | "キャンセル";
+export type ViewStatus = "出勤前" | "未出勤" | "出勤中" | "退勤済み" | "退勤未打刻" | "キャンセル";
 
 export type ViewRow = {
   id: string;
@@ -46,7 +46,9 @@ export async function loadClientAttendance(clientId: string, yearMonth: string, 
       : inn && out
         ? "退勤済み"
         : inn
-          ? "出勤中"
+          ? toJstDateValue(s.startTime) < toJstDateValue(now)
+            ? "退勤未打刻" // 過去の日で退勤の打刻がない
+            : "出勤中"
           : now > s.startTime
             ? "未出勤"
             : "出勤前";

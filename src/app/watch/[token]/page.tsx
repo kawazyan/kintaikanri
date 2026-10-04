@@ -28,6 +28,7 @@ const BADGE: Record<ViewStatus, string> = {
   未出勤: "bg-amber-100 text-amber-800",
   出勤中: "bg-emerald-100 text-emerald-800",
   退勤済み: "bg-sky-100 text-sky-800",
+  退勤未打刻: "bg-orange-100 text-orange-800",
   キャンセル: "bg-slate-200 text-slate-500",
 };
 
