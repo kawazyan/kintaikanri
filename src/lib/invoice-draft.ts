@@ -1,19 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { addTax, computeInvoiceTotals, expenseLabel } from "@/lib/billing";
-import { toJstDateValue } from "@/lib/time";
+import { jstMonthRange, toJstDateValue } from "@/lib/time";
+import { activeShiftRules, normName, type BillingTerms, type TravelByStore } from "@/lib/billing-terms";
 import { syncWorkOrderShiftLinks } from "@/lib/work-order-linking";
 
 // 稼働明細書に載せるスナップショット(請求下書き作成時点の内容を Invoice.statement に保存する)。
 // 請求書は「業務委託費一式」の1行だけ。計算方法と内訳はすべてこの明細書に書く。
 export type StatementExtra = { label: string; amountExTax: number; amountInclTax: number; calc?: string };
 
-// 取引先ごとの請求の取り決め(Client.billingTerms)。
-export type BillingTerms = {
-  // 店舗ごとの1稼働日あたり交通費(税抜・往復)。店舗名に match を含む稼働日に適用する。
-  travelByStore?: { match: string; perDayExTax: number; detail: string }[];
-  // 稼働が1日でもあれば毎月加算する固定項目(税抜)。例: 新幹線代。
-  monthlyExtras?: { label: string; amountExTax: number; calc: string }[];
-};
 
 export type StatementStaff = {
   name: string;
@@ -57,6 +51,32 @@ export function staffBillableExTax(s: StatementStaff) {
 
 const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
 
+// 稼働日ごとの店舗から、店舗別の往復交通費を計算する。取り決めのない店舗は0円にして警告を返す。
+function perStoreTravel(rules: TravelByStore[], dayStore: Map<string, string>, staffName: string) {
+  const counts = new Map<number, number>();
+  const unmatched = new Set<string>();
+  for (const [, store] of dayStore) {
+    const idx = rules.findIndex((r) => store.includes(r.match));
+    if (idx < 0) unmatched.add(store);
+    else counts.set(idx, (counts.get(idx) ?? 0) + 1);
+  }
+  const parts: string[] = [];
+  let ex = 0;
+  for (const [idx, n] of [...counts].sort((a, b) => a[0] - b[0])) {
+    const r = rules[idx];
+    ex += r.perDayExTax * n;
+    parts.push(`${r.match} ${yen(r.perDayExTax)}（${r.detail}）× ${n}日`);
+  }
+  const warning = unmatched.size
+    ? `${staffName}さんの稼働店舗「${[...unmatched].join("、")}」は交通費の取り決めがないため、交通費を0円で作成しました。必要なら修正画面で入力してください。`
+    : null;
+  const travel: StatementStaff["travel"] =
+    ex > 0
+      ? { mode: "PER_DAY", amountExTax: ex, amountInclTax: addTax(ex).amountIncl, calc: `${parts.join(" ＋ ")} ＝ ${yen(ex)}＋税で計算` }
+      : { mode: "NONE", amountExTax: 0, amountInclTax: 0 };
+  return { travel, warning };
+}
+
 type DraftResult = { id: string; invoiceNumber: string };
 
 // 請求下書きを作る(管理画面のボタンと、月初の自動作成の両方から使う)。
@@ -85,7 +105,6 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
       },
     },
   });
-  if (!orders.length) throw new Error("対象月の承認済み稼働依頼がありません。");
 
   const assignmentIds = orders.flatMap((o) => o.staffAssignments.map((a) => a.id));
   const expenses = await prisma.expense.findMany({
@@ -151,24 +170,9 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
         // 取引先との取り決め: 稼働日ごとに、その日の店舗に合う往復交通費を加算する。
         const dayStore = new Map<string, string>();
         for (const sh of completedShifts) dayStore.set(toJstDateValue(sh.startTime), sh.storeName);
-        const counts = new Map<number, number>();
-        const unmatched = new Set<string>();
-        for (const [, store] of dayStore) {
-          const idx = terms.travelByStore.findIndex((r) => store.includes(r.match));
-          if (idx < 0) unmatched.add(store);
-          else counts.set(idx, (counts.get(idx) ?? 0) + 1);
-        }
-        const parts: string[] = [];
-        let ex = 0;
-        for (const [idx, n] of [...counts].sort((a, b) => a[0] - b[0])) {
-          const r = terms.travelByStore[idx];
-          ex += r.perDayExTax * n;
-          parts.push(`${r.match} ${yen(r.perDayExTax)}（${r.detail}）× ${n}日`);
-        }
-        if (unmatched.size) {
-          warnings.push(`${assignment.staff.name}さんの稼働店舗「${[...unmatched].join("、")}」は交通費の取り決めがないため、交通費を0円で作成しました。必要なら修正画面で入力してください。`);
-        }
-        if (ex > 0) travel = { mode: "PER_DAY", amountExTax: ex, amountInclTax: addTax(ex).amountIncl, calc: `${parts.join(" ＋ ")} ＝ ${yen(ex)}＋税で計算` };
+        const r = perStoreTravel(terms.travelByStore, dayStore, assignment.staff.name);
+        if (r.warning) warnings.push(r.warning);
+        travel = r.travel;
       } else if (assignment.travelExpense === "FLAT") {
         const flat = assignment.flatTravelAmountExTax ?? 0;
         if (days > 0 && flat > 0) {
@@ -215,6 +219,70 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
         extras,
       });
     }
+  }
+
+  // ---- シフトからの請求(稼働依頼がなくてもよい) ----
+  // ルールに合う「未紐付け」の完了シフトを、スタッフごとに集計する。
+  const rules = activeShiftRules(terms, yearMonth);
+  if (rules.length) {
+    const { start, end } = jstMonthRange(yearMonth);
+    const allStaff = await prisma.staff.findMany({ select: { id: true, name: true } });
+    const used = new Set<string>();
+    for (const rule of rules) {
+      const person = allStaff.find((x) => normName(x.name) === normName(rule.staffName));
+      if (!person) {
+        warnings.push(`請求ルールのスタッフ「${rule.staffName}」が見つかりません。`);
+        continue;
+      }
+      const shifts = await prisma.shift.findMany({
+        where: { staffId: person.id, workOrderStaffId: null, cancelledAt: null, startTime: { gte: start, lt: end } },
+        include: { clockRecords: true },
+        orderBy: { startTime: "asc" },
+      });
+      const done = shifts.filter(
+        (s) =>
+          !used.has(s.id) &&
+          s.clockRecords.some((r) => r.type === "IN") &&
+          s.clockRecords.some((r) => r.type === "OUT") &&
+          (!rule.storeMatch?.length || rule.storeMatch.some((m) => s.storeName.includes(m)))
+      );
+      done.forEach((s) => used.add(s.id));
+      const dayStore = new Map<string, string>();
+      for (const s of done) dayStore.set(toJstDateValue(s.startTime), s.storeName);
+      const dates = [...dayStore.keys()].sort();
+      if (!dates.length) continue;
+
+      const service = rule.contract === "DAILY" ? rule.rateExTax * dates.length : rule.rateExTax;
+      const serviceCalc =
+        rule.contract === "DAILY"
+          ? `日額 ${yen(rule.rateExTax)} × ${dates.length}日`
+          : `月額 ${yen(rule.rateExTax)}（固定${rule.note ? `・${rule.note}` : ""}）`;
+
+      let travel: StatementStaff["travel"] = { mode: "NONE", amountExTax: 0, amountInclTax: 0 };
+      const storeRules = rule.travelByStore ?? terms.travelByStore;
+      if (rule.flatTravelExTax) {
+        travel = { mode: "FLAT", amountExTax: rule.flatTravelExTax, amountInclTax: addTax(rule.flatTravelExTax).amountIncl };
+      } else if (storeRules?.length) {
+        const r = perStoreTravel(storeRules, dayStore, person.name);
+        if (r.warning) warnings.push(r.warning);
+        travel = r.travel;
+      }
+
+      statementStaff.push({
+        name: person.name,
+        places: [...new Set(done.map((s) => s.storeName))],
+        carriers: [...new Set(done.map((s) => s.carrier))],
+        dates,
+        days: dates.length,
+        serviceExTax: service,
+        serviceCalc,
+        travel,
+        extras: [],
+      });
+    }
+  }
+  if (!orders.length && !statementStaff.length) {
+    throw new Error("対象月の承認済み稼働依頼も、シフトからの請求ルールに合う稼働実績もありません。");
   }
 
   // 取引先全体の固定加算(新幹線代など)。稼働が1日でもある月だけ載せる。

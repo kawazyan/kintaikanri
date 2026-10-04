@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { combineJstDateAndTime, jstMonthRange, toJstDateValue } from "@/lib/time";
+import { activeShiftRules, ruleMatchesShift, type BillingTerms } from "@/lib/billing-terms";
 
 // 依頼スタッフ(社内スタッフに紐付け済みのものだけ)について、シフトとの
 // 紐づけを行う。
@@ -24,14 +25,22 @@ export async function syncWorkOrderShiftLinks(workOrderId: string) {
   const { start, end } = jstMonthRange(order.yearMonth);
   const mappedAssignments = order.staffAssignments.filter((a) => a.staffId && a.active);
 
+  // 他の取引先の「シフトからの請求ルール」に合うシフト(例: 別の取引先の店舗での稼働)は、この依頼に紐づけない。
+  const others = await prisma.client.findMany({ where: { id: { not: order.clientId } }, select: { billingTerms: true } });
+  const otherRules = others.flatMap((c) => activeShiftRules(c.billingTerms as BillingTerms | null, order.yearMonth));
+
   for (const assignment of mappedAssignments) {
     const staffId = assignment.staffId!;
 
     // 1. 既存の未紐付けシフトをこの依頼に紐づける。
-    await prisma.shift.updateMany({
+    const candidates = await prisma.shift.findMany({
       where: { staffId, workOrderStaffId: null, startTime: { gte: start, lt: end }, cancelledAt: null },
-      data: { workOrderStaffId: assignment.id },
+      select: { id: true, storeName: true, staff: { select: { name: true } } },
     });
+    const linkable = candidates.filter((c) => !otherRules.some((r) => ruleMatchesShift(r, c.staff.name, c.storeName)));
+    if (linkable.length) {
+      await prisma.shift.updateMany({ where: { id: { in: linkable.map((c) => c.id) } }, data: { workOrderStaffId: assignment.id } });
+    }
 
     // 2. 稼働日が確定している依頼は、まだシフトが無い日について新規作成する。
     if (order.scheduleDays.length === 0) continue;
