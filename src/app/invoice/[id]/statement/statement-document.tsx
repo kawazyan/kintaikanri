@@ -21,7 +21,9 @@ export type StatementTotals = { subtotalExTax: number; taxAmount: number; totalI
 type Item = { label: string; calc: string; amountExTax: number };
 function staffItems(s: StatementStaff): Item[] {
   const items: Item[] = [{ label: "業務委託費", calc: s.serviceCalc || "―", amountExTax: s.serviceExTax ?? 0 }];
-  if (s.travel.mode !== "NONE") {
+  if (s.travel.mode !== "NONE" && s.travel.lines?.length) {
+    for (const l of s.travel.lines) items.push({ label: l.label, calc: l.calc, amountExTax: l.amountExTax });
+  } else if (s.travel.mode !== "NONE") {
     items.push({
       label: travelLineLabel(s.travel.amountInclTax),
       calc: s.travel.calc || `${yen(s.travel.amountExTax)}＋税で計算${s.travel.mode === "FLAT" ? "（月額一律）" : ""}`,

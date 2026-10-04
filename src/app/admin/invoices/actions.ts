@@ -139,6 +139,7 @@ export async function saveInvoiceEdit(
             amountExTax: ex,
             amountInclTax: incl,
             ...(st.travel.calc && st.travel.amountInclTax === incl ? { calc: st.travel.calc } : {}),
+            ...(st.travel.lines?.length && st.travel.amountInclTax === incl ? { lines: st.travel.lines } : {}),
           },
         };
       }),
