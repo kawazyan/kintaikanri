@@ -71,10 +71,10 @@ const st = StyleSheet.create({
 export function StatementDocument({ data, totals }: { data: StatementSnapshot; totals: StatementTotals }) {
   const [y, m] = data.yearMonth.split("-").map(Number);
   return (
-    <Document title={`稼働明細書 ${data.clientName} ${data.yearMonth}`}>
+    <Document title={`請求内訳書 ${data.clientName} ${data.yearMonth}`}>
       <Page size="A4" style={st.page}>
         <View style={st.titleWrap}>
-          <Text style={st.title}>稼働明細書</Text>
+          <Text style={st.title}>請求内訳書</Text>
         </View>
         <View style={st.head}>
           <Text style={st.client}>{data.clientName}　御中</Text>

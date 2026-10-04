@@ -12,7 +12,7 @@ export const DEFAULT_INVOICE_NOTE = [
 
 export const defaultSubject = (yearMonth: string) => {
   const [y, m] = yearMonth.split("-").map(Number);
-  return `${y}年${m}月稼働分請求に関して`;
+  return `${y}年${m}月請求に関して`;
 };
 
 // 稼働月(YYYY-MM)の月末日(YYYY-MM-DD)。請求書の発行日はこの日付にする。

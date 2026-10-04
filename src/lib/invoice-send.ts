@@ -47,14 +47,14 @@ export async function sendApprovedInvoice(id: string) {
   const [y, m] = invoice.yearMonth.split("-").map(Number);
   const addressee = inv.data.addressee;
   const due = nextMonthEnd(monthEndOf(invoice.yearMonth)).replaceAll("-", "/");
-  const subject = `【請求書】${addressee} ${y}年${m}月稼働分`;
+  const subject = `【請求書】${addressee} ${y}年${m}月`;
   const text = [
     `${addressee} 御中`,
     "",
     "いつも大変お世話になっております。",
     "株式会社K.Jです。",
     "",
-    `${y}年${m}月稼働分の請求書と稼働明細書をお送りいたします。`,
+    `${y}年${m}月の請求書と請求内訳書をお送りいたします。`,
     "添付ファイルをご確認くださいますようお願い申し上げます。",
     "",
     `ご請求金額（税込）：¥${invoice.totalInclTax.toLocaleString("ja-JP")}`,
@@ -73,7 +73,7 @@ export async function sendApprovedInvoice(id: string) {
     text,
     attachments: [
       { filename: `請求書_${invoice.yearMonth}_${invoice.invoiceNumber}.pdf`, content: inv.buffer },
-      { filename: `稼働明細書_${invoice.yearMonth}_${invoice.invoiceNumber}.pdf`, content: stmt.buffer },
+      { filename: `請求内訳書_${invoice.yearMonth}_${invoice.invoiceNumber}.pdf`, content: stmt.buffer },
     ],
   });
 
