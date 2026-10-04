@@ -80,7 +80,7 @@ const st = StyleSheet.create({
   month: { fontSize: 11 },
   lead: { marginTop: 8, fontSize: 8.5, color: "#444" },
   staffBlock: { marginTop: 10, borderWidth: 1, borderColor: LINE },
-  staffHead: { flexDirection: "row", justifyContent: "space-between", backgroundColor: BLUE, paddingVertical: 5, paddingHorizontal: 8 },
+  staffHead: { flexDirection: "row", justifyContent: "center", backgroundColor: BLUE, paddingVertical: 5, paddingHorizontal: 8 },
   staffName: { fontSize: 11 },
   row: { flexDirection: "row", borderTopWidth: 1, borderTopColor: "#d0d0d0" },
   label: { width: 84, flexShrink: 0, paddingVertical: 3, paddingHorizontal: 6, backgroundColor: "#f7f7f7", fontSize: 8.5, color: "#444" },
@@ -89,6 +89,8 @@ const st = StyleSheet.create({
   itemRow: { flexDirection: "row", borderTopWidth: 1, borderTopColor: "#d0d0d0" },
   cItem: { width: "30%", paddingVertical: 3.5, paddingHorizontal: 6 },
   cCalc: { width: "48%", paddingVertical: 3.5, paddingHorizontal: 6, lineHeight: 1.1 },
+  subRow: { flexDirection: "row", borderTopWidth: 1, borderTopColor: "#d0d0d0", backgroundColor: "#f7f7f7" },
+  subLabel: { width: "78%", paddingVertical: 3.5, paddingHorizontal: 6, textAlign: "right", fontSize: 8.5, color: "#444" },
   cStore: { width: "42%", paddingVertical: 3.5, paddingHorizontal: 6 },
   cPeriod: { width: "36%", paddingVertical: 3.5, paddingHorizontal: 6 },
   cAmt: { width: "22%", paddingVertical: 3.5, paddingHorizontal: 6, textAlign: "right" },
@@ -120,7 +122,6 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
           <View key={`${s.name}-${i}`} style={st.staffBlock} wrap={false}>
             <View style={st.staffHead}>
               <Text style={st.staffName}>スタッフ名　{s.name}</Text>
-              <Text style={st.small}>小計（税抜）　{yen(staffBillableExTax(s))}</Text>
             </View>
             <View style={st.row}>
               <Text style={st.label}>稼働場所</Text>
@@ -150,6 +151,10 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
                 <Text style={st.cAmt}>{yen(it.amountExTax)}</Text>
               </View>
             ))}
+            <View style={st.subRow}>
+              <Text style={st.subLabel}>小計（税抜）</Text>
+              <Text style={st.cAmt}>{yen(staffBillableExTax(s))}</Text>
+            </View>
           </View>
         ))}
 
@@ -157,7 +162,6 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
           <View style={st.staffBlock} wrap={false}>
             <View style={st.staffHead}>
               <Text style={st.staffName}>広告費</Text>
-              <Text style={st.small}>小計（税抜）　{yen((data.clientExtras ?? []).reduce((a, e) => a + e.amountExTax, 0))}</Text>
             </View>
             {(data.clientExtras ?? []).some((e) => e.store && e.period) && (
               <View>
@@ -191,6 +195,10 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
                 ))}
               </View>
             )}
+            <View style={st.subRow}>
+              <Text style={st.subLabel}>小計（税抜）</Text>
+              <Text style={st.cAmt}>{yen((data.clientExtras ?? []).reduce((a, e) => a + e.amountExTax, 0))}</Text>
+            </View>
           </View>
         )}
 
@@ -209,7 +217,7 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
             </View>
           )}
           <View style={st.sRow}>
-            <Text>業務委託費一式</Text>
+            <Text>小計（税抜）</Text>
             <Text>{yen(totals.subtotalExTax)}</Text>
           </View>
           <View style={st.sRow}>
