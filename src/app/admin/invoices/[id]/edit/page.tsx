@@ -41,6 +41,8 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
           note: i.note?.trim() ? i.note : DEFAULT_INVOICE_NOTE,
           amountExTax: i.subtotalExTax,
           hasStatement: !!statement,
+          warnings: statement?.warnings ?? [],
+          clientExtras: (statement?.clientExtras ?? []).map((e) => ({ label: e.label, amountExTax: e.amountExTax, calc: e.calc ?? "" })),
           staff: (statement?.staff ?? []).map((s) => ({
             name: s.name,
             places: s.places.join("、"),

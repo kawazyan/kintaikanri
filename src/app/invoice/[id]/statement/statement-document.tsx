@@ -31,12 +31,12 @@ function staffItems(s: StatementStaff): Item[] {
   if (s.travel.mode !== "NONE") {
     items.push({
       label: travelLineLabel(s.travel.amountInclTax),
-      calc: `${yen(s.travel.amountExTax)}＋税で計算${s.travel.mode === "FLAT" ? "（月額一律）" : ""}`,
+      calc: s.travel.calc || `${yen(s.travel.amountExTax)}＋税で計算${s.travel.mode === "FLAT" ? "（月額一律）" : ""}`,
       amountExTax: s.travel.amountExTax,
     });
   }
   for (const e of s.extras ?? []) {
-    items.push({ label: e.label, calc: `${yen(e.amountExTax)}＋税で計算`, amountExTax: e.amountExTax });
+    items.push({ label: e.label, calc: e.calc || `${yen(e.amountExTax)}＋税で計算`, amountExTax: e.amountExTax });
   }
   return items;
 }
@@ -121,6 +121,27 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
           </View>
         ))}
 
+        {(data.clientExtras ?? []).length > 0 && (
+          <View style={st.staffBlock} wrap={false}>
+            <View style={st.staffHead}>
+              <Text style={st.staffName}>共通の項目（スタッフ別ではないもの）</Text>
+              <Text style={st.small}>小計（税抜）　{yen((data.clientExtras ?? []).reduce((a, e) => a + e.amountExTax, 0))}</Text>
+            </View>
+            <View style={st.itemHead}>
+              <Text style={[st.cItem, st.small]}>項目</Text>
+              <Text style={[st.cCalc, st.small]}>計算方法</Text>
+              <Text style={[st.cAmt, st.small]}>金額（税抜）</Text>
+            </View>
+            {(data.clientExtras ?? []).map((e, k) => (
+              <View key={k} style={st.itemRow}>
+                <Text style={st.cItem}>{e.label}</Text>
+                <Text style={st.cCalc}>{e.calc || `${yen(e.amountExTax)}＋税で計算`}</Text>
+                <Text style={st.cAmt}>{yen(e.amountExTax)}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         <View style={st.summary} wrap={false}>
           <Text style={st.summaryHead}>ご請求金額のまとめ</Text>
           {data.staff.map((s, i) => (
@@ -129,6 +150,12 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
               <Text>{yen(staffBillableExTax(s))}</Text>
             </View>
           ))}
+          {(data.clientExtras ?? []).length > 0 && (
+            <View style={st.sRow}>
+              <Text>共通の項目（{(data.clientExtras ?? []).map((e) => e.label).join("・")}）</Text>
+              <Text>{yen((data.clientExtras ?? []).reduce((a, e) => a + e.amountExTax, 0))}</Text>
+            </View>
+          )}
           <View style={st.sRow}>
             <Text>小計（税抜）＝ 業務委託費一式</Text>
             <Text>{yen(totals.subtotalExTax)}</Text>

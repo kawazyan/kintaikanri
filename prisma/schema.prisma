@@ -412,6 +412,7 @@ model Client {
   phone String?
   email String?
   invoiceEmails String? // 請求書メールの宛先(複数可。カンマ区切り)。未設定なら email を使う
+  billingTerms Json? // 請求の取り決め(店舗ごとの交通費・毎月の固定加算など)。請求下書き作成時に使う
   active Boolean @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

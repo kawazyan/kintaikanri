@@ -10,6 +10,8 @@ type Initial = {
   note: string;
   amountExTax: number;
   hasStatement: boolean;
+  warnings: string[];
+  clientExtras: { label: string; amountExTax: number; calc: string }[];
   staff: {
     name: string;
     places: string;
@@ -44,6 +46,7 @@ export function EditInvoiceForm({
   const [note, setNote] = useState(initial.note);
   const [amount, setAmount] = useState(initial.amountExTax);
   const [staff, setStaff] = useState(initial.staff);
+  const [extras, setExtras] = useState(initial.clientExtras);
   const [approver, setApprover] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
@@ -51,7 +54,8 @@ export function EditInvoiceForm({
   // 請求書は「業務委託費一式」1行。金額は稼働明細書の合計(業務委託費＋交通費相当額＋その他)。
   const travelEx = (incl: number) => (incl > 0 ? Math.floor((incl * 100) / 110) : 0);
   const subtotal = initial.hasStatement
-    ? staff.reduce((sum, st) => sum + (Number(st.serviceExTax) || 0) + travelEx(Number(st.travelInclTax) || 0) + st.extrasExTax, 0)
+    ? staff.reduce((sum, st) => sum + (Number(st.serviceExTax) || 0) + travelEx(Number(st.travelInclTax) || 0) + st.extrasExTax, 0) +
+      extras.reduce((sum, e) => sum + (Number(e.amountExTax) || 0), 0)
     : Number(amount) || 0;
   const tax = Math.floor((subtotal * 10) / 100);
 
@@ -61,6 +65,7 @@ export function EditInvoiceForm({
       subject,
       note,
       amountExTax: initial.hasStatement ? undefined : Number(amount),
+      clientExtras: extras.map((e) => ({ label: e.label, amountExTax: Number(e.amountExTax) || 0, calc: e.calc })),
       staff: staff.map((s) => ({
         dates: s.dates,
         serviceExTax: Number(s.serviceExTax) || 0,
@@ -97,6 +102,12 @@ export function EditInvoiceForm({
 
   return (
     <div className="mt-6 space-y-6 pb-8">
+      {initial.warnings.length > 0 && (
+        <section className="rounded-2xl border border-amber-700 bg-amber-950/30 p-4 text-sm text-amber-200">
+          {initial.warnings.map((w, i) => (<p key={i}>⚠ {w}</p>))}
+        </section>
+      )}
+
       {/* 請求書の基本項目 */}
       <section className="rounded-2xl border border-slate-700 bg-slate-900 p-5">
         <h2 className="text-base font-black">① 請求書の項目</h2>
@@ -180,6 +191,38 @@ export function EditInvoiceForm({
                 {s.extrasExTax > 0 && <p className="mt-3 text-xs text-slate-500">その他の経費（変更不可）: {s.extrasLabel} 税抜{yen(s.extrasExTax)}</p>}
               </div>
             ))}
+          </div>
+        </section>
+      )}
+
+      {/* 取引先全体の項目 */}
+      {initial.hasStatement && (
+        <section className="rounded-2xl border border-slate-700 bg-slate-900 p-5">
+          <h2 className="text-base font-black">③ 共通の項目（広告原価・商材仕入れ代原価など）</h2>
+          <p className="mt-1 text-xs text-slate-400">スタッフ別ではない項目です。金額は税抜で入力してください（消費税は合計に10%で計算されます）。ある月だけ追加し、ない月は載せません。</p>
+          <div className="mt-4 space-y-3">
+            {extras.map((e, i) => (
+              <div key={i} className="grid gap-2 rounded-xl border border-slate-800 bg-slate-950 p-3 md:grid-cols-[1fr_160px_auto]">
+                <label className={field}>
+                  項目名
+                  <input value={e.label} onChange={(ev) => setExtras(extras.map((x, xi) => (xi === i ? { ...x, label: ev.target.value } : x)))} className={`${input} mt-1`} />
+                </label>
+                <label className={field}>
+                  金額（税抜・円）
+                  <input type="number" min={0} value={e.amountExTax} onChange={(ev) => setExtras(extras.map((x, xi) => (xi === i ? { ...x, amountExTax: Number(ev.target.value) } : x)))} className={`${input} mt-1`} />
+                </label>
+                <button type="button" onClick={() => setExtras(extras.filter((_, xi) => xi !== i))} className="self-end rounded-lg border border-red-900 px-3 py-2 text-xs font-bold text-red-300">削除</button>
+                <label className={`${field} md:col-span-3`}>
+                  計算方法（明細書に表示。空なら「¥金額＋税で計算」）
+                  <input value={e.calc} onChange={(ev) => setExtras(extras.map((x, xi) => (xi === i ? { ...x, calc: ev.target.value } : x)))} className={`${input} mt-1`} placeholder="例: イベントシステムの消化金額" />
+                </label>
+              </div>
+            ))}
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setExtras([...extras, { label: "広告原価", amountExTax: 0, calc: "" }])} className="rounded-lg border border-slate-600 px-3 py-1 text-xs font-bold">＋ 広告原価</button>
+              <button type="button" onClick={() => setExtras([...extras, { label: "商材仕入れ代原価", amountExTax: 0, calc: "" }])} className="rounded-lg border border-slate-600 px-3 py-1 text-xs font-bold">＋ 商材仕入れ代原価</button>
+              <button type="button" onClick={() => setExtras([...extras, { label: "", amountExTax: 0, calc: "" }])} className="rounded-lg border border-slate-600 px-3 py-1 text-xs font-bold">＋ その他</button>
+            </div>
           </div>
         </section>
       )}

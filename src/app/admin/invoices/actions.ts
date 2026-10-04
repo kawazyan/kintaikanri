@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { buildInvoiceDraft, staffBillableExTax, type StatementSnapshot } from "@/lib/invoice-draft";
+import { buildInvoiceDraft, statementBillableExTax, type StatementSnapshot } from "@/lib/invoice-draft";
 import { approveDraftInvoice, sendApprovedInvoice } from "@/lib/invoice-send";
 import { addTax, computeInvoiceTotals, splitInclusiveTax } from "@/lib/billing";
 
@@ -68,6 +68,8 @@ export type InvoiceEditPayload = {
   note: string;
   // 稼働明細書(スタッフの並びは作成時のまま)。請求書は「業務委託費一式」1行のみで、金額は明細書の合計から自動計算する。
   staff: { dates: string[]; serviceExTax: number; serviceCalc: string; travelInclTax: number }[];
+  // 取引先全体の項目(新幹線代・広告原価・商材仕入れ代原価など)。金額は税抜。
+  clientExtras: { label: string; amountExTax: number; calc?: string }[];
   // 明細書データがない古い請求だけ使う(業務委託費一式の税抜金額)。
   amountExTax?: number;
 };
@@ -108,8 +110,17 @@ export async function saveInvoiceEdit(
       if (!Number.isInteger(svc) || svc < 0) return { ok: false, error: `${snapshot.staff[i].name}さんの業務委託費（税抜）は0以上の整数で入力してください。` };
       datesByStaff.push(dates);
     }
+    const clientExtras: StatementSnapshot["clientExtras"] = [];
+    for (const e of payload.clientExtras ?? []) {
+      const label = e.label.trim();
+      if (!label && !e.amountExTax) continue; // 空行は無視
+      if (!label) return { ok: false, error: "共通の項目に、名前のない行があります。名前を入力するか、行を削除してください。" };
+      if (!Number.isInteger(e.amountExTax) || e.amountExTax < 0) return { ok: false, error: `共通の項目「${label}」の金額（税抜）は0以上の整数で入力してください。` };
+      clientExtras.push({ label, amountExTax: e.amountExTax, amountInclTax: addTax(e.amountExTax).amountIncl, ...(e.calc?.trim() ? { calc: e.calc.trim() } : {}) });
+    }
     nextStatement = {
       ...snapshot,
+      clientExtras,
       staff: snapshot.staff.map((st, i) => {
         const dates = datesByStaff[i];
         const raw = payload.staff[i].travelInclTax;
@@ -123,11 +134,16 @@ export async function saveInvoiceEdit(
           days: dates.length,
           serviceExTax: payload.staff[i].serviceExTax,
           serviceCalc: payload.staff[i].serviceCalc.trim() || st.serviceCalc,
-          travel: { mode, amountExTax: ex, amountInclTax: incl },
+          travel: {
+            mode,
+            amountExTax: ex,
+            amountInclTax: incl,
+            ...(st.travel.calc && st.travel.amountInclTax === incl ? { calc: st.travel.calc } : {}),
+          },
         };
       }),
     };
-    unitPrice = nextStatement.staff.reduce((sum, st) => sum + staffBillableExTax(st), 0);
+    unitPrice = statementBillableExTax(nextStatement);
   } else {
     const v = payload.amountExTax;
     if (v == null || !Number.isInteger(v) || v < 0) return { ok: false, error: "業務委託費一式の金額（税抜）は0以上の整数で入力してください。" };

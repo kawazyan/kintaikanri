@@ -5,7 +5,15 @@ import { syncWorkOrderShiftLinks } from "@/lib/work-order-linking";
 
 // 稼働明細書に載せるスナップショット(請求下書き作成時点の内容を Invoice.statement に保存する)。
 // 請求書は「業務委託費一式」の1行だけ。計算方法と内訳はすべてこの明細書に書く。
-export type StatementExtra = { label: string; amountExTax: number; amountInclTax: number };
+export type StatementExtra = { label: string; amountExTax: number; amountInclTax: number; calc?: string };
+
+// 取引先ごとの請求の取り決め(Client.billingTerms)。
+export type BillingTerms = {
+  // 店舗ごとの1稼働日あたり交通費(税抜・往復)。店舗名に match を含む稼働日に適用する。
+  travelByStore?: { match: string; perDayExTax: number; detail: string }[];
+  // 稼働が1日でもあれば毎月加算する固定項目(税抜)。例: 新幹線代。
+  monthlyExtras?: { label: string; amountExTax: number; calc: string }[];
+};
 
 export type StatementStaff = {
   name: string;
@@ -16,7 +24,8 @@ export type StatementStaff = {
   serviceExTax: number; // 業務委託費(税抜)
   serviceCalc: string; // 業務委託費の計算方法(例: 日額 ¥20,000 × 3日)
   // 交通費: NONE=請求しない(単価に込み等) / ACTUAL=スタッフ申請額で請求 / FLAT=クライアントへ一律請求
-  travel: { mode: "NONE" | "ACTUAL" | "FLAT"; amountExTax: number; amountInclTax: number };
+  // PER_DAY=取引先との取り決めで稼働日×店舗ごとに計算
+  travel: { mode: "NONE" | "ACTUAL" | "FLAT" | "PER_DAY"; amountExTax: number; amountInclTax: number; calc?: string };
   extras?: StatementExtra[]; // 宿泊費・その他経費のうちクライアントへ請求するもの
 };
 
@@ -24,7 +33,18 @@ export type StatementSnapshot = {
   clientName: string;
   yearMonth: string;
   staff: StatementStaff[];
+  // スタッフに紐付かない取引先全体の項目(新幹線代・広告原価・商材仕入れ代原価など)
+  clientExtras?: StatementExtra[];
+  warnings?: string[]; // 下書き作成時の注意(画面にだけ表示。PDFには載せない)
 };
+
+// 請求書の「業務委託費一式」(税抜)= 全スタッフ分 + 取引先全体の項目
+export function statementBillableExTax(d: Pick<StatementSnapshot, "staff" | "clientExtras">) {
+  return (
+    d.staff.reduce((sum, s) => sum + staffBillableExTax(s), 0) +
+    (d.clientExtras ?? []).reduce((sum, e) => sum + e.amountExTax, 0)
+  );
+}
 
 // スタッフ1人ぶんの請求対象(税抜)。請求書の「業務委託費一式」の内訳の合計になる。
 export function staffBillableExTax(s: StatementStaff) {
@@ -44,7 +64,7 @@ type DraftResult = { id: string; invoiceNumber: string };
 export async function buildInvoiceDraft(clientId: string, yearMonth: string): Promise<DraftResult> {
   if (!clientId || !yearMonth) throw new Error("取引先と対象月は必須です。");
 
-  const client = await prisma.client.findUnique({ where: { id: clientId }, select: { name: true } });
+  const client = await prisma.client.findUnique({ where: { id: clientId }, select: { name: true, billingTerms: true } });
   if (!client) throw new Error("取引先が見つかりません。");
 
   const billableWhere = { clientId, yearMonth, status: { in: ["APPROVED", "CHANGES_PENDING", "TERMINATED"] as ("APPROVED" | "CHANGES_PENDING" | "TERMINATED")[] } };
@@ -72,7 +92,9 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
     where: { yearMonth, status: "APPROVED", workOrderStaffId: { in: assignmentIds } },
   });
 
+  const terms = (client.billingTerms ?? {}) as BillingTerms;
   const statementStaff: StatementStaff[] = [];
+  const warnings: string[] = [];
 
   for (const order of orders) {
     for (const assignment of order.staffAssignments.filter((x) => x.active)) {
@@ -125,7 +147,29 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
       // INCLUDED: 請求しない。SEPARATE/CONSULT: スタッフが申請して承認された交通費を請求する。
       // すべて税別計算(税抜額＋消費税)。例: 税込1,100円 → 1,000円＋税。
       let travel: StatementStaff["travel"] = { mode: "NONE", amountExTax: 0, amountInclTax: 0 };
-      if (assignment.travelExpense === "FLAT") {
+      if (terms.travelByStore?.length) {
+        // 取引先との取り決め: 稼働日ごとに、その日の店舗に合う往復交通費を加算する。
+        const dayStore = new Map<string, string>();
+        for (const sh of completedShifts) dayStore.set(toJstDateValue(sh.startTime), sh.storeName);
+        const counts = new Map<number, number>();
+        const unmatched = new Set<string>();
+        for (const [, store] of dayStore) {
+          const idx = terms.travelByStore.findIndex((r) => store.includes(r.match));
+          if (idx < 0) unmatched.add(store);
+          else counts.set(idx, (counts.get(idx) ?? 0) + 1);
+        }
+        const parts: string[] = [];
+        let ex = 0;
+        for (const [idx, n] of [...counts].sort((a, b) => a[0] - b[0])) {
+          const r = terms.travelByStore[idx];
+          ex += r.perDayExTax * n;
+          parts.push(`${r.match} ${yen(r.perDayExTax)}（${r.detail}）× ${n}日`);
+        }
+        if (unmatched.size) {
+          warnings.push(`${assignment.staff.name}さんの稼働店舗「${[...unmatched].join("、")}」は交通費の取り決めがないため、交通費を0円で作成しました。必要なら修正画面で入力してください。`);
+        }
+        if (ex > 0) travel = { mode: "PER_DAY", amountExTax: ex, amountInclTax: addTax(ex).amountIncl, calc: `${parts.join(" ＋ ")} ＝ ${yen(ex)}＋税で計算` };
+      } else if (assignment.travelExpense === "FLAT") {
         const flat = assignment.flatTravelAmountExTax ?? 0;
         if (days > 0 && flat > 0) {
           travel = { mode: "FLAT", amountExTax: flat, amountInclTax: addTax(flat).amountIncl };
@@ -173,8 +217,16 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
     }
   }
 
+  // 取引先全体の固定加算(新幹線代など)。稼働が1日でもある月だけ載せる。
+  const clientExtras: StatementExtra[] = [];
+  if (statementStaff.some((s) => s.days > 0)) {
+    for (const e of terms.monthlyExtras ?? []) {
+      clientExtras.push({ label: e.label, amountExTax: e.amountExTax, amountInclTax: addTax(e.amountExTax).amountIncl, calc: e.calc });
+    }
+  }
+
   // 請求書は「業務委託費一式」の1行だけ。交通費相当額なども含めた税抜合計を単価にする。
-  const unitPrice = statementStaff.reduce((sum, s) => sum + staffBillableExTax(s), 0);
+  const unitPrice = statementBillableExTax({ staff: statementStaff, clientExtras });
   const t = addTax(unitPrice);
   const lines = [
     {
@@ -200,7 +252,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
   const revision = (previous?.revision ?? 0) + 1;
   const invoiceNumber = `KJ-${yearMonth.replace("-", "")}-${Date.now().toString().slice(-6)}${revision > 1 ? `-R${revision}` : ""}`;
 
-  const statement: StatementSnapshot = { clientName: client.name, yearMonth, staff: statementStaff };
+  const statement: StatementSnapshot = { clientName: client.name, yearMonth, staff: statementStaff, clientExtras, warnings };
 
   const invoice = await prisma.invoice.create({
     data: {
