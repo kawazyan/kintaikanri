@@ -283,6 +283,18 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
         if (r.warning) warnings.push(r.warning);
         travel = r.travel;
       }
+      // 新幹線代など、月ごとの固定の交通費をこのスタッフの交通費に足す
+      if (rule.extraTravel?.length) {
+        const add = rule.extraTravel.reduce((a, e) => a + e.amountExTax, 0);
+        const total = travel.amountExTax + add;
+        const parts = [travel.calc ? travel.calc.replace(/ ＝ [^＝]*$/, "") : "", ...rule.extraTravel.map((e) => `${e.label} ${e.calc}`)].filter(Boolean);
+        travel = {
+          mode: travel.mode === "NONE" ? "FLAT" : travel.mode,
+          amountExTax: total,
+          amountInclTax: addTax(total).amountIncl,
+          calc: `${parts.join(" ＋ ")} ＝ ${yen(total)}＋税で計算`,
+        };
+      }
 
       const uni = ((m) => (n: string) => (terms.shopSuffix ? withShopSuffix(m.get(n) ?? n) : (m.get(n) ?? n)))(unifyStoreNames(done.map((s) => s.storeName)));
       statementStaff.push({
