@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ClientAutoRefresh } from "@/app/client/components/auto-refresh";
-import { findActiveViewToken, loadClientAttendance, normalizeYearMonth, type ViewRow, type ViewStatus } from "@/lib/client-view";
-import { currentJstYearMonth, toJstDateValue, yearMonthLabel } from "@/lib/time";
+import { findActiveViewToken, loadClientAttendance, loadClientShiftChanges, normalizeYearMonth, type ViewRow, type ViewStatus } from "@/lib/client-view";
+import { currentJstYearMonth, toJstDateValue, toJstTimeValue, yearMonthLabel } from "@/lib/time";
 
 // 取引先向けの出退勤の閲覧専用ページ。ログイン不要(URLのトークンが鍵)。検索エンジンには出さない。
 export const dynamic = "force-dynamic";
@@ -37,8 +37,18 @@ function StatusBadge({ row }: { row: ViewRow }) {
   return (
     <span className="inline-flex items-center gap-1">
       <span className={`rounded-full px-2.5 py-0.5 text-xs font-black ${BADGE[row.status]}`}>{row.status}</span>
-      {row.notes.map((n) => <span key={n} className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-black text-rose-800">{n}</span>)}
+      {row.notes.map((n) => <span key={n.label} className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-black text-rose-800">{n.label}</span>)}
     </span>
+  );
+}
+
+function Reasons({ row }: { row: ViewRow }) {
+  const items = row.notes.filter((n) => n.reason);
+  if (!items.length) return null;
+  return (
+    <div className="mt-1 space-y-0.5">
+      {items.map((n) => <p key={n.label} className="text-xs font-bold text-slate-500">{n.label}の理由：{n.reason}</p>)}
+    </div>
   );
 }
 
@@ -57,7 +67,7 @@ export default async function WatchPage({
   const ym = normalizeYearMonth(month);
   const now = new Date();
   const todayKey = toJstDateValue(now);
-  const rows = await loadClientAttendance(access.clientId, ym, now);
+  const [rows, changes] = await Promise.all([loadClientAttendance(access.clientId, ym, now), loadClientShiftChanges(access.clientId, ym)]);
   const today = ym === currentJstYearMonth(now) ? rows.filter((r) => r.date === todayKey) : [];
   const worked = new Set(rows.filter((r) => r.status === "退勤済み" || r.status === "出勤中").map((r) => `${r.staffName}|${r.date}`)).size;
 
@@ -85,6 +95,7 @@ export default async function WatchPage({
                       <StatusBadge row={r} />
                     </div>
                     <p className="mt-1 text-sm font-bold text-slate-500">{r.storeName}　予定 {r.plan}</p>
+                    <Reasons row={r} />
                     <div className="mt-3 grid grid-cols-2 gap-3">
                       <div className="rounded-2xl bg-slate-50 p-3"><p className="text-xs font-bold text-slate-400">出勤</p><p className="mt-0.5 text-2xl font-black tabular-nums">{r.clockIn ?? "--:--"}</p></div>
                       <div className="rounded-2xl bg-slate-50 p-3"><p className="text-xs font-bold text-slate-400">退勤</p><p className="mt-0.5 text-2xl font-black tabular-nums">{r.clockOut ?? "--:--"}</p></div>
@@ -121,13 +132,32 @@ export default async function WatchPage({
                       <td className="tabular-nums">{r.plan}</td>
                       <td className="tabular-nums font-bold">{r.clockIn ?? "--:--"}</td>
                       <td className="tabular-nums font-bold">{r.clockOut ?? "--:--"}</td>
-                      <td><StatusBadge row={r} /></td>
+                      <td><StatusBadge row={r} /><Reasons row={r} /></td>
                     </tr>
                   ))}
                   {!rows.length && <tr><td colSpan={7} className="py-6 text-center font-bold text-slate-400">この月の記録はありません。</td></tr>}
                 </tbody>
               </table>
             </div>
+          </section>
+          <section className="mt-6 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+            <h2 className="text-lg font-black">シフト変更の履歴</h2>
+            <p className="mt-1 text-xs font-bold text-slate-400">{yearMonthLabel(ym)}の勤務について、スタッフ側で行った申請・変更です。</p>
+            <ul className="mt-3 divide-y">
+              {changes.map((c) => (
+                <li key={c.id} className="py-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-black">{c.staffName}</span>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-black text-slate-700">{c.title}</span>
+                    {c.result && <span className="rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-black text-sky-800">{c.result}</span>}
+                    <span className="ml-auto text-xs font-bold tabular-nums text-slate-400">{toJstDateValue(c.at).slice(5).replace("-", "/")} {toJstTimeValue(c.at)}</span>
+                  </div>
+                  <p className="mt-1 text-sm font-bold text-slate-700">{c.detail}</p>
+                  {c.reason && <p className="mt-0.5 text-xs font-bold text-slate-500">理由：{c.reason}</p>}
+                </li>
+              ))}
+              {!changes.length && <li className="py-4 text-center text-sm font-bold text-slate-400">この月のシフト変更の履歴はありません。</li>}
+            </ul>
           </section>
           <p className="mt-4 text-center text-[11px] font-bold text-slate-400">株式会社K.J ／ 表示内容に相違がある場合はK.Jまでご連絡ください。</p>
         </div>
