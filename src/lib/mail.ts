@@ -31,3 +31,26 @@ export async function sendMail(params: {
     console.error("Failed to send mail", { to: params.to, subject: params.subject, err });
   }
 }
+
+// 請求書など「届いたことが重要」なメール用。sendMail と違い、失敗したら例外を投げる
+// (呼び出し側が送信失敗を画面に出し、確定処理に進まないようにするため)。
+export async function sendMailStrict(params: {
+  to: string[];
+  cc?: string[];
+  subject: string;
+  text: string;
+  attachments?: { filename: string; content: Buffer }[];
+}) {
+  const from = process.env.MAIL_FROM;
+  if (!from) throw new Error("MAIL_FROM が設定されていないため、メールを送信できません。");
+  const { error } = await getClient().emails.send({
+    from,
+    to: params.to,
+    cc: params.cc && params.cc.length ? params.cc : undefined,
+    subject: params.subject,
+    text: params.text,
+    // Buffer をそのまま渡すとJSON化の際にオブジェクトになってしまうため、base64文字列で渡す。
+    attachments: params.attachments?.map((a) => ({ filename: a.filename, content: a.content.toString("base64") })),
+  });
+  if (error) throw new Error(`メール送信に失敗しました: ${error.message}`);
+}

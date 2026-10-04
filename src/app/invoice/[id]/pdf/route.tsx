@@ -1,47 +1,22 @@
-import fs from "node:fs";
-import path from "node:path";
-import { renderToBuffer } from "@react-pdf/renderer";
+import { isAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatJst } from "@/lib/time";
-import { InvoiceDocument } from "./invoice-document";
+import { renderInvoicePdf } from "@/lib/invoice-render";
 
 export const runtime = "nodejs";
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+// 請求書PDF。確定済みの請求は従来どおり開ける。下書きは管理者のみ(承認前のプレビュー用)。
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const invoice = await prisma.invoice.findUnique({
-    where: { id },
-    include: { client: true, lines: { orderBy: { sortOrder: "asc" } } },
-  });
-  if (!invoice || invoice.status === "DRAFT") {
-    return new Response("Not Found", { status: 404 });
-  }
+  const head = await prisma.invoice.findUnique({ where: { id }, select: { status: true } });
+  if (!head) return new Response("Not Found", { status: 404 });
+  if (head.status === "DRAFT" && !(await isAdmin())) return new Response("Unauthorized", { status: 401 });
 
-  const letterheadPath = path.join(process.cwd(), "src/assets/invoice/letterhead.png");
-
-  const buffer = await renderToBuffer(
-    <InvoiceDocument
-      data={{
-        invoiceNumber: invoice.invoiceNumber,
-        yearMonth: invoice.yearMonth,
-        clientName: invoice.client.name,
-        issuedAtLabel: invoice.finalizedAt ? formatJst(invoice.finalizedAt).slice(0, 10) : "―",
-        subtotalExTax: invoice.subtotalExTax,
-        taxAmount: invoice.taxAmount,
-        totalInclTax: invoice.totalInclTax,
-        lines: invoice.lines,
-        hasLetterheadImage: fs.existsSync(letterheadPath),
-      }}
-    />
-  );
-
-  return new Response(new Uint8Array(buffer), {
+  const out = await renderInvoicePdf(id);
+  if (!out) return new Response("Not Found", { status: 404 });
+  return new Response(new Uint8Array(out.buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="invoice-${invoice.invoiceNumber}.pdf"`,
+      "Content-Disposition": `inline; filename="invoice-${out.invoice.invoiceNumber}.pdf"`,
     },
   });
 }

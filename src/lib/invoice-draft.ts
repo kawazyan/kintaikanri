@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { addTax, expenseLabel } from "@/lib/billing";
+import { addTax, computeInvoiceTotals, expenseLabel, travelLineLabel } from "@/lib/billing";
 import { toJstDateValue } from "@/lib/time";
 
 // 稼働明細書に載せるスナップショット(請求下書き作成時点の内容を Invoice.statement に保存する)。
@@ -10,7 +10,7 @@ export type StatementStaff = {
   dates: string[]; // 出勤した日(YYYY-MM-DD, 昇順)
   days: number; // 合計稼働日数
   // 交通費: NONE=請求しない(単価に込み等) / ACTUAL=スタッフ申請額で請求 / FLAT=クライアントへ一律請求
-  travel: { mode: "NONE" | "ACTUAL" | "FLAT"; amountExTax: number };
+  travel: { mode: "NONE" | "ACTUAL" | "FLAT"; amountExTax: number; amountInclTax: number };
 };
 
 export type StatementSnapshot = {
@@ -97,15 +97,15 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
       // ---- 交通費の扱い(明細書用) ----
       // FLAT: 稼働が1日でもあれば、設定した月額をクライアントへ一律請求する(スタッフ申請額は請求しない)。
       // INCLUDED: 請求しない。SEPARATE/CONSULT: スタッフが申請して承認された交通費を請求する。
-      let travel: StatementStaff["travel"] = { mode: "NONE", amountExTax: 0 };
+      let travel: StatementStaff["travel"] = { mode: "NONE", amountExTax: 0, amountInclTax: 0 };
       if (assignment.travelExpense === "FLAT") {
         const flat = assignment.flatTravelAmountExTax ?? 0;
         if (completedDates.size > 0 && flat > 0) {
-          travel = { mode: "FLAT", amountExTax: flat };
+          travel = { mode: "FLAT", amountExTax: flat, amountInclTax: addTax(flat).amountIncl };
           flatTravelLines.push({ staffName: assignment.staff.name, amountExTax: flat });
         }
       } else if (assignment.travelExpense !== "INCLUDED") {
-        const actual = expenses
+        const actualExpenses = expenses
           .filter((e) => e.workOrderStaffId === assignment.id && e.category === "TRAVEL")
           .filter((e) => {
             // 日ごとの承認済み条件変更(込み/一律に変更された日)は請求対象から外す。
@@ -113,9 +113,10 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
             const ov = approvedOverrideByDate.get(dateKey);
             const effective = ov?.changedTravelExpense ?? assignment.travelExpense;
             return effective !== "INCLUDED" && effective !== "FLAT";
-          })
-          .reduce((sum, e) => sum + e.amountExTax, 0);
-        if (actual > 0) travel = { mode: "ACTUAL", amountExTax: actual };
+          });
+        const actual = actualExpenses.reduce((sum, e) => sum + e.amountExTax, 0);
+        const actualIncl = actualExpenses.reduce((sum, e) => sum + e.amountTaxInclusive, 0);
+        if (actual > 0) travel = { mode: "ACTUAL", amountExTax: actual, amountInclTax: actualIncl };
       }
 
       statementStaff.push({
@@ -184,7 +185,8 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
     lines.push({
       sortOrder,
       itemType: category,
-      label: expenseLabel(category),
+      // 交通費は「交通費相当額（税込N円）」。計算は税別(税抜額＋消費税)。
+      label: category === "TRAVEL" ? travelLineLabel(g.incl) : expenseLabel(category),
       description: null,
       unitPriceExTax: g.ex,
       quantity: 1,
@@ -201,8 +203,8 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
     lines.push({
       sortOrder,
       itemType: "TRAVEL_FLAT",
-      label: "交通費（一律）",
-      description: f.staffName,
+      label: travelLineLabel(t.amountIncl),
+      description: `一律／${f.staffName}`,
       unitPriceExTax: f.amountExTax,
       quantity: 1,
       subtotalExTax: f.amountExTax,
@@ -212,9 +214,8 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
     sortOrder += 10;
   }
 
-  const subtotalExTax = lines.reduce((sum, x) => sum + x.subtotalExTax, 0);
-  const taxAmount = lines.reduce((sum, x) => sum + x.taxAmount, 0);
-  const totalInclTax = lines.reduce((sum, x) => sum + x.totalInclTax, 0);
+  // 請求書テンプレートと同じ方式: 消費税 = 税抜合計 × 10% を切り捨て。
+  const { subtotalExTax, taxAmount, totalInclTax } = computeInvoiceTotals(lines);
   const previous = await prisma.invoice.findFirst({
     where: { clientId, yearMonth },
     orderBy: { revision: "desc" },

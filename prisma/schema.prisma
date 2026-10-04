@@ -638,6 +638,11 @@ model Invoice {
   finalizedAt DateTime?
   finalizedBy String?
   statement Json? // 稼働明細書用スナップショット(請求下書き作成時点の内容)
+  addressee String? // 宛名(未設定なら取引先名)
+  subject String? // 件名(未設定なら「◯年◯月稼働分請求に関して」)
+  note String? // 振込先情報・備考欄(未設定なら既定文)
+  sentAt DateTime? // 取引先へメール送信した日時
+  sentTo String? // 送信先(カンマ区切り。CC含む)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   lines InvoiceLine[]

@@ -63,7 +63,7 @@ export function StatementDocument({ data }: { data: StatementSnapshot }) {
               <View style={styles.row}>
                 <Text style={styles.label}>交通費</Text>
                 <Text style={styles.value}>
-                  ¥{s.travel.amountExTax.toLocaleString("ja-JP")}（税抜）{s.travel.mode === "FLAT" ? "　※月額一律" : ""}
+                  交通費相当額（税込{s.travel.amountInclTax.toLocaleString("ja-JP")}円）　税抜¥{s.travel.amountExTax.toLocaleString("ja-JP")}{s.travel.mode === "FLAT" ? "　※月額一律" : ""}
                 </Text>
               </View>
             )}

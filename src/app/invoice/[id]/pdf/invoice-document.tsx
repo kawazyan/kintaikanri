@@ -1,230 +1,175 @@
 import path from "node:path";
 import { Document, Page, Text, View, Image, Font, StyleSheet } from "@react-pdf/renderer";
+import { INVOICE_REGISTRATION_NUMBER } from "@/lib/invoice-defaults";
 
-// 明朝体(Noto Serif JP, SIL Open Font License)を登録する。日本語を正しく
-// 表示するには実フォントの登録が必須(react-pdf は既定でCJKグリフを持たない)。
+// 日本語表示には実フォントの登録が必須(react-pdf は既定でCJKグリフを持たない)。
 Font.register({
   family: "NotoSerifJP",
   src: path.join(process.cwd(), "src/assets/fonts/NotoSerifJP-Variable.ttf"),
 });
 
-// 差出人欄に入れる印影・レターヘッド画像。用意でき次第このパスに配置する。
 const LETTERHEAD_IMAGE_PATH = path.join(process.cwd(), "src/assets/invoice/letterhead.png");
+const BLUE = "#dbe5f1";
+const LINE = "#7f7f7f";
+const MIN_ROWS = 15;
 
-const K_J_INVOICE_REGISTRATION_NUMBER = "T8370001045322";
-
-const styles = StyleSheet.create({
-  page: {
-    fontFamily: "NotoSerifJP",
-    fontSize: 10,
-    color: "#1a1a1a",
-    padding: 40,
-  },
-  title: {
-    fontSize: 22,
-    letterSpacing: 6,
-    textAlign: "center",
-  },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 28,
-  },
-  clientBlock: {
-    flexDirection: "column",
-    gap: 4,
-  },
-  clientName: {
-    fontSize: 15,
-    borderBottomWidth: 1.5,
-    borderBottomColor: "#1a1a1a",
-    paddingBottom: 4,
-    minWidth: 220,
-  },
-  metaBlock: {
-    flexDirection: "column",
-    alignItems: "flex-end",
-    gap: 3,
-  },
-  senderBlock: {
-    marginTop: 14,
-    alignItems: "flex-end",
-  },
-  letterheadImage: {
-    width: 190,
-  },
-  registrationNumber: {
-    marginTop: 4,
-    fontSize: 8.5,
-    color: "#444",
-  },
-  amountBox: {
-    marginTop: 24,
-    backgroundColor: "#f2f2f2",
-    padding: 14,
-  },
-  amountLabel: {
-    fontSize: 9,
-    color: "#444",
-  },
-  amountValue: {
-    fontSize: 22,
-    marginTop: 2,
-  },
-  table: {
-    marginTop: 22,
-  },
-  tableHeadRow: {
-    flexDirection: "row",
-    borderTopWidth: 1.5,
-    borderBottomWidth: 1.5,
-    borderColor: "#1a1a1a",
-    paddingVertical: 6,
-  },
-  tableRow: {
-    flexDirection: "row",
-    borderBottomWidth: 0.5,
-    borderColor: "#999",
-    paddingVertical: 8,
-  },
-  colLabel: { flex: 2.4 },
-  colNum: { flex: 1, textAlign: "right" },
-  totalsBlock: {
-    marginTop: 16,
-    marginLeft: "auto",
-    width: 220,
-    flexDirection: "column",
-    gap: 5,
-  },
-  totalsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  totalsFinalRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    borderTopWidth: 1.5,
-    borderColor: "#1a1a1a",
-    paddingTop: 5,
-    fontSize: 12,
-  },
-  footerBlock: {
-    marginTop: 32,
-    flexDirection: "row",
-    gap: 28,
-  },
-  footerColumn: {
-    flex: 1,
-    flexDirection: "column",
-    gap: 3,
-  },
-  footerHeading: {
-    fontSize: 10.5,
-    marginBottom: 2,
-  },
-  footerText: {
-    fontSize: 9,
-    color: "#333",
-    lineHeight: 1.6,
-  },
-});
-
-export type InvoicePdfLine = {
-  id: string;
-  label: string;
-  unitPriceExTax: number;
-  taxAmount: number;
-  totalInclTax: number;
-};
-
-export type InvoicePdfData = {
-  invoiceNumber: string;
-  yearMonth: string;
-  clientName: string;
-  issuedAtLabel: string;
+export type InvoiceDocData = {
+  addressee: string;
+  subject: string;
+  issuedAtLabel: string; // 例 2026/10/04。下書きは空文字
+  lines: { label: string; description: string | null; quantity: number; unitPriceExTax: number }[];
   subtotalExTax: number;
   taxAmount: number;
   totalInclTax: number;
-  lines: InvoicePdfLine[];
-  hasLetterheadImage: boolean;
+  note: string;
 };
 
 const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
 
-export function InvoiceDocument({ data }: { data: InvoicePdfData }) {
+const s = StyleSheet.create({
+  page: { fontFamily: "NotoSerifJP", fontSize: 9, color: "#111", padding: 30 },
+  titleWrap: { borderBottomWidth: 1, borderBottomColor: "#111", paddingBottom: 3 },
+  title: { fontSize: 20, textAlign: "center", letterSpacing: 8 },
+  top: { flexDirection: "row", justifyContent: "space-between", marginTop: 10 },
+  topLeft: { width: "50%", paddingTop: 16 },
+  addressee: { fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#555", paddingBottom: 3 },
+  intro: { marginTop: 14, fontSize: 8.5 },
+  letterhead: { width: 190, height: 118 },
+  subjectRow: { flexDirection: "row", marginTop: 12, borderBottomWidth: 1, borderBottomColor: "#2f5597", paddingBottom: 2, width: "56%" },
+  subjectLabel: { width: 40, fontSize: 8.5 },
+  meta: { alignItems: "flex-end", marginTop: -6 },
+  issued: { fontSize: 8.5, textAlign: "right" },
+  reg: { marginTop: 8, borderTopWidth: 1, borderTopColor: "#111", paddingTop: 2, fontSize: 8.5, textAlign: "right", width: 190 },
+  amountRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", marginTop: 10, width: "56%", borderBottomWidth: 1, borderBottomColor: "#2f5597", paddingBottom: 2 },
+  amountLabel: { fontSize: 11 },
+  amountValue: { fontSize: 15 },
+  tableHead: { flexDirection: "row", backgroundColor: BLUE, marginTop: 14, borderWidth: 1, borderColor: LINE },
+  row: { flexDirection: "row", borderLeftWidth: 1, borderRightWidth: 1, borderBottomWidth: 1, borderColor: LINE, minHeight: 15 },
+  cell: { paddingHorizontal: 4, paddingVertical: 2.5, borderRightWidth: 1, borderRightColor: LINE },
+  cNo: { width: "8%", textAlign: "center" },
+  cName: { width: "44%" },
+  cQty: { width: "10%", textAlign: "center" },
+  cPrice: { width: "15%", textAlign: "right" },
+  cRate: { width: "8%", textAlign: "center" },
+  cAmt: { width: "15%", textAlign: "right", borderRightWidth: 0 },
+  sub: { fontSize: 7.5, color: "#444", marginTop: 1 },
+  bottom: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
+  taxTable: { width: "46%" },
+  taxHead: { flexDirection: "row" },
+  taxRow: { flexDirection: "row", marginTop: 3 },
+  tCol1: { width: "34%", fontSize: 8.5 },
+  tCol2: { width: "33%", textAlign: "right", fontSize: 8.5 },
+  tCol3: { width: "33%", textAlign: "right", fontSize: 8.5 },
+  totals: { width: "40%" },
+  totalRow: { flexDirection: "row", marginTop: 2, alignItems: "center" },
+  totalLabel: { width: "50%", textAlign: "right", paddingRight: 8, fontSize: 8.5 },
+  totalValue: { width: "50%", borderWidth: 1, borderColor: LINE, textAlign: "right", paddingHorizontal: 5, paddingVertical: 3 },
+  noteBox: { marginTop: 10, borderWidth: 1, borderColor: LINE },
+  noteHead: { backgroundColor: BLUE, textAlign: "center", paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: LINE },
+  noteBody: { padding: 8, lineHeight: 1.5, minHeight: 70 },
+});
+
+export function InvoiceDocument({ data }: { data: InvoiceDocData }) {
+  const rowCount = Math.max(MIN_ROWS, data.lines.length);
+  const rows = Array.from({ length: rowCount }, (_, i) => data.lines[i] ?? null);
   return (
-    <Document>
-      <Page size="A4" style={styles.page}>
-        <Text style={styles.title}>請 求 書</Text>
-
-        <View style={styles.headerRow}>
-          <View style={styles.clientBlock}>
-            <Text style={styles.clientName}>{data.clientName} 御中</Text>
-          </View>
-          <View style={styles.metaBlock}>
-            <Text>請求書番号　{data.invoiceNumber}</Text>
-            <Text>発行日　{data.issuedAtLabel}</Text>
-            <Text>対象月　{data.yearMonth}</Text>
-          </View>
+    <Document title={`請求書 ${data.addressee} ${data.subject}`}>
+      <Page size="A4" style={s.page}>
+        <View style={s.titleWrap}>
+          <Text style={s.title}>請求書</Text>
         </View>
 
-        <View style={styles.senderBlock}>
-          {data.hasLetterheadImage && (
-            /* eslint-disable-next-line jsx-a11y/alt-text */
-            <Image style={styles.letterheadImage} src={LETTERHEAD_IMAGE_PATH} />
-          )}
-          <Text style={styles.registrationNumber}>登録番号　{K_J_INVOICE_REGISTRATION_NUMBER}</Text>
-        </View>
-
-        <View style={styles.amountBox}>
-          <Text style={styles.amountLabel}>ご請求金額（税込）</Text>
-          <Text style={styles.amountValue}>{yen(data.totalInclTax)}</Text>
-        </View>
-
-        <View style={styles.table}>
-          <View style={styles.tableHeadRow}>
-            <Text style={styles.colLabel}>項目</Text>
-            <Text style={styles.colNum}>単価（税抜）</Text>
-            <Text style={styles.colNum}>税分</Text>
-            <Text style={styles.colNum}>税込合計</Text>
+        <View style={s.top}>
+          <View style={s.topLeft}>
+            <Text style={s.addressee}>{data.addressee}　御中</Text>
+            <Text style={s.intro}>下記の通りご請求申し上げます。</Text>
           </View>
-          {data.lines.map((l) => (
-            <View key={l.id} style={styles.tableRow}>
-              <Text style={styles.colLabel}>{l.label}</Text>
-              <Text style={styles.colNum}>{yen(l.unitPriceExTax)}</Text>
-              <Text style={styles.colNum}>{yen(l.taxAmount)}</Text>
-              <Text style={styles.colNum}>{yen(l.totalInclTax)}</Text>
+          {/* eslint-disable-next-line jsx-a11y/alt-text */}
+          <Image src={LETTERHEAD_IMAGE_PATH} style={s.letterhead} />
+        </View>
+
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <View style={{ width: "56%" }}>
+            <View style={[s.subjectRow, { width: "100%" }]}>
+              <Text style={s.subjectLabel}>件名：</Text>
+              <Text style={{ flex: 1, fontSize: 9 }}>{data.subject}</Text>
             </View>
-          ))}
-        </View>
-
-        <View style={styles.totalsBlock}>
-          <View style={styles.totalsRow}>
-            <Text>税抜合計</Text>
-            <Text>{yen(data.subtotalExTax)}</Text>
           </View>
-          <View style={styles.totalsRow}>
-            <Text>税額</Text>
-            <Text>{yen(data.taxAmount)}</Text>
-          </View>
-          <View style={styles.totalsFinalRow}>
-            <Text>税込合計</Text>
-            <Text>{yen(data.totalInclTax)}</Text>
+          <View style={s.meta}>
+            <Text style={s.issued}>発行日:　{data.issuedAtLabel || "（承認日が入ります）"}</Text>
+            <Text style={s.reg}>登録番号 {INVOICE_REGISTRATION_NUMBER}</Text>
           </View>
         </View>
 
-        <View style={styles.footerBlock}>
-          <View style={styles.footerColumn}>
-            <Text style={styles.footerHeading}>お支払い期限</Text>
-            <Text style={styles.footerText}>当請求書発行日の翌月末日までにお願い致します。</Text>
+        <View style={s.amountRow}>
+          <Text style={s.amountLabel}>ご請求金額（税込）</Text>
+          <Text style={s.amountValue}>{yen(data.totalInclTax)}</Text>
+        </View>
+
+        <View style={s.tableHead}>
+          <Text style={[s.cell, s.cNo]}>NO.</Text>
+          <Text style={[s.cell, s.cName, { textAlign: "center" }]}>品 番 ・ 品 名</Text>
+          <Text style={[s.cell, s.cQty]}>数 量</Text>
+          <Text style={[s.cell, s.cPrice, { textAlign: "center" }]}>単 価</Text>
+          <Text style={[s.cell, s.cRate]}>税 率</Text>
+          <Text style={[s.cell, s.cAmt, { textAlign: "center" }]}>金 額</Text>
+        </View>
+        {rows.map((l, i) => (
+          <View key={i} style={s.row} wrap={false}>
+            <Text style={[s.cell, s.cNo]}>{l ? i + 1 : ""}</Text>
+            <View style={[s.cell, s.cName]}>
+              {l && <Text>{l.label}</Text>}
+              {l?.description ? <Text style={s.sub}>{l.description}</Text> : null}
+            </View>
+            <Text style={[s.cell, s.cQty]}>{l ? l.quantity : ""}</Text>
+            <Text style={[s.cell, s.cPrice]}>{l ? yen(l.unitPriceExTax) : ""}</Text>
+            <Text style={[s.cell, s.cRate]}>{l ? "10%" : ""}</Text>
+            <Text style={[s.cell, s.cAmt]}>{l ? yen(l.quantity * l.unitPriceExTax) : ""}</Text>
           </View>
-          <View style={styles.footerColumn}>
-            <Text style={styles.footerHeading}>振込先</Text>
-            <Text style={styles.footerText}>
-              paypay銀行　ビジネス営業所　3596034{"\n"}カ）ケイジェイ
-            </Text>
-            <Text style={styles.footerText}>※お振込み手数料は御社ご負担にてお願いいたします。</Text>
+        ))}
+
+        <View style={s.bottom} wrap={false}>
+          <View style={s.taxTable}>
+            <View style={s.taxHead}>
+              <Text style={s.tCol1}>税率内訳</Text>
+              <Text style={[s.tCol2, { textAlign: "center" }]}>税抜金額</Text>
+              <Text style={[s.tCol3, { textAlign: "center" }]}>消費税額</Text>
+            </View>
+            <View style={s.taxRow}>
+              <Text style={s.tCol1}>10%対象</Text>
+              <Text style={s.tCol2}>{yen(data.subtotalExTax)}</Text>
+              <Text style={s.tCol3}>{yen(data.taxAmount)}</Text>
+            </View>
+            <View style={s.taxRow}>
+              <Text style={s.tCol1}>軽減8%対象</Text>
+              <Text style={s.tCol2}>{yen(0)}</Text>
+              <Text style={s.tCol3}>{yen(0)}</Text>
+            </View>
+            <View style={s.taxRow}>
+              <Text style={s.tCol1}>非課税</Text>
+              <Text style={s.tCol2}>{yen(0)}</Text>
+              <Text style={s.tCol3}>{yen(0)}</Text>
+            </View>
           </View>
+          <View style={s.totals}>
+            <View style={s.totalRow}>
+              <Text style={s.totalLabel}>小計</Text>
+              <Text style={s.totalValue}>{yen(data.subtotalExTax)}</Text>
+            </View>
+            <View style={s.totalRow}>
+              <Text style={s.totalLabel}>消費税</Text>
+              <Text style={s.totalValue}>{yen(data.taxAmount)}</Text>
+            </View>
+            <View style={s.totalRow}>
+              <Text style={s.totalLabel}>合計金額</Text>
+              <Text style={s.totalValue}>{yen(data.totalInclTax)}</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={s.noteBox} wrap={false}>
+          <Text style={s.noteHead}>振込先情報・備 考</Text>
+          <Text style={s.noteBody}>{data.note}</Text>
         </View>
       </Page>
     </Document>
