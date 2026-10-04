@@ -69,7 +69,7 @@ export type InvoiceEditPayload = {
   // 稼働明細書(スタッフの並びは作成時のまま)。請求書は「業務委託費一式」1行のみで、金額は明細書の合計から自動計算する。
   staff: { dates: string[]; serviceExTax: number; serviceCalc: string; travelInclTax: number }[];
   // 取引先全体の項目(新幹線代・広告原価・商材仕入れ代原価など)。金額は税抜。
-  clientExtras: { label: string; amountExTax: number; calc?: string }[];
+  clientExtras: { label: string; amountExTax: number; calc?: string; store?: string; period?: string }[];
   // 明細書データがない古い請求だけ使う(業務委託費一式の税抜金額)。
   amountExTax?: number;
 };
@@ -116,7 +116,7 @@ export async function saveInvoiceEdit(
       if (!label && !e.amountExTax) continue; // 空行は無視
       if (!label) return { ok: false, error: "共通の項目に、名前のない行があります。名前を入力するか、行を削除してください。" };
       if (!Number.isInteger(e.amountExTax) || e.amountExTax < 0) return { ok: false, error: `共通の項目「${label}」の金額（税抜）は0以上の整数で入力してください。` };
-      clientExtras.push({ label, amountExTax: e.amountExTax, amountInclTax: addTax(e.amountExTax).amountIncl, ...(e.calc?.trim() ? { calc: e.calc.trim() } : {}) });
+      clientExtras.push({ label, amountExTax: e.amountExTax, amountInclTax: addTax(e.amountExTax).amountIncl, ...(e.calc?.trim() ? { calc: e.calc.trim() } : {}), ...(e.store?.trim() && e.period?.trim() ? { store: e.store.trim(), period: e.period.trim() } : {}) });
     }
     nextStatement = {
       ...snapshot,

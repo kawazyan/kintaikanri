@@ -11,7 +11,7 @@ type Initial = {
   amountExTax: number;
   hasStatement: boolean;
   warnings: string[];
-  clientExtras: { label: string; amountExTax: number; calc: string }[];
+  clientExtras: { label: string; amountExTax: number; calc: string; store?: string; period?: string }[];
   staff: {
     name: string;
     places: string;
@@ -65,7 +65,9 @@ export function EditInvoiceForm({
       subject,
       note,
       amountExTax: initial.hasStatement ? undefined : Number(amount),
-      clientExtras: extras.map((e) => ({ label: e.label, amountExTax: Number(e.amountExTax) || 0, calc: e.calc })),
+      clientExtras: extras.map((e) => (e.store !== undefined && e.period !== undefined
+        ? { label: `${e.store} ${e.period}`, store: e.store, period: e.period, amountExTax: Number(e.amountExTax) || 0, calc: e.calc }
+        : { label: e.label, amountExTax: Number(e.amountExTax) || 0, calc: e.calc })),
       staff: staff.map((s) => ({
         dates: s.dates,
         serviceExTax: Number(s.serviceExTax) || 0,
@@ -203,10 +205,23 @@ export function EditInvoiceForm({
           <div className="mt-4 space-y-3">
             {extras.map((e, i) => (
               <div key={i} className="grid gap-2 rounded-xl border border-slate-800 bg-slate-950 p-3 md:grid-cols-[1fr_160px_auto]">
-                <label className={field}>
-                  項目名
-                  <input value={e.label} onChange={(ev) => setExtras(extras.map((x, xi) => (xi === i ? { ...x, label: ev.target.value } : x)))} className={`${input} mt-1`} />
-                </label>
+                {e.store !== undefined && e.period !== undefined ? (
+                  <div className="space-y-2">
+                    <label className={field}>
+                      イベント主催店舗
+                      <input value={e.store} onChange={(ev) => setExtras(extras.map((x, xi) => (xi === i ? { ...x, store: ev.target.value } : x)))} className={`${input} mt-1`} />
+                    </label>
+                    <label className={field}>
+                      イベント開催期間
+                      <input value={e.period} onChange={(ev) => setExtras(extras.map((x, xi) => (xi === i ? { ...x, period: ev.target.value } : x)))} className={`${input} mt-1`} />
+                    </label>
+                  </div>
+                ) : (
+                  <label className={field}>
+                    項目名
+                    <input value={e.label} onChange={(ev) => setExtras(extras.map((x, xi) => (xi === i ? { ...x, label: ev.target.value } : x)))} className={`${input} mt-1`} />
+                  </label>
+                )}
                 <label className={field}>
                   金額（税抜・円）
                   <input type="number" min={0} value={e.amountExTax} onChange={(ev) => setExtras(extras.map((x, xi) => (xi === i ? { ...x, amountExTax: Number(ev.target.value) } : x)))} className={`${input} mt-1`} />

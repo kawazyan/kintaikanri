@@ -5,7 +5,7 @@ import { addTax } from "@/lib/billing";
 //   KJ_EVENT_SUPABASE_URL      例: https://ecuxuudjxkdbsxrvnild.supabase.co
 //   KJ_EVENT_SUPABASE_SERVICE_KEY K.J EVENT の service_role キー(サーバー専用の秘密キー。RLSを越えて読めるので、ブラウザ側へは絶対に出さない)
 
-export type EventAdLine = { label: string; amountExTax: number; amountInclTax: number; calc: string };
+export type EventAdLine = { label: string; store: string; period: string; amountExTax: number; amountInclTax: number; calc: string };
 
 type Row = {
   start_date: string;
@@ -61,9 +61,13 @@ export async function fetchEventAds(agencyId: string, yearMonth: string): Promis
   for (const r of rows) {
     const spent = (r.kj_ads ?? []).reduce((sum, a) => sum + Number(a.spent ?? 0), 0);
     if (spent <= 0) continue;
-    const store = r.kj_stores?.name ?? "店舗未定";
+    const rawStore = r.kj_stores?.name ?? "店舗未定";
+    const store = rawStore.endsWith("店") ? rawStore : `${rawStore}店`;
+    const period = `${md(r.start_date)}～${md(r.end_date)}`;
     lines.push({
-      label: `${store} ${md(r.start_date)}～${md(r.end_date)}開催分　広告費`,
+      label: `${store} ${period}`,
+      store,
+      period,
       amountExTax: spent,
       amountInclTax: addTax(spent).amountIncl,
       calc: "K.J EVENT 広告支出実績",
