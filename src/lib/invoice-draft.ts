@@ -3,6 +3,7 @@ import { addTax, computeInvoiceTotals, expenseLabel } from "@/lib/billing";
 import { jstMonthRange, toJstDateValue } from "@/lib/time";
 import { activeShiftRules, normName, ruleMatchesShift, type BillingTerms, type TravelByStore } from "@/lib/billing-terms";
 import { syncWorkOrderShiftLinks } from "@/lib/work-order-linking";
+import { fetchEventAds } from "@/lib/event-ads";
 
 // 稼働明細書に載せるスナップショット(請求下書き作成時点の内容を Invoice.statement に保存する)。
 // 請求書は「業務委託費一式」の1行だけ。計算方法と内訳はすべてこの明細書に書く。
@@ -288,8 +289,16 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
   // 取引先全体の固定加算(新幹線代など)。稼働が1日でもある月だけ載せる。
   const clientExtras: StatementExtra[] = [];
   if (statementStaff.some((s) => s.days > 0)) {
+    // 従来の固定項目
     for (const e of terms.monthlyExtras ?? []) {
       clientExtras.push({ label: e.label, amountExTax: e.amountExTax, amountInclTax: addTax(e.amountExTax).amountIncl, calc: e.calc });
+    }
+
+    // K.J EVENT からの広告費取得
+    // 失敗時は例外のまま(広告費が抜けた請求書を作らないため)
+    const eventAgencyId = (terms as { eventAgencyId?: string }).eventAgencyId;
+    if (eventAgencyId) {
+      for (const ad of await fetchEventAds(eventAgencyId, yearMonth)) clientExtras.push(ad);
     }
   }
 
