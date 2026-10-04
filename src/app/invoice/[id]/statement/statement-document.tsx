@@ -99,8 +99,10 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
               <Text style={st.value}>{s.carriers.join("、") || "―"}</Text>
             </View>
             <View style={st.row}>
-              <Text style={st.label}>出勤した日</Text>
-              <Text style={st.value}>{s.dates.map(formatDay).join("　") || "―"}</Text>
+              <Text style={st.label}>出勤日</Text>
+              <View style={[st.value, { flexDirection: "row", flexWrap: "wrap" }]}>
+                {s.dates.length ? s.dates.map((d) => <Text key={d} style={{ marginRight: 9, lineHeight: 1.5 }}>{formatDay(d)}</Text>) : <Text>―</Text>}
+              </View>
             </View>
             <View style={st.row}>
               <Text style={st.label}>合計稼働日数</Text>
