@@ -15,13 +15,6 @@ const LINE = "#9a9a9a";
 
 const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
 
-// "2026-10-03" → "10/3(土)"。曜日は日付から計算する(UTC基準で日付のみ扱う)。
-function formatDay(dateKey: string) {
-  const [y, m, d] = dateKey.split("-").map(Number);
-  const wd = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-  return `${m}/${d}(${WEEKDAYS[wd]})`;
-}
-
 export type StatementTotals = { subtotalExTax: number; taxAmount: number; totalInclTax: number };
 
 // 請求書は「業務委託費一式」の1行のみ。その内訳(計算方法)はすべてここに書く。
@@ -41,40 +34,27 @@ function staffItems(s: StatementStaff): Item[] {
   return items;
 }
 
-// 出勤日を、月のカレンダー上に色付きで示す(出勤した日だけ紺色に塗る)。
-const CAL_W = 26;
-function AttendanceCalendar({ yearMonth, dates }: { yearMonth: string; dates: string[] }) {
-  const [y, m] = yearMonth.split("-").map(Number);
-  const worked = new Set(dates.filter((d) => d.startsWith(yearMonth)).map((d) => Number(d.slice(8, 10))));
-  const first = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
-  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  const cells: (number | null)[] = [...Array(first).fill(null), ...Array.from({ length: last }, (_, i) => i + 1)];
-  while (cells.length % 7) cells.push(null);
-  const weeks = Array.from({ length: cells.length / 7 }, (_, i) => cells.slice(i * 7, i * 7 + 7));
-  const tone = (col: number) => (col === 0 ? "#b4545a" : col === 6 ? "#4a6fa5" : "#777");
+// 出勤日を、日付(大)と曜日(小)の小さなカードで並べる。土曜は薄い青、日曜は薄い赤の地。
+function AttendanceDays({ yearMonth, dates }: { yearMonth: string; dates: string[] }) {
+  const m = Number(yearMonth.split("-")[1]);
   return (
-    <View style={{ paddingVertical: 4, paddingHorizontal: 6 }}>
-      <View style={{ flexDirection: "row" }}>
-        {WEEKDAYS.map((w, c) => (
-          <Text key={w} style={{ width: CAL_W, textAlign: "center", fontSize: 7.5, color: tone(c), paddingBottom: 2 }}>{w}</Text>
-        ))}
-      </View>
-      {weeks.map((wk, r) => (
-        <View key={r} style={{ flexDirection: "row" }}>
-          {wk.map((d, c) => (
-            <View key={c} style={{ width: CAL_W, height: 16, alignItems: "center", justifyContent: "center", borderTopWidth: 0.5, borderTopColor: "#e3e3e3" }}>
-              {d != null && (worked.has(d) ? (
-                <View style={{ width: 20, height: 14, borderRadius: 7, backgroundColor: NAVY, alignItems: "center", justifyContent: "center" }}>
-                  <Text style={{ fontSize: 8, color: "#fff" }}>{d}</Text>
-                </View>
-              ) : (
-                <Text style={{ fontSize: 8, color: "#b5b5b5" }}>{d}</Text>
-              ))}
+    <View style={{ padding: 8 }}>
+      <Text style={{ fontSize: 8.5, color: "#666", marginBottom: 4 }}>{m}月</Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+        {dates.map((d) => {
+          const [yy, mm, dd] = d.split("-").map(Number);
+          const wd = new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay();
+          const color = wd === 0 ? "#b4545a" : wd === 6 ? "#4a6fa5" : "#1a1a1a";
+          const bg = wd === 0 ? "#fbeeee" : wd === 6 ? "#eef3fb" : "#ffffff";
+          return (
+            <View key={d} style={{ width: "8.6%", marginRight: "0.4%", marginBottom: 4, alignItems: "center", borderWidth: 0.8, borderColor: "#c9d3e3", borderRadius: 4, paddingVertical: 2, backgroundColor: bg }}>
+              <Text style={{ fontSize: 11, color }}>{dd}</Text>
+              <Text style={{ fontSize: 6.5, color }}>{WEEKDAYS[wd]}</Text>
             </View>
-          ))}
-        </View>
-      ))}
-      <Text style={{ marginTop: 3, fontSize: 7.5, color: "#666" }}>● 紺色の日が出勤日です（{worked.size}日）</Text>
+          );
+        })}
+        {dates.length === 0 && <Text>―</Text>}
+      </View>
     </View>
   );
 }
@@ -138,7 +118,7 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
             </View>
             <View style={st.row}>
               <Text style={st.label}>出勤日</Text>
-              <AttendanceCalendar yearMonth={data.yearMonth} dates={s.dates} />
+              <AttendanceDays yearMonth={data.yearMonth} dates={s.dates} />
             </View>
             <View style={st.row}>
               <Text style={st.label}>合計稼働日数</Text>
