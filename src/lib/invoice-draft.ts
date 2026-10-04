@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { addTax, computeInvoiceTotals, expenseLabel } from "@/lib/billing";
 import { jstMonthRange, toJstDateValue } from "@/lib/time";
-import { activeShiftRules, normName, type BillingTerms, type TravelByStore } from "@/lib/billing-terms";
+import { activeShiftRules, normName, ruleMatchesShift, type BillingTerms, type TravelByStore } from "@/lib/billing-terms";
 import { syncWorkOrderShiftLinks } from "@/lib/work-order-linking";
 
 // 稼働明細書に載せるスナップショット(請求下書き作成時点の内容を Invoice.statement に保存する)。
@@ -244,7 +244,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
           !used.has(s.id) &&
           s.clockRecords.some((r) => r.type === "IN") &&
           s.clockRecords.some((r) => r.type === "OUT") &&
-          (!rule.storeMatch?.length || rule.storeMatch.some((m) => s.storeName.includes(m)))
+          ruleMatchesShift(rule, person.name, s.storeName, toJstDateValue(s.startTime))
       );
       done.forEach((s) => used.add(s.id));
       const dayStore = new Map<string, string>();
@@ -255,7 +255,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
       const service = rule.contract === "DAILY" ? rule.rateExTax * dates.length : rule.rateExTax;
       const serviceCalc =
         rule.contract === "DAILY"
-          ? `日額 ${yen(rule.rateExTax)} × ${dates.length}日`
+          ? `日額 ${yen(rule.rateExTax)} × ${dates.length}日${rule.note ? `（${rule.note}）` : ""}`
           : `月額 ${yen(rule.rateExTax)}（固定${rule.note ? `・${rule.note}` : ""}）`;
 
       let travel: StatementStaff["travel"] = { mode: "NONE", amountExTax: 0, amountInclTax: 0 };

@@ -5,6 +5,7 @@ export type TravelByStore = { match: string; perDayExTax: number; detail: string
 export type ShiftBillingRule = {
   staffName: string; // スタッフ名(空白は無視して一致)
   storeMatch?: string[]; // 指定すると、店舗名にどれかを含むシフトだけが対象
+  dates?: string[]; // 指定すると、この稼働日(YYYY-MM-DD)のシフトだけが対象
   fromMonth?: string; // 適用開始月(YYYY-MM)
   toMonth?: string; // 適用終了月(YYYY-MM)
   contract: "DAILY" | "MONTHLY"; // DAILY=日額×稼働日 / MONTHLY=月額固定(稼働が1日でもあれば)
@@ -29,7 +30,8 @@ export function activeShiftRules(terms: BillingTerms | null | undefined, yearMon
   );
 }
 
-export function ruleMatchesShift(rule: ShiftBillingRule, staffName: string, storeName: string) {
+export function ruleMatchesShift(rule: ShiftBillingRule, staffName: string, storeName: string, dateKey: string) {
   if (normName(rule.staffName) !== normName(staffName)) return false;
+  if (rule.dates?.length && !rule.dates.includes(dateKey)) return false;
   return !rule.storeMatch?.length || rule.storeMatch.some((m) => storeName.includes(m));
 }

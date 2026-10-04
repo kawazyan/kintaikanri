@@ -35,9 +35,9 @@ export async function syncWorkOrderShiftLinks(workOrderId: string) {
     // 1. 既存の未紐付けシフトをこの依頼に紐づける。
     const candidates = await prisma.shift.findMany({
       where: { staffId, workOrderStaffId: null, startTime: { gte: start, lt: end }, cancelledAt: null },
-      select: { id: true, storeName: true, staff: { select: { name: true } } },
+      select: { id: true, storeName: true, startTime: true, staff: { select: { name: true } } },
     });
-    const linkable = candidates.filter((c) => !otherRules.some((r) => ruleMatchesShift(r, c.staff.name, c.storeName)));
+    const linkable = candidates.filter((c) => !otherRules.some((r) => ruleMatchesShift(r, c.staff.name, c.storeName, toJstDateValue(c.startTime))));
     if (linkable.length) {
       await prisma.shift.updateMany({ where: { id: { in: linkable.map((c) => c.id) } }, data: { workOrderStaffId: assignment.id } });
     }
