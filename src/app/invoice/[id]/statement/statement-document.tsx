@@ -226,9 +226,6 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
         <View wrap={false}>
         <View style={st.summary}>
           <Text style={st.summaryHead}>ご請求金額のまとめ</Text>
-          <View style={[st.sRow, { backgroundColor: "#f4f4f4" }]}>
-            <Text style={st.small}>全社</Text>
-          </View>
           {summaryRows(data).map((r, i) => (
             <View key={i} style={st.sRow}>
               <Text>{r.label}</Text>

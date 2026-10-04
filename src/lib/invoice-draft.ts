@@ -322,6 +322,15 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
     throw new Error("対象月の承認済み稼働依頼も、シフトからの請求ルールに合う稼働実績もありません。");
   }
 
+  // スタッフをまたいで、同じ店舗の表記ゆれ(例: 「西多賀店」と「auショップ西多賀店」)を統一する。
+  {
+    const m = unifyStoreNames(statementStaff.flatMap((s) => [...s.places, ...Object.values(s.dayPlaces ?? {})]));
+    for (const s of statementStaff) {
+      s.places = [...new Set(s.places.map((n) => m.get(n) ?? n))];
+      if (s.dayPlaces) s.dayPlaces = Object.fromEntries(Object.entries(s.dayPlaces).map(([d, n]) => [d, m.get(n) ?? n]));
+    }
+  }
+
   // 取引先全体の固定加算(新幹線代など)。稼働が1日でもある月だけ載せる。
   const clientExtras: StatementExtra[] = [];
   if (statementStaff.some((s) => s.days > 0)) {
