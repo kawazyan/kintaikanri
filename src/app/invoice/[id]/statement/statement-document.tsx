@@ -41,6 +41,44 @@ function staffItems(s: StatementStaff): Item[] {
   return items;
 }
 
+// 出勤日を、月のカレンダー上に色付きで示す(出勤した日だけ紺色に塗る)。
+const CAL_W = 26;
+function AttendanceCalendar({ yearMonth, dates }: { yearMonth: string; dates: string[] }) {
+  const [y, m] = yearMonth.split("-").map(Number);
+  const worked = new Set(dates.filter((d) => d.startsWith(yearMonth)).map((d) => Number(d.slice(8, 10))));
+  const first = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const cells: (number | null)[] = [...Array(first).fill(null), ...Array.from({ length: last }, (_, i) => i + 1)];
+  while (cells.length % 7) cells.push(null);
+  const weeks = Array.from({ length: cells.length / 7 }, (_, i) => cells.slice(i * 7, i * 7 + 7));
+  const tone = (col: number) => (col === 0 ? "#b4545a" : col === 6 ? "#4a6fa5" : "#777");
+  return (
+    <View style={{ paddingVertical: 4, paddingHorizontal: 6 }}>
+      <View style={{ flexDirection: "row" }}>
+        {WEEKDAYS.map((w, c) => (
+          <Text key={w} style={{ width: CAL_W, textAlign: "center", fontSize: 7.5, color: tone(c), paddingBottom: 2 }}>{w}</Text>
+        ))}
+      </View>
+      {weeks.map((wk, r) => (
+        <View key={r} style={{ flexDirection: "row" }}>
+          {wk.map((d, c) => (
+            <View key={c} style={{ width: CAL_W, height: 16, alignItems: "center", justifyContent: "center", borderTopWidth: 0.5, borderTopColor: "#e3e3e3" }}>
+              {d != null && (worked.has(d) ? (
+                <View style={{ width: 20, height: 14, borderRadius: 7, backgroundColor: NAVY, alignItems: "center", justifyContent: "center" }}>
+                  <Text style={{ fontSize: 8, color: "#fff" }}>{d}</Text>
+                </View>
+              ) : (
+                <Text style={{ fontSize: 8, color: "#b5b5b5" }}>{d}</Text>
+              ))}
+            </View>
+          ))}
+        </View>
+      ))}
+      <Text style={{ marginTop: 3, fontSize: 7.5, color: "#666" }}>● 紺色の日が出勤日です（{worked.size}日）</Text>
+    </View>
+  );
+}
+
 const st = StyleSheet.create({
   page: { fontFamily: "NotoSerifJP", fontSize: 9.5, color: "#1a1a1a", padding: 36 },
   titleWrap: { borderBottomWidth: 1, borderBottomColor: "#111", paddingBottom: 4 },
@@ -100,9 +138,7 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
             </View>
             <View style={st.row}>
               <Text style={st.label}>出勤日</Text>
-              <View style={[st.value, { flexDirection: "row", flexWrap: "wrap" }]}>
-                {s.dates.length ? s.dates.map((d) => <Text key={d} style={{ marginRight: 9, lineHeight: 1.5 }}>{formatDay(d)}</Text>) : <Text>―</Text>}
-              </View>
+              <AttendanceCalendar yearMonth={data.yearMonth} dates={s.dates} />
             </View>
             <View style={st.row}>
               <Text style={st.label}>合計稼働日数</Text>
