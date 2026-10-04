@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { addTax, computeInvoiceTotals, expenseLabel } from "@/lib/billing";
 import { toJstDateValue } from "@/lib/time";
+import { syncWorkOrderShiftLinks } from "@/lib/work-order-linking";
 
 // 稼働明細書に載せるスナップショット(請求下書き作成時点の内容を Invoice.statement に保存する)。
 // 請求書は「業務委託費一式」の1行だけ。計算方法と内訳はすべてこの明細書に書く。
@@ -46,8 +47,14 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
   const client = await prisma.client.findUnique({ where: { id: clientId }, select: { name: true } });
   if (!client) throw new Error("取引先が見つかりません。");
 
+  const billableWhere = { clientId, yearMonth, status: { in: ["APPROVED", "CHANGES_PENDING", "TERMINATED"] as ("APPROVED" | "CHANGES_PENDING" | "TERMINATED")[] } };
+  // 稼働依頼に紐付いていないシフトは請求に入らないため、先に紐付けを同期する
+  // (管理画面・取引先の状況確認ページを開いたときと同じ処理。紐付け済みには影響しない)。
+  const targetIds = await prisma.workOrder.findMany({ where: billableWhere, select: { id: true } });
+  for (const t of targetIds) await syncWorkOrderShiftLinks(t.id);
+
   const orders = await prisma.workOrder.findMany({
-    where: { clientId, yearMonth, status: { in: ["APPROVED", "CHANGES_PENDING", "TERMINATED"] } },
+    where: billableWhere,
     include: {
       staffAssignments: {
         include: {

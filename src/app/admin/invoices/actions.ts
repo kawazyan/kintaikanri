@@ -7,13 +7,20 @@ import { buildInvoiceDraft, staffBillableExTax, type StatementSnapshot } from "@
 import { approveAndSendInvoice } from "@/lib/invoice-send";
 import { addTax, computeInvoiceTotals, splitInclusiveTax } from "@/lib/billing";
 
-export async function createInvoiceDraft(formData: FormData) {
+export type CreateDraftResult = { ok: true; id: string } | { ok: false; error: string };
+
+// 下書き作成。業務上のエラー(承認済みの稼働依頼がない等)は画面に例外を投げず、メッセージで返す。
+export async function createInvoiceDraft(formData: FormData): Promise<CreateDraftResult> {
   await requireAdmin();
   const clientId = String(formData.get("clientId") || "");
   const yearMonth = String(formData.get("yearMonth") || "");
-  const { id } = await buildInvoiceDraft(clientId, yearMonth);
-  revalidatePath("/admin/invoices");
-  return id;
+  try {
+    const { id } = await buildInvoiceDraft(clientId, yearMonth);
+    revalidatePath("/admin/invoices");
+    return { ok: true, id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "請求下書きを作成できませんでした。" };
+  }
 }
 
 export async function finalizeInvoice(id: string, formData: FormData) {
