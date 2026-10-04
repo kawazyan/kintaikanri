@@ -79,9 +79,6 @@ export default async function WatchPage({
           <header className="rounded-[28px] bg-[#14283b] px-6 py-6 text-white shadow-[0_16px_44px_rgba(20,40,59,.2)]">
             <p className="text-[11px] font-black tracking-[.22em] text-slate-300">K.J ATTENDANCE</p>
             <h1 className="mt-1 text-2xl font-black">{access.client.name} 様　出退勤状況</h1>
-            <p className="mt-2 text-xs font-bold leading-5 text-slate-300">
-              スタッフが勤怠アプリで打刻した時刻を、そのまま表示しています（30秒ごとに自動更新）。時刻はシステムの記録で、スタッフが書き換えることはできません。
-            </p>
           </header>
 
           {today.length > 0 && (

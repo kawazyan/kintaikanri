@@ -21,7 +21,7 @@ export default async function ClientsPage() {
   return <main className="mx-auto max-w-6xl px-4 py-8 text-slate-900"><AdminNav />
     <div className="rounded-[28px] bg-[#14283b] p-6 text-white shadow-[0_16px_44px_rgba(20,40,59,.18)]">
       <p className="text-[11px] font-black tracking-[.18em] text-slate-300">CLIENT PORTAL</p>
-      <div className="mt-2 flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-2xl font-black">取引先・依頼窓口</h1><p className="mt-2 text-sm font-bold text-slate-300">取引先ごとに「契約(スタッフ×店舗×単価)」を登録すると、シフトが自動でクライアントに振り分けられます。出退勤の閲覧URLもここから発行します。</p></div><a href="/admin/clients/unassigned" className="flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-[#14283b] shadow-[0_4px_0_#cbd5e1]"><ExternalLink size={16}/>クライアント未確定のシフト</a></div>
+      <div className="mt-2 flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-2xl font-black">取引先・依頼窓口</h1></div><a href="/admin/clients/unassigned" className="flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-[#14283b] shadow-[0_4px_0_#cbd5e1]"><ExternalLink size={16}/>クライアント未確定のシフト</a></div>
       
     </div>
 
