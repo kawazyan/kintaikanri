@@ -1,4 +1,5 @@
 import { addTax } from "@/lib/billing";
+import { withShopSuffix } from "@/lib/store-names";
 
 // K.J EVENT(別Supabaseプロジェクト)から、対象月に開始したイベントの広告支出実績(spent)を取得する。
 // 接続先URL・キーは環境変数。未設定・取得失敗のときは例外を投げ、請求下書きを作らない(広告費の入れ忘れ防止)。
@@ -62,7 +63,7 @@ export async function fetchEventAds(agencyId: string, yearMonth: string): Promis
     const spent = (r.kj_ads ?? []).reduce((sum, a) => sum + Number(a.spent ?? 0), 0);
     if (spent <= 0) continue;
     const rawStore = r.kj_stores?.name ?? "店舗未定";
-    const store = rawStore.endsWith("店") ? rawStore : `${rawStore}店`;
+    const store = withShopSuffix(rawStore);
     const period = `${md(r.start_date)}～${md(r.end_date)}`;
     lines.push({
       label: `${store} ${period}`,

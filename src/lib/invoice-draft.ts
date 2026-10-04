@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { addTax, computeInvoiceTotals, expenseLabel } from "@/lib/billing";
 import { jstMonthRange, toJstDateValue } from "@/lib/time";
-import { unifyStoreNames } from "@/lib/store-names";
+import { unifyStoreNames, withShopSuffix } from "@/lib/store-names";
 import { activeShiftRules, normName, ruleMatchesShift, type BillingTerms, type TravelByStore } from "@/lib/billing-terms";
 import { syncWorkOrderShiftLinks } from "@/lib/work-order-linking";
 import { fetchEventAds } from "@/lib/event-ads";
@@ -212,7 +212,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
         amountInclTax: g.incl,
       }));
 
-      const uni = ((m) => (n: string) => m.get(n) ?? n)(unifyStoreNames(completedShifts.map((s) => s.storeName)));
+      const uni = ((m) => (n: string) => withShopSuffix(m.get(n) ?? n))(unifyStoreNames(completedShifts.map((s) => s.storeName)));
       statementStaff.push({
         name: assignment.staff.name,
         places: [...new Set(completedShifts.map((s) => uni(s.storeName)))],
@@ -284,7 +284,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
         travel = r.travel;
       }
 
-      const uni = ((m) => (n: string) => m.get(n) ?? n)(unifyStoreNames(done.map((s) => s.storeName)));
+      const uni = ((m) => (n: string) => withShopSuffix(m.get(n) ?? n))(unifyStoreNames(done.map((s) => s.storeName)));
       statementStaff.push({
         name: person.name,
         places: [...new Set(done.map((s) => uni(s.storeName)))],
