@@ -27,13 +27,17 @@ export async function computeMonthlyEarnings(
 ): Promise<MonthlyEarnings> {
   const { start, end } = jstMonthRange(yearMonth);
 
-  const [target, shifts] = await Promise.all([
+  const [target, shifts, staffPay] = await Promise.all([
     prisma.monthlyEarningTarget.findUnique({
       where: { staffId_yearMonth: { staffId, yearMonth } },
     }),
     prisma.shift.findMany({
       where: { staffId, cancelledAt: null, startTime: { gte: start, lt: end } },
       include: { clockRecords: true },
+    }),
+    prisma.staff.findUnique({
+      where: { id: staffId },
+      select: { payType: true, dailyRate: true, monthlyAmount: true },
     }),
   ]);
 
@@ -48,9 +52,22 @@ export async function computeMonthlyEarnings(
   const bandShifts = shifts.filter((s) => s.workType === "BAND");
   const spotShifts = shifts.filter((s) => s.workType === "SPOT");
 
-  const spotConfirmedAmount = spotShifts
-    .filter(isConfirmed)
-    .reduce((sum, s) => sum + (s.unitAmount ?? 0), 0);
+  // SPOT: シフトに単価(unitAmount)が入っているものはその金額を使う(既存データを維持)。
+  // 単価が入っていないシフトは、スタッフの報酬設定(管理者が設定)で計算する:
+  //   DAILY   = 日当 × 該当シフトの確定日数
+  //   MONTHLY = 月固定額(稼働日数に関わらず、該当シフトが1日でもあれば月1回)
+  //   未設定  = 0(従来どおり)
+  const spotConfirmed = spotShifts.filter(isConfirmed);
+  const withOwnAmount = spotConfirmed.filter((s) => s.unitAmount !== null);
+  const withoutOwnAmount = spotConfirmed.filter((s) => s.unitAmount === null);
+  const ownAmountTotal = withOwnAmount.reduce((sum, s) => sum + (s.unitAmount ?? 0), 0);
+  let settingAmount = 0;
+  if (staffPay?.payType === "DAILY") {
+    settingAmount = (staffPay.dailyRate ?? 0) * withoutOwnAmount.length;
+  } else if (staffPay?.payType === "MONTHLY" && withoutOwnAmount.length > 0) {
+    settingAmount = staffPay.monthlyAmount ?? 0;
+  }
+  const spotConfirmedAmount = ownAmountTotal + settingAmount;
 
   if (bandShifts.length > 0) {
     const targetAmount = target?.targetAmount ?? null;

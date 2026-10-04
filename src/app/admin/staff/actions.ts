@@ -106,11 +106,24 @@ function intOrNull(formData: FormData, key: string): number | null {
   return Number.isInteger(n) ? n : null;
 }
 
+function nonNegIntOrNull(formData: FormData, key: string): number | null {
+  const n = intOrNull(formData, key);
+  return n !== null && n >= 0 ? n : null;
+}
+
 export async function updateStaffDetails(staffId: string, formData: FormData) {
   await requireAdmin();
 
   const birthDateRaw = String(formData.get("birthDate") ?? "").trim();
   const paymentMethod = String(formData.get("paymentMethod") ?? "REQUEST") as "FIXED" | "REQUEST";
+
+  // 報酬設定(日当 / 月固定 / 交通費)。未選択なら null(従来どおりシフト単価を使う)
+  const payTypeRaw = String(formData.get("payType") ?? "");
+  const payType = payTypeRaw === "DAILY" || payTypeRaw === "MONTHLY" ? payTypeRaw : null;
+  const dailyRate = payType === "DAILY" ? nonNegIntOrNull(formData, "dailyRate") : null;
+  const monthlyAmount = payType === "MONTHLY" ? nonNegIntOrNull(formData, "monthlyAmount") : null;
+  const travelRaw = String(formData.get("travelExpenseIncluded") ?? "");
+  const travelExpenseIncluded = travelRaw === "true" ? true : travelRaw === "false" ? false : null;
 
   await prisma.staff.update({
     where: { id: staffId },
@@ -128,6 +141,10 @@ export async function updateStaffDetails(staffId: string, formData: FormData) {
       fixedPaymentMonthOffset:
         paymentMethod === "FIXED" ? intOrNull(formData, "fixedPaymentMonthOffset") : null,
       fixedPaymentDay: paymentMethod === "FIXED" ? intOrNull(formData, "fixedPaymentDay") : null,
+      payType,
+      dailyRate,
+      monthlyAmount,
+      travelExpenseIncluded,
     },
   });
 

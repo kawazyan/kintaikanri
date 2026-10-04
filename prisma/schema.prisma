@@ -21,6 +21,12 @@ enum WorkType {
   SPOT
 }
 
+// スタッフの報酬タイプ(管理者がスタッフ詳細で設定)
+enum StaffPayType {
+  DAILY // 日当(稼働日数分)
+  MONTHLY // 月固定(稼働日数に関わらず定額)
+}
+
 enum PaymentMethod {
   FIXED // 固定支払
   REQUEST // 申請支払
@@ -85,6 +91,12 @@ model Staff {
   fixedClosingDay         Int?
   fixedPaymentMonthOffset Int? // 0 = 当月, 1 = 翌月, ...
   fixedPaymentDay         Int?
+
+  // 報酬設定(管理者がスタッフ詳細で設定。未設定=null の場合は従来どおりシフト単価を使う)
+  payType               StaffPayType?
+  dailyRate             Int? // 日当(円/日)
+  monthlyAmount         Int? // 月固定(円/月)
+  travelExpenseIncluded Boolean? // true=交通費込み / false=交通費別払い / null=未設定
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

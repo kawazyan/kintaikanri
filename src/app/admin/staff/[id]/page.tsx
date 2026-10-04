@@ -185,6 +185,72 @@ export default async function AdminStaffDetailPage({
           </div>
         </div>
 
+        <h2 className="mt-2 text-sm font-semibold text-blue-400/80">報酬設定</h2>
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-3">
+          <p className="mb-2 text-xs text-slate-500">
+            未設定の場合は、従来どおりシフトに入力された単価で計算します。設定した場合、単価が入っていないシフトにこの設定が使われます。
+          </p>
+          <div className="flex flex-col gap-3">
+            <label className="flex flex-col gap-1 text-xs text-slate-400">
+              報酬タイプ
+              <select
+                name="payType"
+                defaultValue={staff.payType ?? ""}
+                className={`${FIELD_CLASS} py-2 text-sm`}
+              >
+                <option value="">未設定</option>
+                <option value="DAILY">日当(稼働日数 × 日当)</option>
+                <option value="MONTHLY">月固定(稼働日数に関わらず定額)</option>
+              </select>
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex flex-col gap-1 text-xs text-slate-400">
+                日当(円/日)
+                <input
+                  type="number"
+                  name="dailyRate"
+                  min={0}
+                  step={1}
+                  inputMode="numeric"
+                  defaultValue={staff.dailyRate ?? ""}
+                  className={`${FIELD_CLASS} py-2 text-sm`}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-slate-400">
+                月固定(円/月)
+                <input
+                  type="number"
+                  name="monthlyAmount"
+                  min={0}
+                  step={1}
+                  inputMode="numeric"
+                  defaultValue={staff.monthlyAmount ?? ""}
+                  className={`${FIELD_CLASS} py-2 text-sm`}
+                />
+              </label>
+            </div>
+            <p className="text-xs text-slate-500">
+              ※ 報酬タイプで選んだほうの金額だけが使われます。
+            </p>
+            <label className="flex flex-col gap-1 text-xs text-slate-400">
+              交通費
+              <select
+                name="travelExpenseIncluded"
+                defaultValue={
+                  staff.travelExpenseIncluded === null || staff.travelExpenseIncluded === undefined
+                    ? ""
+                    : String(staff.travelExpenseIncluded)
+                }
+                className={`${FIELD_CLASS} py-2 text-sm`}
+              >
+                <option value="">未設定</option>
+                <option value="true">込み(報酬に含まれる)</option>
+                <option value="false">別払い(月末締め後に精算)</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
         <SubmitButton
           className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-3 text-white shadow-lg shadow-blue-950/50 active:scale-[0.98]"
         >
