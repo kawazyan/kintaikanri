@@ -16,6 +16,7 @@ export type StatementStaff = {
   places: string[]; // 稼働場所(店舗名)
   carriers: string[]; // キャリア
   dates: string[]; // 出勤した日(YYYY-MM-DD, 昇順)
+  dayPlaces?: Record<string, string>; // 出勤した日(YYYY-MM-DD) → その日の稼働店舗
   days: number; // 合計稼働日数
   serviceExTax: number; // 業務委託費(税抜)
   serviceCalc: string; // 業務委託費の計算方法(例: 日額 ¥20,000 × 3日)
@@ -214,6 +215,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
         places: [...new Set(completedShifts.map((s) => s.storeName))],
         carriers: [...new Set(completedShifts.map((s) => s.carrier))],
         dates: [...completedDates].sort(),
+        dayPlaces: Object.fromEntries(completedShifts.map((sh) => [toJstDateValue(sh.startTime), sh.storeName])),
         days,
         serviceExTax: amountExTax,
         serviceCalc: calc,
@@ -284,6 +286,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
         places: [...new Set(done.map((s) => s.storeName))],
         carriers: [...new Set(done.map((s) => s.carrier))],
         dates,
+        dayPlaces: Object.fromEntries(dayStore),
         days: dates.length,
         serviceExTax: service,
         serviceCalc,

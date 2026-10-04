@@ -34,27 +34,39 @@ function staffItems(s: StatementStaff): Item[] {
   return items;
 }
 
-// 出勤日を、日付(大)と曜日(小)の小さなカードで並べる。土曜は薄い青、日曜は薄い赤の地。
-function AttendanceDays({ yearMonth, dates }: { yearMonth: string; dates: string[] }) {
+// 出勤日を、店舗ごとにまとめて日付(大)と曜日(小)の小さなカードで並べる。土曜は薄い青、日曜は薄い赤の地。
+const UNKNOWN_PLACE = "稼働店舗 要確認";
+function AttendanceDays({ yearMonth, staff }: { yearMonth: string; staff: StatementStaff }) {
   const m = Number(yearMonth.split("-")[1]);
+  const placeOf = (d: string) => {
+    const p = staff.dayPlaces?.[d]?.trim() || (staff.places.length === 1 ? staff.places[0]?.trim() : "");
+    return p && p !== "未定" ? p : UNKNOWN_PLACE;
+  };
+  const groups = new Map<string, string[]>();
+  for (const d of staff.dates) groups.set(placeOf(d), [...(groups.get(placeOf(d)) ?? []), d]);
   return (
     <View style={{ flex: 1, padding: 8 }}>
       <Text style={{ fontSize: 8.5, color: "#666", marginBottom: 4 }}>{m}月</Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-        {dates.map((d) => {
-          const [yy, mm, dd] = d.split("-").map(Number);
-          const wd = new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay();
-          const color = wd === 0 ? "#b4545a" : wd === 6 ? "#4a6fa5" : "#1a1a1a";
-          const bg = wd === 0 ? "#fbeeee" : wd === 6 ? "#eef3fb" : "#ffffff";
-          return (
-            <View key={d} style={{ width: "8.6%", marginRight: "0.4%", marginBottom: 4, alignItems: "center", borderWidth: 0.8, borderColor: "#c9d3e3", borderRadius: 4, paddingVertical: 2, backgroundColor: bg }}>
-              <Text style={{ fontSize: 11, color }}>{dd}</Text>
-              <Text style={{ fontSize: 6.5, color }}>{WEEKDAYS[wd]}</Text>
-            </View>
-          );
-        })}
-        {dates.length === 0 && <Text>―</Text>}
-      </View>
+      {[...groups].map(([place, ds]) => (
+        <View key={place} style={{ marginBottom: 6 }}>
+          <Text style={{ fontSize: 9, color: NAVY, marginBottom: 3 }}>{place}　{ds.length}日</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+            {ds.map((d) => {
+              const [yy, mm, dd] = d.split("-").map(Number);
+              const wd = new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay();
+              const color = wd === 0 ? "#b4545a" : wd === 6 ? "#4a6fa5" : "#1a1a1a";
+              const bg = wd === 0 ? "#fbeeee" : wd === 6 ? "#eef3fb" : "#ffffff";
+              return (
+                <View key={d} style={{ width: "8.6%", marginRight: "0.4%", marginBottom: 4, alignItems: "center", borderWidth: 0.8, borderColor: "#c9d3e3", borderRadius: 4, paddingVertical: 2, backgroundColor: bg }}>
+                  <Text style={{ fontSize: 11, color }}>{dd}</Text>
+                  <Text style={{ fontSize: 6.5, color }}>{WEEKDAYS[wd]}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      ))}
+      {staff.dates.length === 0 && <Text>―</Text>}
     </View>
   );
 }
@@ -118,7 +130,7 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
             </View>
             <View style={st.row}>
               <Text style={st.label}>出勤日</Text>
-              <AttendanceDays yearMonth={data.yearMonth} dates={s.dates} />
+              <AttendanceDays yearMonth={data.yearMonth} staff={s} />
             </View>
             <View style={st.row}>
               <Text style={st.label}>合計稼働日数</Text>
