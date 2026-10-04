@@ -8,6 +8,7 @@ import type { BillingTerms, ShiftBillingRule } from "@/lib/billing-terms";
 export type ContractInput = {
   staffName: string;
   storeMatch: string[];
+  dates: string[]; // 特定日だけ(YYYY-MM-DD)。空=日付を問わない
   fromMonth: string;
   toMonth: string;
   contract: "DAILY" | "MONTHLY";
@@ -39,6 +40,7 @@ export async function adminSaveContract(clientId: string, index: number | null, 
   const staffName = input.staffName.trim();
   if (!staffName) throw new Error("スタッフを選んでください。");
   if (!(input.rateExTax > 0)) throw new Error("単価(税抜)を入力してください。");
+  if (input.dates.some((x) => !/^\d{4}-\d{2}-\d{2}$/.test(x))) throw new Error("日付の形式が正しくありません(例: 2026-10-03)。");
   if (input.fromMonth && !MONTH.test(input.fromMonth)) throw new Error("開始月の形式が正しくありません。");
   if (input.toMonth && !MONTH.test(input.toMonth)) throw new Error("終了月の形式が正しくありません。");
   if (input.contract === "MONTHLY" && input.absenceDeduction === "YES" && !(input.plannedDays > 0)) {
@@ -53,6 +55,7 @@ export async function adminSaveContract(clientId: string, index: number | null, 
     ...(prev ?? {}),
     staffName,
     storeMatch: input.storeMatch.length ? input.storeMatch : undefined,
+    dates: input.dates.length ? input.dates : undefined,
     fromMonth: input.fromMonth || undefined,
     toMonth: input.toMonth || undefined,
     contract: input.contract,
