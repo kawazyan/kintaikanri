@@ -212,7 +212,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
         amountInclTax: g.incl,
       }));
 
-      const uni = ((m) => (n: string) => withShopSuffix(m.get(n) ?? n))(unifyStoreNames(completedShifts.map((s) => s.storeName)));
+      const uni = ((m) => (n: string) => (terms.shopSuffix ? withShopSuffix(m.get(n) ?? n) : (m.get(n) ?? n)))(unifyStoreNames(completedShifts.map((s) => s.storeName)));
       statementStaff.push({
         name: assignment.staff.name,
         places: [...new Set(completedShifts.map((s) => uni(s.storeName)))],
@@ -284,7 +284,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
         travel = r.travel;
       }
 
-      const uni = ((m) => (n: string) => withShopSuffix(m.get(n) ?? n))(unifyStoreNames(done.map((s) => s.storeName)));
+      const uni = ((m) => (n: string) => (terms.shopSuffix ? withShopSuffix(m.get(n) ?? n) : (m.get(n) ?? n)))(unifyStoreNames(done.map((s) => s.storeName)));
       statementStaff.push({
         name: person.name,
         places: [...new Set(done.map((s) => uni(s.storeName)))],
@@ -316,7 +316,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
     // 失敗時は例外のまま(広告費が抜けた請求書を作らないため)
     const eventAgencyId = (terms as { eventAgencyId?: string }).eventAgencyId;
     if (eventAgencyId) {
-      for (const ad of await fetchEventAds(eventAgencyId, yearMonth)) clientExtras.push(ad);
+      for (const ad of await fetchEventAds(eventAgencyId, yearMonth, !!terms.shopSuffix)) clientExtras.push(ad);
     }
   }
 

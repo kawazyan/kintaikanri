@@ -30,7 +30,7 @@ function keyInfo(key: string) {
   }
 }
 
-export async function fetchEventAds(agencyId: string, yearMonth: string): Promise<EventAdLine[]> {
+export async function fetchEventAds(agencyId: string, yearMonth: string, shopSuffix = false): Promise<EventAdLine[]> {
   const url = process.env.KJ_EVENT_SUPABASE_URL;
   const key = process.env.KJ_EVENT_SUPABASE_SERVICE_KEY?.trim().replace(/^["']|["']$/g, "");
   if (!url || !key) {
@@ -63,7 +63,7 @@ export async function fetchEventAds(agencyId: string, yearMonth: string): Promis
     const spent = (r.kj_ads ?? []).reduce((sum, a) => sum + Number(a.spent ?? 0), 0);
     if (spent <= 0) continue;
     const rawStore = r.kj_stores?.name ?? "店舗未定";
-    const store = withShopSuffix(rawStore);
+    const store = shopSuffix ? withShopSuffix(rawStore) : rawStore;
     const period = `${md(r.start_date)}～${md(r.end_date)}`;
     lines.push({
       label: `${store} ${period}`,

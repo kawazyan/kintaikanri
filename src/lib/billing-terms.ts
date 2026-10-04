@@ -24,6 +24,8 @@ export type BillingTerms = {
   shiftBilling?: ShiftBillingRule[];
   // 請求内訳書のキャリア欄に固定で出す表記(例: ["au", "UQ"])。指定がなければシフトのキャリアから拾う。
   carriers?: string[];
+  // true なら、請求内訳書の店名(稼働場所・広告のイベント主催店舗)の末尾に「店」を付けて表示する。
+  shopSuffix?: boolean;
 };
 
 export const normName = (s: string) => s.replace(/[\s　]/g, "");
