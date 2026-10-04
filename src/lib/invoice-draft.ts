@@ -72,7 +72,7 @@ function perStoreTravel(rules: TravelByStore[], dayStore: Map<string, string>, s
     const r = rules[idx];
     ex += r.perDayExTax * n;
     parts.push(`${r.match} ${yen(r.perDayExTax)}（${r.detail}）× ${n}日`);
-    lines.push({ label: `交通費相当額　${r.match}`, calc: `${yen(r.perDayExTax)} × ${n}日\n（${r.detail}）`, amountExTax: r.perDayExTax * n });
+    lines.push({ label: `交通費相当額\n${r.match}`, calc: `${yen(r.perDayExTax)} × ${n}日\n（${r.detail}）`, amountExTax: r.perDayExTax * n });
   }
   const warning = unmatched.size
     ? `${staffName}さんの稼働店舗「${[...unmatched].join("、")}」は交通費の取り決めがないため、交通費を0円で作成しました。必要なら修正画面で入力してください。`
@@ -297,7 +297,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
           calc: `${parts.join(" ＋ ")} ＝ ${yen(total)}＋税で計算`,
           lines: [
             ...(travel.lines ?? (travel.amountExTax > 0 ? [{ label: "交通費相当額", calc: travel.calc ?? "", amountExTax: travel.amountExTax }] : [])),
-            ...rule.extraTravel.map((e) => ({ label: `交通費相当額　${e.label}`, calc: e.calc, amountExTax: e.amountExTax })),
+            ...rule.extraTravel.map((e) => ({ label: `交通費相当額\n${e.label}`, calc: e.calc, amountExTax: e.amountExTax })),
           ],
         };
       }
