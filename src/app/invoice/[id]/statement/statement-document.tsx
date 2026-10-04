@@ -38,7 +38,7 @@ function staffItems(s: StatementStaff): Item[] {
 function AttendanceDays({ yearMonth, dates }: { yearMonth: string; dates: string[] }) {
   const m = Number(yearMonth.split("-")[1]);
   return (
-    <View style={{ padding: 8 }}>
+    <View style={{ flex: 1, padding: 8 }}>
       <Text style={{ fontSize: 8.5, color: "#666", marginBottom: 4 }}>{m}月</Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
         {dates.map((d) => {
@@ -71,7 +71,7 @@ const st = StyleSheet.create({
   staffHead: { flexDirection: "row", justifyContent: "space-between", backgroundColor: BLUE, paddingVertical: 5, paddingHorizontal: 8 },
   staffName: { fontSize: 11 },
   row: { flexDirection: "row", borderTopWidth: 1, borderTopColor: "#d0d0d0" },
-  label: { width: 84, paddingVertical: 3, paddingHorizontal: 6, backgroundColor: "#f7f7f7", fontSize: 8.5, color: "#444" },
+  label: { width: 84, flexShrink: 0, paddingVertical: 3, paddingHorizontal: 6, backgroundColor: "#f7f7f7", fontSize: 8.5, color: "#444" },
   value: { flex: 1, paddingVertical: 3, paddingHorizontal: 6, lineHeight: 1.1 },
   itemHead: { flexDirection: "row", borderTopWidth: 1, borderTopColor: LINE, backgroundColor: "#f2f2f2" },
   itemRow: { flexDirection: "row", borderTopWidth: 1, borderTopColor: "#d0d0d0" },
