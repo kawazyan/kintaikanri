@@ -71,8 +71,15 @@ const s = StyleSheet.create({
 });
 
 export function InvoiceDocument({ data }: { data: InvoiceDocData }) {
-  // 以前の請求は備考に「振込先：…」の1行が入っている。振込先は表で出すので、その行だけ取り除く。
-  const noteText = data.note.split(/\r?\n/).filter((l) => !/^\s*振込先[：:]/.test(l)).join("\n").trim();
+  // 以前の請求の備考には「振込先：…」「お支払い期限：…」の行が入っている。振込先は表で出し、お支払い期限は
+  // 上の欄に出るので、この2行は取り除く。代わりに「請求内訳書は別途添付」の1文を入れる(すでにあれば入れない)。
+  const kept = data.note.split(/\r?\n/).filter((l) => !/^\s*(振込先|お支払い期限)[：:]/.test(l));
+  const withAttach = [...kept];
+  if (!kept.some((l) => l.includes("請求内訳書"))) {
+    const at = kept.findIndex((l) => l.trim().startsWith("※"));
+    withAttach.splice(at >= 0 ? at : kept.length, 0, "請求内訳書は別途添付いたします。");
+  }
+  const noteText = withAttach.join("\n").replace(/\n{3,}/g, "\n\n").trim();
   return (
     <Document title={`請求書 ${data.addressee} ${data.subject}`}>
       <Page size="A4" style={s.page}>
