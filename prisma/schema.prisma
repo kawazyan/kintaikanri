@@ -417,11 +417,25 @@ model Client {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   accessTokens ClientAccessToken[]
+  viewTokens ClientViewToken[]
   workOrders WorkOrder[]
   invoices Invoice[]
 }
 
 model ClientAccessToken {
+  id String @id @default(cuid())
+  clientId String
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  token String @unique
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+  @@index([clientId, active])
+}
+
+// 取引先向け「出退勤の閲覧専用ページ」(/watch/[token])のURL用トークン。
+// 依頼の変更・キャンセルができる ClientAccessToken とは別物(閲覧のみ。無効化・再発行できる)。
+model ClientViewToken {
   id String @id @default(cuid())
   clientId String
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)

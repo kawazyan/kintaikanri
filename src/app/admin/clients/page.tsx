@@ -9,7 +9,10 @@ export default async function ClientsPage() {
   await requireAdmin();
   const [clients, baseUrl] = await Promise.all([
     prisma.client.findMany({
-      include: { _count: { select: { workOrders: true, invoices: true } } },
+      include: {
+        _count: { select: { workOrders: true, invoices: true } },
+        viewTokens: { where: { active: true }, select: { token: true }, take: 1 },
+      },
       orderBy: { updatedAt: "desc" },
     }),
     getBaseUrl(),
@@ -24,7 +27,7 @@ export default async function ClientsPage() {
     </div>
 
     <section className="mt-6"><div className="mb-3 flex items-end justify-between"><div><p className="text-xs font-black tracking-widest text-slate-400">AUTO CREATED</p><h2 className="text-lg font-black">依頼実績のある取引先</h2></div><span className="text-sm font-black text-slate-400">{clients.length}社</span></div>
-      <ClientsList clients={clients} />
+      <ClientsList clients={clients.map(({ viewTokens, ...c }) => ({ ...c, viewUrl: viewTokens[0] ? `${baseUrl}/watch/${viewTokens[0].token}` : null }))} />
     </section>
   </main>;
 }
