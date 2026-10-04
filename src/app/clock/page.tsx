@@ -116,7 +116,7 @@ export default async function ClockPage() {
 
   return (
     <main className="staff-screen">
-      <div className="mx-auto max-w-[430px] pb-28 pt-[calc(72px_+_env(safe-area-inset-top))]">
+      <div className="mx-auto max-w-[430px] pb-28 pt-[calc(100px_+_env(safe-area-inset-top))]">
         <div className="flex flex-col">
           <CharacterAvatar
             state={avatarState}
@@ -224,45 +224,43 @@ export default async function ClockPage() {
           </section>
 
           <section className="payment-metal-panel">
-            <div className="payment-metal-main">
-              <div className="payment-metal-amount">
+            <div className="payment-metal-stack">
+              <div className="payment-metal-row">
                 <p className="payment-metal-kicker">今月の確定受取金額</p>
-                <div className="payment-metal-glint" />
                 <p className="payment-metal-yen">
                   {earnings.confirmedAmount === null
                     ? "－"
                     : `¥${earnings.confirmedAmount.toLocaleString("ja-JP")}`}
                 </p>
               </div>
-              <div className="payment-metal-info">
-                <Link href="/payment/info" className="payment-metal-link">
-                  <CalendarDays size={25} />
-                  <span>支払情報</span>
-                  <ChevronRight size={22} />
-                </Link>
-                {staff.paymentMethod === "FIXED" ? (
-                  <>
-                    <p className="payment-metal-label">次回支払予定日</p>
-                    <p className="payment-metal-date">
-                      {payDate
-                        ? new Intl.DateTimeFormat("ja-JP", {
-                            timeZone: "Asia/Tokyo",
-                            month: "long",
-                            day: "numeric",
-                            weekday: "short",
-                          }).format(payDate)
-                        : "未設定"}
+              {staff.paymentMethod === "FIXED" ? (
+                <div className="payment-metal-row">
+                  <p className="payment-metal-kicker">次回支払予定日</p>
+                  <p className="payment-metal-yen payment-metal-yen--sub">
+                    {payDate
+                      ? new Intl.DateTimeFormat("ja-JP", {
+                          timeZone: "Asia/Tokyo",
+                          month: "long",
+                          day: "numeric",
+                          weekday: "short",
+                        }).format(payDate)
+                      : "未設定"}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="payment-metal-row">
+                    <p className="payment-metal-kicker">振込申請可能額</p>
+                    <p className="payment-metal-yen payment-metal-yen--sub">
+                      ¥{(transferBalance?.availableAmount ?? 0).toLocaleString("ja-JP")}
                     </p>
-                  </>
-                ) : (
-                  <Link href="/payment/request" className="block active:opacity-80">
-                    <p className="payment-metal-label flex items-center gap-1">
-                      振込申請可能額 <ChevronRight size={12} />
-                    </p>
-                    <p className="payment-metal-date">¥{transferBalance?.availableAmount.toLocaleString("ja-JP") || 0}</p>
+                  </div>
+                  <Link href="/payment/request" className="payment-metal-apply">
+                    振込を申請する
+                    <ChevronRight size={20} />
                   </Link>
-                )}
-              </div>
+                </>
+              )}
             </div>
             <div className="payment-metal-bottom payment-metal-bottom-single">
               <div className="payment-metal-method">

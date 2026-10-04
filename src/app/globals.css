@@ -548,3 +548,13 @@ body {
 .coin-shop-history__row{display:flex;justify-content:space-between;gap:8px;padding:9px 0;border-top:1px solid #ffffff1c;font-size:11px}
 .coin-shop-history__row>div{min-width:0}.coin-shop-history__row strong{overflow-wrap:anywhere}.coin-shop-history__row p{margin-top:2px;color:#9ab0c5;font-size:9px}.coin-shop-history__row .text-right strong{color:#f3c572}
 @media(max-width:360px){.coin-shop-heading{grid-template-columns:minmax(0,1fr) 112px}.coin-shop-balance{gap:3px}.coin-shop-balance__coin{width:28px;height:28px}.coin-shop-card{padding:5px}.coin-shop-rate__button{padding:3px}.coin-shop-rate__button>svg{width:13px}.coin-shop-stack{width:61px;height:68px;background-size:350px 762px;background-position:-19px -664px}}
+
+/* ホーム 支払パネル: 縦積みレイアウト（金額を1行ずつ大きく表示） */
+.payment-metal-stack{position:relative;z-index:1;display:flex;flex-direction:column;gap:0;padding:8px 22px 6px}
+.payment-metal-row{padding:16px 0;border-bottom:1px solid rgba(190,150,90,.24)}
+.payment-metal-row:last-of-type{border-bottom:0}
+.payment-metal-stack .payment-metal-kicker{font-size:14px;font-weight:800;color:#aab6c1;letter-spacing:0}
+.payment-metal-stack .payment-metal-yen{margin-top:8px;font-size:40px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.payment-metal-stack .payment-metal-yen--sub{font-size:32px}
+.payment-metal-apply{display:flex;align-items:center;justify-content:center;gap:6px;margin:6px 0 12px;min-height:52px;border-radius:14px;background:linear-gradient(180deg,#ff3a43,#c50e22);color:#fff;font-size:17px;font-weight:900;box-shadow:0 4px 0 #7f1d1d,0 8px 18px rgba(239,43,53,.28)}
+.payment-metal-apply:active{transform:translateY(2px);box-shadow:0 2px 0 #7f1d1d}

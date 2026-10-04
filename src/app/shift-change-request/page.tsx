@@ -27,7 +27,7 @@ export default async function ShiftChangeRequestPage() {
 
   return (
     <main className="request-screen min-h-dvh text-slate-100">
-      <div className="mx-auto max-w-md px-4 pb-28 pt-[calc(72px_+_env(safe-area-inset-top))]">
+      <div className="mx-auto max-w-md px-4 pb-28 pt-[calc(100px_+_env(safe-area-inset-top))]">
         <h1 className="text-2xl font-black">シフト変更申請</h1>
         <p className="mt-1 text-sm text-slate-500">関係者との調整が完了した内容をシステムへ申請します</p>
 

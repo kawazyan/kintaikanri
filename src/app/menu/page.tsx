@@ -30,7 +30,7 @@ export default async function MenuPage() {
 
   return (
     <main className="staff-screen">
-      <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[calc(72px_+_env(safe-area-inset-top))] pb-28">
+      <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-[calc(100px_+_env(safe-area-inset-top))] pb-28">
         <PageHeader icon={Menu} title="メニュー" centered />
 
         <section className="app-profile-card app-profile-card--static">

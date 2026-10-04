@@ -30,7 +30,7 @@ export default async function CoinShop() {
 
   return (
     <main className="staff-screen coin-shop-screen">
-      <div className="mx-auto max-w-[430px] px-3 pb-28 pt-[calc(86px_+_env(safe-area-inset-top))]">
+      <div className="mx-auto max-w-[430px] px-3 pb-28 pt-[calc(100px_+_env(safe-area-inset-top))]">
         <header className="coin-shop-heading">
           <div className="coin-shop-heading__title">
             <Gift size={28} strokeWidth={2.2} aria-hidden="true" />
