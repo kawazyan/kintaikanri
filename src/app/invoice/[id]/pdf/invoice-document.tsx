@@ -34,7 +34,7 @@ const s = StyleSheet.create({
   topLeft: { width: "50%", paddingTop: 16 },
   addressee: { fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#555", paddingBottom: 3 },
   intro: { marginTop: 14, fontSize: 8.5 },
-  letterhead: { width: 190, height: 118 },
+  letterhead: { width: 175, height: 109 },
   subjectRow: { flexDirection: "row", marginTop: 12, borderBottomWidth: 1, borderBottomColor: "#2f5597", paddingBottom: 2, width: "56%" },
   subjectLabel: { width: 40, fontSize: 8.5 },
   meta: { alignItems: "flex-end", marginTop: -6 },
@@ -70,8 +70,10 @@ const s = StyleSheet.create({
 });
 
 export function InvoiceDocument({ data }: { data: InvoiceDocData }) {
-  const rowCount = Math.max(MIN_ROWS, data.lines.length);
-  const rows = Array.from({ length: rowCount }, (_, i) => data.lines[i] ?? null);
+  // 補足(description)があると行が高くなるので、その分だけ空行を減らして1ページに収める。
+  const usedUnits = data.lines.reduce((sum, l) => sum + 1 + (l.description ? Math.ceil(l.description.length / 55) : 0), 0);
+  const emptyRows = Math.max(0, MIN_ROWS - usedUnits);
+  const rows: (InvoiceDocData["lines"][number] | null)[] = [...data.lines, ...Array.from({ length: emptyRows }, () => null)];
   return (
     <Document title={`請求書 ${data.addressee} ${data.subject}`}>
       <Page size="A4" style={s.page}>
