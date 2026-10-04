@@ -5,6 +5,10 @@ import { isDailySummaryWindow, isUpcomingShift } from "@/lib/line-notification-t
 
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
 
+// 出勤5分前アラートに添付する、スタッフ用の打刻ページURL。
+// (未ログインの場合は自動でログイン画面に移動し、ログイン後に打刻画面が開く)
+const STAFF_CLOCK_URL = "https://kintaikanri-2.vercel.app/clock";
+
 function isUniqueConflict(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
 }
@@ -42,6 +46,7 @@ export async function sendUpcomingShiftAlerts(now: Date): Promise<{ sent: number
       `【出勤5分前アラート】${shift.staff.name}さん`,
       `出勤予定 ${toJstTimeValue(shift.startTime)} / ${shift.storeName}`,
       "出勤時刻が近づいています。出勤打刻をお願いします。",
+      `▼打刻はこちら\n${STAFF_CLOCK_URL}`,
     ].join("\n");
     if (await sendLinePush(groupId, message, `pre-shift:${shift.id}`)) {
       sent++;
