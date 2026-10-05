@@ -4,7 +4,7 @@ export const INVOICE_REGISTRATION_NUMBER = "T8370001045322";
 // 請求書の振込先(PDFでは表にして表示する。備考欄の文章には入れない)。
 export const INVOICE_BANK = {
   bank: "PayPay銀行",
-  branch: "ビジネス営業所",
+  branch: "ビジネス営業部",
   accountType: "普通",
   accountNumber: "3596034",
   accountHolder: "カ）ケイジェイ",
