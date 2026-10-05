@@ -17,6 +17,7 @@ type Initial = {
     places: string;
     carriers: string;
     dates: string[];
+    dayPlaces: Record<string, string>;
     serviceExTax: number;
     serviceCalc: string;
     travelInclTax: number;
@@ -26,6 +27,26 @@ type Initial = {
 };
 
 const input = "w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-100";
+
+// 数字の入力欄。消して打ち直すときに、先頭へ「0」が自動で付かない(空欄にできる)。
+// 空欄のまま確定(フォーカスを外す)したときだけ 0 に戻す。
+function NumInput({ value, onChange, className }: { value: number; onChange: (n: number) => void; className?: string }) {
+  const [text, setText] = useState(String(value));
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={text}
+      onChange={(e) => {
+        const digits = e.target.value.replace(/[^\d]/g, "").replace(/^0+(?=\d)/, "");
+        setText(digits);
+        onChange(digits === "" ? 0 : Number(digits));
+      }}
+      onBlur={() => text === "" && setText("0")}
+      className={className}
+    />
+  );
+}
 
 export function EditInvoiceForm({
   invoiceId,
@@ -70,6 +91,7 @@ export function EditInvoiceForm({
         : { label: e.label, amountExTax: Number(e.amountExTax) || 0, calc: e.calc })),
       staff: staff.map((s) => ({
         dates: s.dates,
+        dayPlaces: s.dayPlaces,
         serviceExTax: Number(s.serviceExTax) || 0,
         serviceCalc: s.serviceCalc,
         travelInclTax: Number(s.travelInclTax) || 0,
@@ -92,9 +114,21 @@ export function EditInvoiceForm({
     });
   }
 
-  function setStaffDates(i: number, dates: string[]) {
-    setStaff(staff.map((s, idx) => (idx === i ? { ...s, dates } : s)));
+  // 稼働日を変えたときは、残る日の稼働場所を引き継ぐ(日付を直した場合は、その日の場所も一緒に移す)。
+  function setStaffDates(i: number, dates: string[], renamed?: { from: string; to: string }) {
+    setStaff(
+      staff.map((s, idx) => {
+        if (idx !== i) return s;
+        const dayPlaces: Record<string, string> = {};
+        for (const d of dates) dayPlaces[d] = s.dayPlaces[d] ?? (renamed && d === renamed.to ? (s.dayPlaces[renamed.from] ?? "") : "");
+        return { ...s, dates, dayPlaces };
+      })
+    );
   }
+  const setDayPlace = (i: number, d: string, place: string) =>
+    setStaff(staff.map((s, idx) => (idx === i ? { ...s, dayPlaces: { ...s.dayPlaces, [d]: place } } : s)));
+  const setAllPlaces = (i: number, place: string) =>
+    setStaff(staff.map((s, idx) => (idx === i ? { ...s, dayPlaces: Object.fromEntries(s.dates.map((d) => [d, place])) } : s)));
 
   const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
   const field = "block text-xs font-bold text-slate-300";
@@ -133,7 +167,7 @@ export function EditInvoiceForm({
           {!initial.hasStatement && (
             <label className={field}>
               業務委託費一式の金額（税抜）
-              <input type="number" min={0} value={amount} onChange={(e) => setAmount(Number(e.target.value))} className={`${input} mt-1 max-w-[240px]`} />
+              <NumInput value={amount} onChange={setAmount} className={`${input} mt-1 max-w-[240px]`} />
             </label>
           )}
         </div>
@@ -162,7 +196,7 @@ export function EditInvoiceForm({
                           value={d}
                           min={`${yearMonth}-01`}
                           max={`${yearMonth}-31`}
-                          onChange={(e) => setStaffDates(i, s.dates.map((x, xi) => (xi === di ? e.target.value : x)))}
+                          onChange={(e) => setStaffDates(i, s.dates.map((x, xi) => (xi === di ? e.target.value : x)), { from: d, to: e.target.value })}
                           className="bg-transparent text-sm"
                         />
                         <button type="button" aria-label="この日を削除" onClick={() => setStaffDates(i, s.dates.filter((_, xi) => xi !== di))} className="px-1 text-xs text-red-300">✕</button>
@@ -172,14 +206,56 @@ export function EditInvoiceForm({
                   </div>
                 </div>
 
+                <div className="mt-4">
+                  <p className={field}>稼働場所（日ごと）</p>
+                  <p className={hint}>
+                    直した日の場所は、保存すると<b>シフトと打刻履歴の店舗名にも反映</b>されます。場所を変えても、交通費は自動では変わりません（必要なら下で直してください）。
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      list={`places-${i}`}
+                      placeholder="すべての日を同じ場所にする場合に入力"
+                      id={`all-place-${i}`}
+                      className={input}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const el = document.getElementById(`all-place-${i}`) as HTMLInputElement | null;
+                        if (el?.value.trim()) setAllPlaces(i, el.value.trim());
+                      }}
+                      className="shrink-0 rounded-lg border border-slate-600 px-3 py-1 text-xs font-bold"
+                    >
+                      全日に適用
+                    </button>
+                  </div>
+                  <datalist id={`places-${i}`}>
+                    {[...new Set(Object.values(s.dayPlaces).filter(Boolean))].map((p) => (<option key={p} value={p} />))}
+                  </datalist>
+                  <div className="mt-2 space-y-1">
+                    {s.dates.map((d) => (
+                      <label key={d} className="flex items-center gap-2 text-xs text-slate-300">
+                        <span className="w-24 shrink-0">{d.slice(5).replace("-", "/")}</span>
+                        <input
+                          list={`places-${i}`}
+                          value={s.dayPlaces[d] ?? ""}
+                          onChange={(e) => setDayPlace(i, d, e.target.value)}
+                          placeholder="稼働場所（空欄は「稼働店舗 要確認」と表示）"
+                          className={input}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <label className={field}>
                     業務委託費（税抜・円）
-                    <input type="number" min={0} value={s.serviceExTax} onChange={(e) => patchStaff(i, { serviceExTax: Number(e.target.value) })} className={`${input} mt-1`} />
+                    <NumInput value={s.serviceExTax} onChange={(n) => patchStaff(i, { serviceExTax: n })} className={`${input} mt-1`} />
                   </label>
                   <label className={field}>
                     交通費相当額（税込・円）
-                    <input type="number" min={0} value={s.travelInclTax} onChange={(e) => patchStaff(i, { travelInclTax: Number(e.target.value) })} className={`${input} mt-1`} />
+                    <NumInput value={s.travelInclTax} onChange={(n) => patchStaff(i, { travelInclTax: n })} className={`${input} mt-1`} />
                     <span className={hint}>
                       0なら載せません。税別で計算します
                       {Number(s.travelInclTax) > 0 ? `（税込${Number(s.travelInclTax).toLocaleString("ja-JP")}円 → ${yen(travelEx(Number(s.travelInclTax)))}＋税）` : "（例: 税込1,100円 → 1,000円＋税）"}
@@ -224,7 +300,7 @@ export function EditInvoiceForm({
                 )}
                 <label className={field}>
                   金額（税抜・円）
-                  <input type="number" min={0} value={e.amountExTax} onChange={(ev) => setExtras(extras.map((x, xi) => (xi === i ? { ...x, amountExTax: Number(ev.target.value) } : x)))} className={`${input} mt-1`} />
+                  <NumInput value={e.amountExTax} onChange={(n) => setExtras(extras.map((x, xi) => (xi === i ? { ...x, amountExTax: n } : x)))} className={`${input} mt-1`} />
                 </label>
                 <button type="button" onClick={() => setExtras(extras.filter((_, xi) => xi !== i))} className="self-end rounded-lg border border-red-900 px-3 py-2 text-xs font-bold text-red-300">削除</button>
                 <label className={`${field} md:col-span-3`}>
