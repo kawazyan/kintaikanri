@@ -21,33 +21,60 @@ const monthDay = (d: string) => {
   const [, m, day] = d.split("-").map(Number);
   return `${m}/${day}`;
 };
-const weekdayColor = (d: string) => (weekdayOf(d) === 0 ? "text-rose-500" : weekdayOf(d) === 6 ? "text-sky-600" : "text-slate-400");
+const dayLabel = (d: string) => `${monthDay(d)}(${WEEKDAYS[weekdayOf(d)]})`;
+const weekdayColor = (d: string) => (weekdayOf(d) === 0 ? "text-rose-500" : weekdayOf(d) === 6 ? "text-sky-600" : "text-slate-500");
 const shiftMonth = (ym: string, delta: number) => {
   const [y, m] = ym.split("-").map(Number);
   const d = new Date(Date.UTC(y, m - 1 + delta, 1));
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 };
 
-// 色は、状態を表すときだけ使う(緑=出勤中 / 黒=退勤済み / 黄=未出勤 / 橙=退勤未打刻 / 赤=欠勤 / 灰=その他)。
-const TONE: Record<ViewStatus, { text: string; dot: string }> = {
-  出勤前: { text: "text-slate-500", dot: "bg-slate-300" },
-  未出勤: { text: "text-amber-600", dot: "bg-amber-400" },
-  出勤中: { text: "text-emerald-600", dot: "bg-emerald-500" },
-  退勤済み: { text: "text-slate-700", dot: "bg-slate-800" },
-  退勤未打刻: { text: "text-orange-600", dot: "bg-orange-400" },
-  欠勤: { text: "text-rose-600", dot: "bg-rose-500" },
-  キャンセル: { text: "text-slate-400", dot: "bg-slate-300" },
+// 状態のピル(丸い札)の色。
+const PILL: Record<ViewStatus, string> = {
+  出勤前: "from-[#9aa8b5] to-[#7d8c9b]",
+  未出勤: "from-[#d6ae60] to-[#b58d40]",
+  出勤中: "from-[#3fa7ad] to-[#2a808f]",
+  退勤済み: "from-[#4f9fb0] to-[#357d93]",
+  退勤未打刻: "from-[#e19a55] to-[#c97b33]",
+  欠勤: "from-[#7088ad] to-[#516a8f]",
+  キャンセル: "from-[#a7b0ba] to-[#8b95a1]",
 };
+// 記録カードを淡い青緑にする状態(出勤の打刻がある日)。
+const ACTIVE = new Set<ViewStatus>(["出勤中", "退勤済み", "退勤未打刻"]);
 
-function StatusText({ row }: { row: ViewRow }) {
+const AVATAR_TONES = [
+  "from-[#7fb8c4] to-[#4f93a6]",
+  "from-[#8fa7d0] to-[#5f7fb3]",
+  "from-[#c9a5c9] to-[#a47ca8]",
+  "from-[#e0b27c] to-[#c58f4f]",
+  "from-[#86bf9d] to-[#5a9c78]",
+  "from-[#d49a9a] to-[#b87474]",
+];
+// 表示用: 姓名の間の全角スペースを半角にして、狭い画面でも名前が省略されにくくする(絞り込みの判定には使わない)。
+const disp = (name: string) => name.replace(/　/g, " ");
+
+function Avatar({ name, size = 40 }: { name: string; size?: number }) {
+  const hash = [...name].reduce((a, c) => a + c.charCodeAt(0), 0);
+  const initial = name.trim().charAt(0) || "?";
   return (
-    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-bold">
-      <span className={`inline-flex items-center gap-1.5 ${TONE[row.status].text}`}>
-        <span className={`h-1.5 w-1.5 rounded-full ${TONE[row.status].dot} ${row.status === "出勤中" ? "animate-pulse" : ""}`} />
+    <span
+      style={{ width: size, height: size, fontSize: size * 0.42 }}
+      className={`inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br font-black text-white shadow-[inset_0_0_0_2px_rgba(255,255,255,.55)] ${AVATAR_TONES[hash % AVATAR_TONES.length]}`}
+      aria-hidden
+    >
+      {initial}
+    </span>
+  );
+}
+
+function StatusPill({ row, small }: { row: ViewRow; small?: boolean }) {
+  return (
+    <span className={`inline-flex flex-wrap items-center gap-1 ${small ? "max-w-[76px] justify-center" : ""}`}>
+      <span className={`inline-flex items-center whitespace-nowrap rounded-full bg-gradient-to-b font-black text-white shadow-sm ${small ? "px-2 py-px text-[10px]" : "px-3 py-0.5 text-xs"} ${PILL[row.status]}`}>
         {row.status}
       </span>
       {row.notes.filter((n) => n.label !== row.status).map((n) => (
-        <span key={n.label} className="rounded border border-rose-200 px-1.5 text-[11px] font-bold text-rose-600">{n.label}</span>
+        <span key={n.label} className="whitespace-nowrap rounded-full bg-white/80 px-1.5 py-px text-[10px] font-black text-rose-700 ring-1 ring-rose-200">{n.label}</span>
       ))}
     </span>
   );
@@ -57,41 +84,35 @@ function Reasons({ row }: { row: ViewRow }) {
   const items = row.notes.filter((n) => n.reason);
   if (!items.length) return null;
   return (
-    <div className="mt-1 space-y-0.5">
-      {items.map((n) => <p key={n.label} className="text-[11px] text-slate-500">{n.label}の理由：{n.reason}</p>)}
+    <div className="mt-0.5 space-y-0.5">
+      {items.map((n) => <p key={n.label} className="text-[10px] font-bold leading-snug text-slate-500">{n.label}の理由：{n.reason}</p>)}
     </div>
   );
 }
 
-function Time({ label, value }: { label: string; value: string | null }) {
+function ClockTimes({ row }: { row: ViewRow }) {
   return (
-    <div className="text-right">
-      <p className="text-[10px] font-bold tracking-wider text-slate-400">{label}</p>
-      <p className={`text-lg font-semibold tabular-nums leading-tight ${value ? "text-slate-900" : "text-slate-300"}`}>{value ?? "--:--"}</p>
+    <div className="grid shrink-0 grid-cols-2 gap-2 text-center">
+      <div><p className="text-[9px] font-black text-slate-400">出勤</p><p className="text-sm font-black tabular-nums leading-tight text-slate-800">{row.clockIn ?? "--:--"}</p></div>
+      <div><p className="text-[9px] font-black text-slate-400">退勤</p><p className="text-sm font-black tabular-nums leading-tight text-slate-800">{row.clockOut ?? "--:--"}</p></div>
     </div>
   );
 }
 
-function AttendanceRow({ row }: { row: ViewRow }) {
+function Stat({ label, value, box, num }: { label: string; value: number; box: string; num: string }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3.5">
-      <span className={`h-10 w-1 shrink-0 rounded-full ${TONE[row.status].dot}`} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-bold text-slate-900">{row.staffName}</p>
-        <p className="truncate text-xs text-slate-500">{row.storeName}　{row.plan}</p>
-        <div className="mt-1"><StatusText row={row} /></div>
-        <Reasons row={row} />
-      </div>
-      <div className="flex shrink-0 gap-5">
-        <Time label="出勤" value={row.clockIn} />
-        <Time label="退勤" value={row.clockOut} />
-      </div>
+    <div className={`rounded-2xl bg-gradient-to-b px-1.5 pb-2.5 pt-2 text-center shadow-[0_8px_20px_rgba(30,60,90,.16),inset_0_1px_0_rgba(255,255,255,.85)] ring-1 ring-white/70 ${box}`}>
+      <p className="whitespace-nowrap text-[10px] font-black text-slate-600 sm:text-[11px]">{label}</p>
+      <p className={`mt-0.5 text-[28px] font-black tabular-nums leading-none ${num}`}>
+        {value}
+        <span className="ml-0.5 text-xs font-black">件</span>
+      </p>
     </div>
   );
 }
 
 function resultTone(result: string) {
-  return result.includes("承認") ? "text-emerald-600" : result.includes("却下") ? "text-rose-600" : "text-amber-600";
+  return result.includes("承認") ? "text-[#2a808f]" : result.includes("却下") ? "text-rose-600" : "text-amber-600";
 }
 
 export default async function WatchPage({
@@ -128,7 +149,12 @@ export default async function WatchPage({
       default: return true;
     }
   };
-  const shown = rows.filter((r) => (!staffFilter || r.staffName === staffFilter) && matchStatus(r, statusFilter));
+  // 記録は新しい日が上(画像と同じ並び)。同じ日の中は、元の並びのまま。
+  const shown = rows
+    .filter((r) => (!staffFilter || r.staffName === staffFilter) && matchStatus(r, statusFilter))
+    .map((r, i) => ({ r, i }))
+    .sort((a, b) => (a.r.date === b.r.date ? a.i - b.i : a.r.date < b.r.date ? 1 : -1))
+    .map((x) => x.r);
   const filtered = !!staffFilter || !!statusFilter;
   const href = (over: { month?: string; status?: string }) => {
     const q = new URLSearchParams({ month: over.month ?? ym });
@@ -137,9 +163,6 @@ export default async function WatchPage({
     if (st) q.set("status", st);
     return `/watch/${token}?${q.toString()}`;
   };
-
-  // 日付ごとにまとめる(新しい日が上)
-  const groups = [...new Set(shown.map((r) => r.date))].sort().reverse().map((date) => ({ date, items: shown.filter((r) => r.date === date) }));
 
   // 上のサマリー(その月の全体。絞り込みの影響を受けない)
   const countOf = (key: string) => rows.filter((r) => matchStatus(r, key)).length;
@@ -151,103 +174,106 @@ export default async function WatchPage({
     { key: "EARLY", label: "早退" },
     { key: "NOT_IN", label: "未出勤" },
   ];
-  const field = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900";
-  const card = "overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,.06),0_8px_24px_rgba(15,23,42,.05)] ring-1 ring-slate-900/5";
-  const sectionTitle = "text-[11px] font-bold tracking-[.2em] text-slate-400";
+  const field = "w-full min-w-0 rounded-lg border border-slate-200 bg-white px-1.5 py-1.5 text-xs font-bold text-slate-800 shadow-sm [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:w-3";
 
   return (
     <>
       <ClientAutoRefresh intervalMs={30000} />
-      <main className="min-h-dvh bg-[#f5f6f8] pb-10 text-slate-900">
+      <main className="min-h-dvh bg-[linear-gradient(180deg,#d7e4eb_0%,#e6edf2_26%,#eef2f5_100%)] text-slate-900">
         {/* ヘッダー */}
-        <header className="bg-[#0f1b2d] pb-20 pt-7 text-white">
-          <div className="mx-auto max-w-2xl px-5">
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] font-bold tracking-[.3em] text-slate-400">K.J ATTENDANCE</p>
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-300">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                LIVE
+        <header className="bg-[linear-gradient(165deg,#5b9bab_0%,#41829a_48%,#2c6a86_100%)] pb-14 pt-5 text-white">
+          <div className="mx-auto max-w-3xl px-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[22px] font-black tracking-wide text-[#d4e4ea] sm:text-2xl">K.J ATTENDANCE</p>
+              <span className="inline-flex items-center gap-2 rounded-full bg-[#1d4a62]/40 px-3 py-1 text-[11px] font-black text-[#dbe9ee] ring-1 ring-white/25">
+                LIVE　30秒ごとに自動更新
+                <svg width="20" height="11" viewBox="0 0 22 12" fill="none" aria-hidden>
+                  <path d="M1 6h3l2-5 3 10 3-8 2 3h7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </span>
             </div>
-            <h1 className="mt-6 text-[26px] font-bold leading-tight tracking-tight">{access.client.name}<span className="ml-1 text-base font-medium text-slate-400">様</span></h1>
-            <p className="mt-1 text-sm text-slate-400">出退勤状況　{yearMonthLabel(ym)}</p>
+            <h1 className="mt-3 text-[17px] font-black leading-snug text-white sm:text-xl">
+              {access.client.name}様 出退勤状況 {yearMonthLabel(ym)}
+            </h1>
           </div>
         </header>
 
-        <div className="mx-auto -mt-12 max-w-2xl px-4">
+        <div className="mx-auto -mt-9 max-w-3xl px-4 pb-8">
           {/* サマリー */}
-          <section className={`${card} grid grid-cols-4 divide-x divide-slate-100`}>
-            {[
-              { label: "出勤済", sub: "延べ", value: worked, dot: "bg-slate-800" },
-              { label: "欠勤", sub: "", value: countOf("ABSENT"), dot: "bg-rose-500" },
-              { label: "遅刻", sub: "", value: countOf("LATE"), dot: "bg-amber-400" },
-              { label: "早退", sub: "", value: countOf("EARLY"), dot: "bg-orange-400" },
-            ].map((s) => (
-              <div key={s.label} className="px-2 py-4 text-center">
-                <p className="flex items-center justify-center gap-1 whitespace-nowrap text-[10px] font-bold text-slate-500 sm:gap-1.5 sm:text-[11px]">
-                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${s.dot}`} />
-                  {s.label}{s.sub && <span className="font-medium text-slate-400">({s.sub})</span>}
-                </p>
-                <p className="mt-1 text-3xl font-semibold tabular-nums leading-none">{s.value}</p>
-              </div>
-            ))}
+          <section className="grid grid-cols-4 gap-2 sm:gap-3">
+            <Stat label="出勤済 (延べ)" value={worked} box="from-[#e3f4f5] to-[#c2e4e8]" num="text-[#2a808f]" />
+            <Stat label="欠勤" value={countOf("ABSENT")} box="from-[#fdf0eb] to-[#f6dcd3]" num="text-[#b4684f]" />
+            <Stat label="遅刻" value={countOf("LATE")} box="from-[#ecf0fa] to-[#d5ddf0]" num="text-[#3d5a8a]" />
+            <Stat label="早退" value={countOf("EARLY")} box="from-[#fdf2e3] to-[#f8dfc0]" num="text-[#c07a2c]" />
           </section>
 
           {/* 本日 */}
           {today.length > 0 && (
-            <section className="mt-8">
-              <h2 className={`${sectionTitle} mb-2 px-1`}>TODAY　{monthDay(todayKey)}（{WEEKDAYS[weekdayOf(todayKey)]}）</h2>
-              <div className={`${card} divide-y divide-slate-100`}>
-                {today.map((r) => <AttendanceRow key={r.id} row={r} />)}
+            <section className="mt-6">
+              <h2 className="mb-2 text-xl font-black text-slate-800">本日 ({dayLabel(todayKey)})</h2>
+              <div className="divide-y divide-[#eadfc6] overflow-hidden rounded-2xl bg-[#fbf5e6] shadow-[0_6px_18px_rgba(120,95,40,.12)] ring-1 ring-[#efe3c6]">
+                {today.map((r) => (
+                  <article key={r.id} className="flex items-center gap-2.5 p-3">
+                    <Avatar name={r.staffName} size={40} />
+                    <div className="min-w-0 flex-1">
+                      <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                        <span className="whitespace-nowrap text-[15px] font-black">{disp(r.staffName)}</span>
+                        <StatusPill row={r} small />
+                      </p>
+                      <p className="truncate text-xs font-bold text-slate-500">{r.storeName}</p>
+                      <Reasons row={r} />
+                    </div>
+                    <div className="shrink-0 text-center text-[10px] font-bold leading-tight text-slate-500">予定<br /><span className="tabular-nums">{r.plan}</span></div>
+                    <div className="shrink-0 border-l border-[#e6d9bb] pl-2.5"><ClockTimes row={r} /></div>
+                  </article>
+                ))}
               </div>
             </section>
           )}
           {ym === currentJstYearMonth(now) && today.length === 0 && (
-            <p className="mt-8 rounded-2xl bg-white py-4 text-center text-sm text-slate-400 ring-1 ring-slate-900/5">本日の稼働予定はありません。</p>
+            <p className="mt-6 rounded-2xl bg-white/80 p-4 text-center text-sm font-bold text-slate-400 shadow-sm ring-1 ring-black/5">本日の稼働予定はありません。</p>
           )}
 
           {/* 月の記録 */}
-          <section className="mt-9">
-            <div className="flex items-end justify-between px-1">
-              <h2 className="text-lg font-bold tracking-tight">{yearMonthLabel(ym)}の記録</h2>
-              <nav className="flex items-center gap-4 text-sm font-bold text-slate-500">
-                <Link href={href({ month: shiftMonth(ym, -1) })} className="hover:text-slate-900">← 前月</Link>
-                <Link href={href({ month: shiftMonth(ym, 1) })} className="hover:text-slate-900">翌月 →</Link>
+          <section className="mt-7">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-xl font-black text-slate-800">{yearMonthLabel(ym)}の記録</h2>
+              <nav className="flex items-center gap-4 text-sm font-black text-[#47658a]">
+                <Link href={href({ month: shiftMonth(ym, -1) })} className="hover:underline">← 前月</Link>
+                <Link href={href({ month: shiftMonth(ym, 1) })} className="hover:underline">翌月 →</Link>
               </nav>
             </div>
 
-            {/* 状態の切り替え */}
-            <div className="-mx-4 mt-3 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <div className="flex w-max gap-2">
-                {chips.map((c) => {
-                  const active = statusFilter === c.key;
-                  return (
-                    <Link
-                      key={c.key || "all"}
-                      href={href({ status: c.key })}
-                      className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${active ? "bg-[#0f1b2d] text-white" : "bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-slate-300"}`}
-                    >
-                      {c.label}
-                      {c.key && <span className={`ml-1.5 tabular-nums ${active ? "text-slate-300" : "text-slate-400"}`}>{countOf(c.key)}</span>}
-                    </Link>
-                  );
-                })}
-              </div>
+            {/* 状態のクイック切り替え */}
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {chips.map((c) => {
+                const active = statusFilter === c.key;
+                return (
+                  <Link
+                    key={c.key || "all"}
+                    href={href({ status: c.key })}
+                    className={`rounded-full px-3 py-1 text-[11px] font-black transition ${active ? "bg-[#47658a] text-white shadow" : "border border-slate-200 bg-white/90 text-slate-600 hover:bg-white"}`}
+                  >
+                    {c.label}
+                    {c.key && <span className="ml-1 tabular-nums">{countOf(c.key)}</span>}
+                  </Link>
+                );
+              })}
             </div>
 
-            {/* 月・スタッフ・状態の絞り込み */}
-            <form method="get" action={`/watch/${token}`} className="mt-3 grid grid-cols-2 gap-2 text-[11px] font-bold text-slate-500 sm:grid-cols-[1fr_1fr_1fr_auto]">
-              <label className="flex flex-col gap-1">月<input type="month" name="month" defaultValue={ym} className={field} /></label>
-              <label className="flex flex-col gap-1">スタッフ
+            {/* 月・スタッフ・状態の絞り込み(1行) */}
+            <form method="get" action={`/watch/${token}`} className="mt-3 grid grid-cols-[1.4fr_1fr_1fr_auto] items-end gap-1.5 text-[10px] font-black text-slate-600 sm:gap-2">
+              <label className="flex min-w-0 flex-col gap-1">月<input type="month" name="month" defaultValue={ym} className={field} /></label>
+              <label className="flex min-w-0 flex-col gap-1">スタッフ
                 <select name="staff" defaultValue={staffFilter} className={field}>
                   <option value="">全員</option>
                   {staffNames.map((n) => <option key={n} value={n}>{n}</option>)}
                 </select>
               </label>
-              <label className="flex flex-col gap-1">状態
+              <label className="flex min-w-0 flex-col gap-1">状態
                 <select name="status" defaultValue={statusFilter} className={field}>
                   <option value="">すべて</option>
-                  <option value="WORKED">出勤済（出勤を打刻した日）</option>
+                  <option value="WORKED">出勤済</option>
                   <option value="ABSENT">欠勤</option>
                   <option value="LATE">遅刻</option>
                   <option value="EARLY">早退</option>
@@ -256,60 +282,76 @@ export default async function WatchPage({
                   <option value="CANCELLED">キャンセル</option>
                 </select>
               </label>
-              <div className="flex items-end gap-3">
-                <button type="submit" className="rounded-lg bg-[#0f1b2d] px-5 py-2 text-sm font-bold text-white">絞り込み</button>
-                {filtered && <Link href={`/watch/${token}?month=${ym}`} className="py-2 text-sm font-bold text-slate-500 underline">解除</Link>}
-              </div>
+              <button type="submit" className="whitespace-nowrap rounded-lg bg-gradient-to-b from-[#5a79a0] to-[#47658a] px-3 py-2 text-[13px] font-black text-white shadow-md">絞り込み</button>
             </form>
-            <p className="mt-3 px-1 text-xs text-slate-500">
-              {filtered ? `該当 ${shown.length}件（この月の全${rows.length}件のうち）` : `全${rows.length}件`}　／　出勤・退勤とも打刻済みの日数：{worked}日（スタッフ×日の延べ）
+            {filtered && <Link href={`/watch/${token}?month=${ym}`} className="mt-1.5 inline-block text-xs font-black text-[#47658a] underline">絞り込みを解除</Link>}
+            <p className="mt-2.5 text-[11px] font-bold text-slate-600">
+              {filtered ? `該当 ${shown.length}件（この月の全${rows.length}件のうち）` : `全${rows.length}件`} ／ 出勤・退勤とも打刻済みの日数：{worked}日（スタッフ×日の延べ）
             </p>
 
-            {/* 記録(日付ごと) */}
-            <div className="mt-3 space-y-5">
-              {groups.map((g) => (
-                <div key={g.date}>
-                  <h3 className="mb-1.5 flex items-baseline gap-2 px-1">
-                    <span className="text-base font-bold tabular-nums">{monthDay(g.date)}</span>
-                    <span className={`text-xs font-bold ${weekdayColor(g.date)}`}>{WEEKDAYS[weekdayOf(g.date)]}</span>
-                    <span className="text-[11px] text-slate-400">{g.items.length}件</span>
-                  </h3>
-                  <div className={`${card} divide-y divide-slate-100`}>
-                    {g.items.map((r) => <AttendanceRow key={r.id} row={r} />)}
-                  </div>
-                </div>
-              ))}
-              {!groups.length && (
-                <p className="rounded-2xl bg-white py-8 text-center text-sm text-slate-400 ring-1 ring-slate-900/5">
+            {/* 記録(カード) */}
+            <ul className="mt-2.5 space-y-2">
+              {shown.map((r) => {
+                const active = ACTIVE.has(r.status);
+                return (
+                  <li key={r.id} className={`flex items-stretch overflow-hidden rounded-xl shadow-[0_5px_14px_rgba(40,70,100,.1)] ring-1 ring-black/5 ${active ? "bg-[#e1eff0]" : "bg-white"}`}>
+                    <div className={`flex w-12 shrink-0 flex-col items-center justify-center py-1.5 text-center ${active ? "bg-[#c9e0e3]" : "bg-[#eef2f6]"}`}>
+                      <span className="text-[15px] font-black leading-tight tabular-nums text-slate-800">{monthDay(r.date)}</span>
+                      <span className={`text-[11px] font-black ${weekdayColor(r.date)}`}>({WEEKDAYS[weekdayOf(r.date)]})</span>
+                    </div>
+                    <div className="min-w-0 flex-1 px-2 py-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <Avatar name={r.staffName} size={28} />
+                        <div className="min-w-0 flex-1">
+                          <p className="whitespace-nowrap text-[13px] font-black leading-tight">{disp(r.staffName)}</p>
+                          <p className="truncate text-[10px] font-bold text-slate-500">{r.storeName}</p>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-center">
+                          <StatusPill row={r} small />
+                          <p className="mt-0.5 text-[10px] font-bold tabular-nums text-slate-500">{r.plan}</p>
+                        </div>
+                        <div className="shrink-0 border-l border-slate-200 pl-2"><ClockTimes row={r} /></div>
+                      </div>
+                      <Reasons row={r} />
+                    </div>
+                  </li>
+                );
+              })}
+              {!shown.length && (
+                <li className="rounded-2xl bg-white/80 py-8 text-center text-sm font-bold text-slate-400 ring-1 ring-black/5">
                   {filtered ? "条件に合う記録はありません。" : "この月の記録はありません。"}
-                </p>
-              )}
-            </div>
-          </section>
-
-          {/* シフト変更の履歴 */}
-          <section className="mt-10">
-            <h2 className="px-1 text-lg font-bold tracking-tight">シフト変更の履歴</h2>
-            <p className="mt-0.5 px-1 text-xs text-slate-500">{yearMonthLabel(ym)}の勤務について、スタッフ側で行った申請・変更です。</p>
-            <ul className={`${card} mt-3 divide-y divide-slate-100`}>
-              {changes.map((c) => (
-                <li key={c.id} className="px-4 py-3.5">
-                  <div className="flex flex-wrap items-baseline gap-x-2">
-                    <span className="text-sm font-bold">{c.staffName}</span>
-                    <span className="text-sm text-slate-700">{c.title}</span>
-                    {c.result && <span className={`text-xs font-bold ${resultTone(c.result)}`}>{c.result}</span>}
-                    <span className="ml-auto text-xs tabular-nums text-slate-400">{toJstDateValue(c.at).slice(5).replace("-", "/")} {toJstTimeValue(c.at)}</span>
-                  </div>
-                  <p className="mt-0.5 text-xs text-slate-600">{c.detail}</p>
-                  {c.reason && <p className="mt-0.5 text-xs text-slate-500">理由：{c.reason}</p>}
                 </li>
-              ))}
-              {!changes.length && <li className="py-6 text-center text-sm text-slate-400">この月のシフト変更の履歴はありません。</li>}
+              )}
             </ul>
           </section>
 
-          <p className="mt-10 text-center text-[11px] text-slate-400">株式会社K.J ／ 表示内容に相違がある場合はK.Jまでご連絡ください。</p>
+          {/* シフト変更の履歴 */}
+          <section className="mt-7">
+            <h2 className="text-xl font-black text-slate-800">シフト変更の履歴</h2>
+            <ul className="mt-2.5 divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-[0_6px_16px_rgba(40,70,100,.1)] ring-1 ring-black/5">
+              {changes.map((c) => (
+                <li key={c.id} className="flex items-start gap-2.5 px-3 py-2.5">
+                  <Avatar name={c.staffName} size={32} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-baseline gap-x-1.5">
+                      <span className="text-[13px] font-black">{disp(c.staffName)}</span>
+                      <span className="text-[13px] font-black text-slate-700">{c.title}</span>
+                      {c.result && <span className={`text-[13px] font-black ${resultTone(c.result)}`}>（{c.result}）</span>}
+                      <span className="ml-auto text-[11px] font-bold tabular-nums text-slate-500">{toJstDateValue(c.at).replaceAll("-", "/")} {toJstTimeValue(c.at)}</span>
+                    </div>
+                    <p className="text-[11px] font-bold text-slate-600">{c.detail}</p>
+                    {c.reason && <p className="text-[11px] font-bold text-slate-500">理由：{c.reason}</p>}
+                  </div>
+                </li>
+              ))}
+              {!changes.length && <li className="py-6 text-center text-sm font-bold text-slate-400">この月のシフト変更の履歴はありません。</li>}
+            </ul>
+          </section>
         </div>
+
+        <footer className="bg-[#cfe3e8]/80 py-2.5 text-center text-[11px] font-bold text-slate-600">
+          株式会社K.J ／ 表示内容に相違がある場合はK.Jまでご連絡ください。
+        </footer>
       </main>
     </>
   );
