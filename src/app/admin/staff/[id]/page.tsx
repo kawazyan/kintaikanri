@@ -245,6 +245,21 @@ export default async function AdminStaffDetailPage({
                 <option value="false">別払い(月末締め後に精算)</option>
               </select>
             </label>
+            <label className="flex flex-col gap-1 text-xs text-slate-400">
+              1日あたりの交通費(税込・円/日。決まっている人だけ)
+              <input
+                type="number"
+                name="dailyTravelInclTax"
+                min={0}
+                step={1}
+                inputMode="numeric"
+                defaultValue={staff.dailyTravelInclTax ?? ""}
+                className={`${FIELD_CLASS} py-2 text-sm`}
+              />
+            </label>
+            <p className="text-xs text-slate-500">
+              ※ 入力すると、稼働日数 × この金額が、確定受取金額と、取引先への請求(交通費相当額)に加わります。
+            </p>
           </div>
         </div>
 

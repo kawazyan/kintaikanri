@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { addTax, computeInvoiceTotals, expenseLabel } from "@/lib/billing";
+import { addTax, computeInvoiceTotals, expenseLabel, splitInclusiveTax } from "@/lib/billing";
 import { jstDayRange, jstMonthRange, toJstDateValue } from "@/lib/time";
 import { unifyStoreNames, withShopSuffix } from "@/lib/store-names";
 import { activeShiftRules, normName, ruleMatchesShift, type BillingTerms, type TravelByStore } from "@/lib/billing-terms";
@@ -55,6 +55,15 @@ export function staffBillableExTax(s: StatementStaff) {
 }
 
 const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
+
+// 1日あたりの交通費(税込)が決まっているスタッフの交通費。月の合計(日額 × 稼働日数)を税込として、税抜に直す。
+function dailyTravelFor(dailyInclTax: number | null | undefined, days: number): StatementStaff["travel"] | null {
+  if (!dailyInclTax || dailyInclTax <= 0 || days <= 0) return null;
+  const incl = dailyInclTax * days;
+  const ex = splitInclusiveTax(incl).amountEx;
+  const calc = `${yen(dailyInclTax)}（税込） × ${days}日 ＝ ${yen(incl)}（税込）`;
+  return { mode: "PER_DAY", amountExTax: ex, amountInclTax: incl, calc, lines: [{ label: "交通費相当額", calc, amountExTax: ex }] };
+}
 
 // 稼働日として数えるシフト。出勤・退勤の両方が打刻されたもの。
 // 退勤の打刻漏れは稼働したものとして扱う(出勤だけ打刻され、その日(JST)が終わっていれば稼働)。スタッフへの支払い(earnings.ts)と同じ判定。
@@ -206,6 +215,9 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
         const incl = actualExpenses.reduce((sum, e) => sum + e.amountTaxInclusive, 0);
         if (ex > 0) travel = { mode: "ACTUAL", amountExTax: ex, amountInclTax: incl };
       }
+      // スタッフに「1日あたりの交通費」が決まっている場合は、それを優先する(稼働日数 × 日額)。
+      const fixedDailyTravel = dailyTravelFor(assignment.staff.dailyTravelInclTax, days);
+      if (fixedDailyTravel) travel = fixedDailyTravel;
 
       // 宿泊費・その他経費(承認済み)もクライアントへ請求する分は内訳に載せる。
       const extraMap = new Map<string, { ex: number; incl: number }>();
@@ -244,7 +256,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
   const conflicted = new Set<string>();
   if (rules.length) {
     const { start, end } = jstMonthRange(yearMonth);
-    const allStaff = await prisma.staff.findMany({ select: { id: true, name: true } });
+    const allStaff = await prisma.staff.findMany({ select: { id: true, name: true, dailyTravelInclTax: true } });
     const used = new Set<string>();
     const ruleIndex = await loadRuleIndex(yearMonth);
     for (const rule of rules) {
@@ -301,6 +313,9 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
         if (r.warning) warnings.push(r.warning);
         travel = r.travel;
       }
+      // スタッフに「1日あたりの交通費」が決まっている場合は、それを優先する(稼働日数 × 日額)。
+      const fixedDailyTravel = dailyTravelFor(person.dailyTravelInclTax, dates.length);
+      if (fixedDailyTravel) travel = fixedDailyTravel;
       // 新幹線代など、月ごとの固定の交通費をこのスタッフの交通費に足す
       if (rule.extraTravel?.length) {
         const add = rule.extraTravel.reduce((a, e) => a + e.amountExTax, 0);

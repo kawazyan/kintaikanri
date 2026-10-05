@@ -96,6 +96,7 @@ model Staff {
   payType               StaffPayType?
   dailyRate             Int? // 日当(円/日)
   monthlyAmount         Int? // 月固定(円/月)
+  dailyTravelInclTax    Int? // 1日あたりの交通費(税込・円/日)。稼働日数 × この額を、支払いにも請求にも加える
   travelExpenseIncluded Boolean? // true=交通費込み / false=交通費別払い / null=未設定
 
   createdAt DateTime @default(now())
