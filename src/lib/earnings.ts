@@ -16,7 +16,8 @@ export type MonthlyEarnings = {
 //
 // BAND (and SPOT shifts of staff whose pay type is MONTHLY): monthly target
 // (falls back to the staff's monthlyAmount) ÷ planned days this month (floored)
-// × confirmed days. If no target amount has been entered yet, the BAND portion is
+// × confirmed days. For MONTHLY staff the planned days are all of the month's
+// shifts, including SPOT shifts that carry their own unitAmount. If no target amount has been entered yet, the BAND portion is
 // undetermined and the whole total is reported as `null` rather than
 // guessed or defaulted to 0.
 // SPOT: each confirmed SPOT shift contributes its own per-shift unitAmount.
@@ -85,7 +86,10 @@ export async function computeMonthlyEarnings(
       // the per-day rate can't be derived, so the whole total is unknown.
       return { confirmedAmount: null };
     }
-    const dailyRate = Math.floor(targetAmount / bandShifts.length);
+    // 月固定の人は、その月の全シフト(キャンセル除く)で月額を割る。単価入りのSPOTシフト(上で個別に加算済み)が
+    // 同じ月にあるとき、月額の全額が単価なしのシフトだけに乗って二重に計上されるのを防ぐ。
+    const plannedShifts = monthlyFixed ? shifts.length : bandShifts.length;
+    const dailyRate = Math.floor(targetAmount / plannedShifts);
     const bandConfirmedDays = bandShifts.filter(isConfirmed).length;
     const bandConfirmedAmount = dailyRate * bandConfirmedDays;
     return { confirmedAmount: bandConfirmedAmount + spotConfirmedAmount };  }
