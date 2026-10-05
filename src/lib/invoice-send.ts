@@ -1,9 +1,20 @@
 import { prisma } from "@/lib/prisma";
 import { sendMailStrict } from "@/lib/mail";
 import { renderInvoicePdf, renderStatementPdf } from "@/lib/invoice-render";
-import { invoiceRecipients, monthEndOf, nextMonthEnd } from "@/lib/invoice-defaults";
+import { invoiceRecipients } from "@/lib/invoice-defaults";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// 請求書メール末尾の署名。
+const MAIL_SIGNATURE = [
+  ">>>>>>>>>>>>>>>>>>>>>>>>>>>>",
+  "株式会社K.J",
+  "〒980-0804",
+  "宮城県仙台市青葉区大町2丁目3-12 Blank仙台703",
+  "TEL:050-5369-0824（24h/AI対応）",
+  "経理課　伊藤",
+  ">>>>>>>>>>>>>>>>>>>>>>>>>>>>",
+];
 
 // 承認: 下書き → 承認済み。メールはまだ送らない(承認済みの一覧から「送信」する)。
 export async function approveDraftInvoice(id: string, approverName: string) {
@@ -46,7 +57,6 @@ export async function sendApprovedInvoice(id: string) {
 
   const [y, m] = invoice.yearMonth.split("-").map(Number);
   const addressee = inv.data.addressee;
-  const due = nextMonthEnd(monthEndOf(invoice.yearMonth)).replaceAll("-", "/");
   const subject = `【請求書】${addressee} ${y}年${m}月`;
   const text = [
     `${addressee} 御中`,
@@ -58,12 +68,11 @@ export async function sendApprovedInvoice(id: string) {
     "添付ファイルをご確認くださいますようお願い申し上げます。",
     "",
     `ご請求金額（税込）：¥${invoice.totalInclTax.toLocaleString("ja-JP")}`,
-    `お支払い期限：${due}`,
     "",
     "ご不明な点がございましたら、お気軽にお知らせください。",
     "何卒よろしくお願い申し上げます。",
     "",
-    "株式会社K.J",
+    ...MAIL_SIGNATURE,
   ].join("\n");
 
   await sendMailStrict({
