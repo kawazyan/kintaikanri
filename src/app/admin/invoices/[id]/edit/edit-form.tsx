@@ -21,10 +21,15 @@ type Initial = {
     serviceExTax: number;
     serviceCalc: string;
     travelInclTax: number;
+    // 交通費相当額の計算方法。行に分けている人(店舗別・新幹線代など)は travelLines、それ以外は travelCalc の1文。
+    travelCalc: string;
+    travelLines: TravelLine[] | null;
     extrasExTax: number;
     extrasLabel: string;
   }[];
 };
+
+type TravelLine = { key: string; label: string; calc: string; amountExTax: number };
 
 const input = "w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-100";
 
@@ -74,8 +79,10 @@ export function EditInvoiceForm({
 
   // 請求書は「業務委託費一式」1行。金額は稼働明細書の合計(業務委託費＋交通費相当額＋その他)。
   const travelEx = (incl: number) => (incl > 0 ? Math.floor((incl * 100) / 110) : 0);
+  const travelExOf = (st: Initial["staff"][number]) =>
+    st.travelLines ? st.travelLines.reduce((a, l) => a + (Number(l.amountExTax) || 0), 0) : travelEx(Number(st.travelInclTax) || 0);
   const subtotal = initial.hasStatement
-    ? staff.reduce((sum, st) => sum + (Number(st.serviceExTax) || 0) + travelEx(Number(st.travelInclTax) || 0) + st.extrasExTax, 0) +
+    ? staff.reduce((sum, st) => sum + (Number(st.serviceExTax) || 0) + travelExOf(st) + st.extrasExTax, 0) +
       extras.reduce((sum, e) => sum + (Number(e.amountExTax) || 0), 0)
     : Number(amount) || 0;
   const tax = Math.floor((subtotal * 10) / 100);
@@ -95,6 +102,8 @@ export function EditInvoiceForm({
         serviceExTax: Number(s.serviceExTax) || 0,
         serviceCalc: s.serviceCalc,
         travelInclTax: Number(s.travelInclTax) || 0,
+        travelCalc: s.travelCalc,
+        travelLines: s.travelLines?.map((l) => ({ label: l.label, calc: l.calc, amountExTax: Number(l.amountExTax) || 0 })),
       })),
     };
   }
@@ -253,15 +262,85 @@ export function EditInvoiceForm({
                     業務委託費（税抜・円）
                     <NumInput value={s.serviceExTax} onChange={(n) => patchStaff(i, { serviceExTax: n })} className={`${input} mt-1`} />
                   </label>
-                  <label className={field}>
-                    交通費相当額（税込・円）
-                    <NumInput value={s.travelInclTax} onChange={(n) => patchStaff(i, { travelInclTax: n })} className={`${input} mt-1`} />
-                    <span className={hint}>
-                      0なら載せません。税別で計算します
-                      {Number(s.travelInclTax) > 0 ? `（税込${Number(s.travelInclTax).toLocaleString("ja-JP")}円 → ${yen(travelEx(Number(s.travelInclTax)))}＋税）` : "（例: 税込1,100円 → 1,000円＋税）"}
-                    </span>
-                  </label>
+                  {s.travelLines ? (
+                    <div className={field}>
+                      交通費相当額（税抜・円・合計）
+                      <p className="mt-1 rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-100">{yen(travelExOf(s))}</p>
+                      <span className={hint}>下の行の合計です。全部の行を消すと、交通費相当額は載りません</span>
+                    </div>
+                  ) : (
+                    <label className={field}>
+                      交通費相当額（税込・円）
+                      <NumInput value={s.travelInclTax} onChange={(n) => patchStaff(i, { travelInclTax: n })} className={`${input} mt-1`} />
+                      <span className={hint}>
+                        0なら載せません。税別で計算します
+                        {Number(s.travelInclTax) > 0 ? `（税込${Number(s.travelInclTax).toLocaleString("ja-JP")}円 → ${yen(travelEx(Number(s.travelInclTax)))}＋税）` : "（例: 税込1,100円 → 1,000円＋税）"}
+                      </span>
+                    </label>
+                  )}
                 </div>
+
+                {s.travelLines ? (
+                  <div className="mt-4">
+                    <p className={field}>交通費相当額の内訳（明細書に表示）</p>
+                    <p className={hint}>項目名・計算方法は改行できます。金額は税抜です。</p>
+                    <div className="mt-2 space-y-3">
+                      {s.travelLines.map((l, li) => {
+                        const patchLine = (patch: Partial<TravelLine>) =>
+                          patchStaff(i, { travelLines: s.travelLines!.map((x, xi) => (xi === li ? { ...x, ...patch } : x)) });
+                        return (
+                          <div key={l.key} className="rounded-xl border border-slate-800 bg-slate-900 p-3">
+                            <div className="grid gap-2 md:grid-cols-[1fr_1.5fr_160px_auto]">
+                              <label className={field}>
+                                項目名
+                                <textarea rows={2} value={l.label} onChange={(e) => patchLine({ label: e.target.value })} className={`${input} mt-1`} />
+                              </label>
+                              <label className={field}>
+                                計算方法
+                                <textarea rows={2} value={l.calc} onChange={(e) => patchLine({ calc: e.target.value })} className={`${input} mt-1`} placeholder="例: ¥4,600 × 12日" />
+                              </label>
+                              <label className={field}>
+                                金額（税抜・円）
+                                <NumInput value={l.amountExTax} onChange={(n) => patchLine({ amountExTax: n })} className={`${input} mt-1`} />
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => patchStaff(i, { travelLines: s.travelLines!.filter((_, xi) => xi !== li) })}
+                                className="self-end rounded-lg border border-red-900 px-3 py-2 text-xs font-bold text-red-300"
+                              >
+                                削除
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <button
+                        type="button"
+                        onClick={() => patchStaff(i, { travelLines: [...s.travelLines!, { key: `n${Date.now()}${s.travelLines!.length}`, label: "交通費相当額", calc: "", amountExTax: 0 }] })}
+                        className="rounded-lg border border-slate-600 px-3 py-1 text-xs font-bold"
+                      >
+                        ＋ 行を追加
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className={`${field} mt-4`}>
+                    交通費相当額の計算方法（明細書に表示。空なら「¥金額＋税で計算」）
+                    <input value={s.travelCalc} onChange={(e) => patchStaff(i, { travelCalc: e.target.value })} className={`${input} mt-1`} placeholder="例: ガソリン片道500円＋高速片道1,200円の往復 × 3日" />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        patchStaff(i, {
+                          travelLines: [{ key: `n${Date.now()}`, label: "交通費相当額", calc: s.travelCalc, amountExTax: travelEx(Number(s.travelInclTax) || 0) }],
+                        })
+                      }
+                      className="mt-2 block rounded-lg border border-slate-600 px-3 py-1 text-xs font-bold"
+                    >
+                      行に分けて入力する（店舗別・新幹線代など）
+                    </button>
+                  </label>
+                )}
+                <div>
                 <label className={`${field} mt-4`}>
                   業務委託費の計算方法（明細書に表示）
                   <input value={s.serviceCalc} onChange={(e) => patchStaff(i, { serviceCalc: e.target.value })} className={`${input} mt-1`} placeholder="例: 日額 ¥20,000 × 3日" />
