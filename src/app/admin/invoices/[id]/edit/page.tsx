@@ -52,6 +52,8 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
             serviceExTax: s.serviceExTax ?? 0,
             serviceCalc: s.serviceCalc ?? "",
             travelInclTax: s.travel.amountInclTax,
+            travelCalc: s.travel.calc ?? "",
+            travelLines: s.travel.lines?.length ? s.travel.lines.map((l, li) => ({ key: `l${li}`, label: l.label, calc: l.calc, amountExTax: l.amountExTax })) : null,
             extrasExTax: (s.extras ?? []).reduce((sum, e) => sum + e.amountExTax, 0),
             extrasLabel: (s.extras ?? []).map((e) => e.label).join("、"),
           })),

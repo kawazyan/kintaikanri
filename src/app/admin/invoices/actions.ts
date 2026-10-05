@@ -72,7 +72,16 @@ export type InvoiceEditPayload = {
   note: string;
   // 稼働明細書(スタッフの並びは作成時のまま)。請求書は「業務委託費一式」1行のみで、金額は明細書の合計から自動計算する。
   // dayPlaces: 稼働日(YYYY-MM-DD) → その日の稼働場所。変更した日は、シフトと打刻履歴の店舗名にも反映する。
-  staff: { dates: string[]; dayPlaces?: Record<string, string>; serviceExTax: number; serviceCalc: string; travelInclTax: number }[];
+  // travelCalc: 交通費相当額の計算方法(1文)。travelLines: 行に分けた交通費(あれば合計はこちらの金額の合計になる)。
+  staff: {
+    dates: string[];
+    dayPlaces?: Record<string, string>;
+    serviceExTax: number;
+    serviceCalc: string;
+    travelInclTax: number;
+    travelCalc?: string;
+    travelLines?: { label: string; calc: string; amountExTax: number }[];
+  }[];
   // 取引先全体の項目(新幹線代・広告原価・商材仕入れ代原価など)。金額は税抜。
   clientExtras: { label: string; amountExTax: number; calc?: string; store?: string; period?: string }[];
   // 明細書データがない古い請求だけ使う(業務委託費一式の税抜金額)。
@@ -115,6 +124,10 @@ export async function saveInvoiceEdit(
       }
       const svc = payload.staff[i].serviceExTax;
       if (!Number.isInteger(svc) || svc < 0) return { ok: false, error: `${snapshot.staff[i].name}さんの業務委託費（税抜）は0以上の整数で入力してください。` };
+      for (const l of payload.staff[i].travelLines ?? []) {
+        if (!l.label.trim()) return { ok: false, error: `${snapshot.staff[i].name}さんの交通費相当額の内訳に、項目名のない行があります。名前を入力するか、行を削除してください。` };
+        if (!Number.isInteger(l.amountExTax) || l.amountExTax < 0) return { ok: false, error: `${snapshot.staff[i].name}さんの交通費相当額「${l.label.trim()}」の金額（税抜）は0以上の整数で入力してください。` };
+      }
       datesByStaff.push(dates);
     }
     const clientExtras: StatementSnapshot["clientExtras"] = [];
@@ -150,9 +163,19 @@ export async function saveInvoiceEdit(
       staff: snapshot.staff.map((st, i) => {
         const dates = datesByStaff[i];
         const dayPlaces = dayPlacesByStaff[i];
+        // 行に分けた交通費(店舗別・新幹線代など)は、金額(税抜)の合計が交通費相当額になる。
+        const tLines = (payload.staff[i].travelLines ?? [])
+          .map((l) => ({ label: l.label.trim(), calc: l.calc.trim(), amountExTax: l.amountExTax }))
+          .filter((l) => l.label);
+        const useLines = payload.staff[i].travelLines !== undefined;
         const raw = payload.staff[i].travelInclTax;
-        const incl = Number.isFinite(raw) ? Math.max(0, Math.trunc(raw)) : 0;
-        const ex = incl > 0 ? splitInclusiveTax(incl).amountEx : 0;
+        const lineEx = tLines.reduce((a, l) => a + l.amountExTax, 0);
+        const incl = useLines ? addTax(lineEx).amountIncl * (lineEx > 0 ? 1 : 0) : Number.isFinite(raw) ? Math.max(0, Math.trunc(raw)) : 0;
+        const ex = useLines ? lineEx : incl > 0 ? splitInclusiveTax(incl).amountEx : 0;
+        // 1文の計算方法: 金額を変えたのに古い文のままのときは、自動表示に戻す。
+        const calcText = payload.staff[i].travelCalc?.trim();
+        const calc = calcText === undefined ? (st.travel.calc && st.travel.amountInclTax === incl ? st.travel.calc : undefined)
+          : calcText && !(incl !== st.travel.amountInclTax && calcText === st.travel.calc) ? calcText : undefined;
         const mode: StatementSnapshot["staff"][number]["travel"]["mode"] =
           incl === 0 ? "NONE" : st.travel.mode === "NONE" ? "ACTUAL" : st.travel.mode;
         return {
@@ -167,8 +190,10 @@ export async function saveInvoiceEdit(
             mode,
             amountExTax: ex,
             amountInclTax: incl,
-            ...(st.travel.calc && st.travel.amountInclTax === incl ? { calc: st.travel.calc } : {}),
-            ...(st.travel.lines?.length && st.travel.amountInclTax === incl ? { lines: st.travel.lines } : {}),
+            ...(calc && !useLines ? { calc } : {}),
+            ...(useLines
+              ? tLines.length ? { lines: tLines } : {}
+              : st.travel.lines?.length && st.travel.amountInclTax === incl && payload.staff[i].travelLines === undefined ? { lines: st.travel.lines } : {}),
           },
         };
       }),
