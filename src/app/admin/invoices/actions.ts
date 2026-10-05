@@ -52,12 +52,15 @@ export async function sendInvoice(id: string): Promise<ActionResult> {
   }
 }
 
-// 「削除」: 下書き・承認済みのみ。送付済みは削除できない(記録を残すため)。
-export async function deleteInvoice(id: string): Promise<ActionResult> {
+// 「削除」: 下書き・承認済みはそのまま削除できる。確定済み・送付済みの請求は、
+// 取り返しがつかないため、請求番号を入力して確認した場合だけ削除する(メールを実際に送った記録も消える)。
+export async function deleteInvoice(id: string, confirmInvoiceNumber?: string): Promise<ActionResult> {
   await requireAdmin();
-  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true } });
+  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true, invoiceNumber: true } });
   if (!invoice) return { ok: false, error: "請求書が見つかりません。" };
-  if (invoice.status !== "DRAFT" && invoice.status !== "APPROVED") return { ok: false, error: "送付済みの請求は削除できません。" };
+  if (invoice.status !== "DRAFT" && invoice.status !== "APPROVED" && confirmInvoiceNumber?.trim() !== invoice.invoiceNumber) {
+    return { ok: false, error: "確定済み・送付済みの請求を削除するには、請求番号を正しく入力してください。" };
+  }
   await prisma.invoice.delete({ where: { id } });
   revalidatePath("/admin/invoices");
   return { ok: true, message: "削除しました。" };
