@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { sendMailStrict } from "@/lib/mail";
 import { renderInvoicePdf, renderStatementPdf } from "@/lib/invoice-render";
 import { invoiceRecipients } from "@/lib/invoice-defaults";
+import { planManualContracts } from "@/lib/manual-contracts";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -17,14 +18,20 @@ const MAIL_SIGNATURE = [
 ];
 
 // 承認: 下書き → 承認済み。メールはまだ送らない(承認済みの一覧から「送信」する)。
+// 請求書で「スタッフを追加」したスタッフがいれば、承認と同時に取引先の契約へ自動登録する(manual-contracts.ts)。
 export async function approveDraftInvoice(id: string, approverName: string) {
   const name = approverName.trim();
   if (!name) throw new Error("承認者名を入力してください。");
-  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true, statement: true } });
+  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true, statement: true, clientId: true, yearMonth: true } });
   if (!invoice) throw new Error("請求書が見つかりません。");
   if (invoice.status !== "DRAFT") throw new Error("下書きの請求だけ承認できます。");
   if (!invoice.statement) throw new Error("稼働明細書のデータがありません。請求下書きを作り直してください。");
-  await prisma.invoice.update({ where: { id }, data: { status: "APPROVED", approvedAt: new Date(), approvedBy: name } });
+  const plan = await planManualContracts(invoice);
+  await prisma.$transaction([
+    ...plan.ops,
+    prisma.invoice.update({ where: { id }, data: { status: "APPROVED", approvedAt: new Date(), approvedBy: name } }),
+  ]);
+  return { registered: plan.registered, notes: plan.notes };
 }
 
 // 送信: 承認済み → 送付済み。請求書PDFと稼働明細書PDFを取引先の登録メールへ送信(管理者アドレスをCC)する。

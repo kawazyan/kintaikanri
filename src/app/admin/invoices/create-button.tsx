@@ -34,6 +34,13 @@ export function CreateInvoiceButton({ clients }: { clients: { id: string; name: 
           {pending ? "作成中…" : "請求下書きを作成"}
         </button>
       </div>
+      <label className="mt-3 flex items-start gap-2 text-sm text-slate-300">
+        <input type="checkbox" name="carryOver" defaultChecked className="mt-1" />
+        <span>
+          前の下書き（未送信）の追加・修正を引き継ぐ
+          <span className="block text-xs text-slate-500">追加したスタッフ、直した金額・稼働日・店舗・共通項目、宛名・件名・備考を、新しい下書きに反映します。</span>
+        </span>
+      </label>
       {error && <p className="mt-3 text-sm font-bold text-red-400">{error}</p>}
     </form>
   );

@@ -2,10 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { addTax, computeInvoiceTotals, expenseLabel, splitInclusiveTax } from "@/lib/billing";
 import { jstDayRange, jstMonthRange, toJstDateValue } from "@/lib/time";
 import { unifyStoreNames, withShopSuffix } from "@/lib/store-names";
-import { activeShiftRules, normName, ruleMatchesShift, type BillingTerms, type TravelByStore } from "@/lib/billing-terms";
+import { activeShiftRules, normName, ruleMatchesShift, type BillingTerms, type ShiftBillingRule, type TravelByStore } from "@/lib/billing-terms";
 import { syncWorkOrderShiftLinks } from "@/lib/work-order-linking";
 import { fetchEventAds } from "@/lib/event-ads";
-import { loadRuleIndex } from "@/lib/client-shifts";
+import { loadRuleIndex, type RuleIndex } from "@/lib/client-shifts";
+import { mergeCarryOver } from "@/lib/invoice-carryover";
 
 // 稼働明細書に載せるスナップショット(請求下書き作成時点の内容を Invoice.statement に保存する)。
 // 請求書は「業務委託費一式」の1行だけ。計算方法と内訳はすべてこの明細書に書く。
@@ -26,6 +27,18 @@ export type StatementStaff = {
   // PER_DAY=取引先との取り決めで稼働日×店舗ごとに計算
   travel: { mode: "NONE" | "ACTUAL" | "FLAT" | "PER_DAY"; amountExTax: number; amountInclTax: number; calc?: string; lines?: { label: string; calc: string; amountExTax: number }[] };
   extras?: StatementExtra[]; // 宿泊費・その他経費のうちクライアントへ請求するもの
+  // 請求書の画面で「スタッフを追加」したスタッフの条件。承認すると、この内容で取引先の契約に自動登録する。
+  manual?: ManualStaffInfo;
+};
+
+// 追加スタッフの条件(請求書に書いた内容が正)。rateExTax は欠勤控除する前の月額(税抜)。
+export type ManualStaffInput = { storeName: string; rateExTax: number; absenceDeduction: "YES" | "NO" };
+export type ManualStaffInfo = ManualStaffInput & { plannedDays: number };
+
+// 下書き作成時の自動計算結果(修正を引き継ぐとき、「手で直した項目」を見分けるための元の値)。
+export type StatementBaseline = {
+  staff: Pick<StatementStaff, "name" | "dates" | "dayPlaces" | "serviceExTax" | "serviceCalc" | "travel">[];
+  clientExtras: StatementExtra[];
 };
 
 export type StatementSnapshot = {
@@ -35,6 +48,7 @@ export type StatementSnapshot = {
   // スタッフに紐付かない取引先全体の項目(新幹線代・広告原価・商材仕入れ代原価など)
   clientExtras?: StatementExtra[];
   warnings?: string[]; // 下書き作成時の注意(画面にだけ表示。PDFには載せない)
+  baseline?: StatementBaseline;
 };
 
 // 請求書の「業務委託費一式」(税抜)= 全スタッフ分 + 取引先全体の項目
@@ -101,11 +115,170 @@ function perStoreTravel(rules: TravelByStore[], dayStore: Map<string, string>, s
   return { travel, warning };
 }
 
+type RuleCtx = {
+  terms: BillingTerms;
+  yearMonth: string;
+  allStaff: { id: string; name: string; dailyTravelInclTax: number | null }[];
+  ruleIndex: RuleIndex;
+  used: Set<string>;
+  conflicted: Set<string>;
+  warnings: string[];
+};
+
+async function makeRuleCtx(terms: BillingTerms, yearMonth: string, warnings: string[]): Promise<RuleCtx> {
+  const allStaff = await prisma.staff.findMany({ select: { id: true, name: true, dailyTravelInclTax: true } });
+  return { terms, yearMonth, allStaff, ruleIndex: await loadRuleIndex(yearMonth), used: new Set(), conflicted: new Set(), warnings };
+}
+
+// 契約(シフトからの請求ルール)1件ぶんのスタッフ明細を作る。該当する稼働がなければ null。
+// manual を渡すと「請求書で追加したスタッフ」として計算する: 店舗名は問わず、どの取引先の契約にも当てはまらないシフトだけを数え、店舗名は入力値に統一する。
+async function staffFromRule(ctx: RuleCtx, rule: ShiftBillingRule, manual?: ManualStaffInput): Promise<StatementStaff | null> {
+  const { terms, yearMonth, allStaff, ruleIndex, used, conflicted, warnings } = ctx;
+  const { start, end } = jstMonthRange(yearMonth);
+  const person = allStaff.find((x) => normName(x.name) === normName(rule.staffName));
+  if (!person) {
+    warnings.push(`請求ルールのスタッフ「${rule.staffName}」が見つかりません。`);
+    return null;
+  }
+  const matchRule: ShiftBillingRule = manual ? { ...rule, storeMatch: undefined } : rule;
+  const ownerOk = (n: number) => (manual ? n === 0 : n === 1);
+  const shifts = await prisma.shift.findMany({
+    where: { staffId: person.id, workOrderStaffId: null, cancelledAt: null, startTime: { gte: start, lt: end } },
+    include: { clockRecords: true },
+    orderBy: { startTime: "asc" },
+  });
+  const done = shifts.filter(
+    (s) =>
+      !used.has(s.id) &&
+      isWorkedShift(s) &&
+      ruleMatchesShift(matchRule, person.name, s.storeName, toJstDateValue(s.startTime)) &&
+      // 2社以上の契約に当てはまるシフトは、二重に請求しないよう含めない(下で警告を出す)
+      (ownerOk(ruleIndex.owners(person.name, s.storeName, toJstDateValue(s.startTime)).length) ||
+        (!manual && (conflicted.add(`${person.name} ${toJstDateValue(s.startTime)} ${s.storeName}`), false)))
+  );
+  done.forEach((s) => used.add(s.id));
+  const dayStore = new Map<string, string>();
+  for (const s of done) dayStore.set(toJstDateValue(s.startTime), s.storeName);
+  const dates = [...dayStore.keys()].sort();
+  if (!dates.length) return null;
+
+  // 欠勤控除の日割りの基準は、当月に登録されたシフトの日数(キャンセル除く)。登録が無いときだけ契約の予定日数を使う。
+  const registeredDays = new Set(
+    shifts
+      .filter((s) => !used.has(s.id) || done.some((d) => d.id === s.id))
+      .filter((s) => ruleMatchesShift(matchRule, person.name, s.storeName, toJstDateValue(s.startTime)))
+      .filter((s) => ownerOk(ruleIndex.owners(person.name, s.storeName, toJstDateValue(s.startTime)).length))
+      .map((s) => toJstDateValue(s.startTime))
+  ).size;
+  const plannedDays = registeredDays || (rule.plannedDays ?? 0);
+  const deduct = rule.contract === "MONTHLY" && rule.absenceDeduction === "YES" && plannedDays > 0;
+  const baseDaily = deduct ? Math.floor(rule.rateExTax / plannedDays) : 0;
+  const service = rule.contract === "DAILY" ? rule.rateExTax * dates.length : deduct ? baseDaily * dates.length : rule.rateExTax;
+  const serviceCalc =
+    rule.contract === "DAILY"
+      ? `日額 ${yen(rule.rateExTax)} × ${dates.length}日${rule.note ? `（${rule.note}）` : ""}`
+      : deduct
+        ? `月額 ${yen(rule.rateExTax)} ÷ 予定${plannedDays}日 = 1日 ${yen(baseDaily)} × ${dates.length}日${rule.note ? `（${rule.note}）` : ""}`
+        : `月額 ${yen(rule.rateExTax)}（固定${rule.note ? `・${rule.note}` : ""}）`;
+
+  let travel: StatementStaff["travel"] = { mode: "NONE", amountExTax: 0, amountInclTax: 0 };
+  const storeRules = rule.travelByStore ?? terms.travelByStore;
+  if (rule.flatTravelExTax) {
+    travel = { mode: "FLAT", amountExTax: rule.flatTravelExTax, amountInclTax: addTax(rule.flatTravelExTax).amountIncl };
+  } else if (storeRules?.length) {
+    const r = perStoreTravel(storeRules, dayStore, person.name);
+    if (r.warning) warnings.push(r.warning);
+    travel = r.travel;
+  }
+  // スタッフに「1日あたりの交通費」が決まっている場合は、それを優先する(稼働日数 × 日額)。
+  const fixedDailyTravel = dailyTravelFor(person.dailyTravelInclTax, dates.length);
+  if (fixedDailyTravel) travel = fixedDailyTravel;
+  // 新幹線代など、月ごとの固定の交通費をこのスタッフの交通費に足す
+  if (rule.extraTravel?.length) {
+    const add = rule.extraTravel.reduce((a, e) => a + e.amountExTax, 0);
+    const total = travel.amountExTax + add;
+    const parts = [travel.calc ? travel.calc.replace(/ ＝ [^＝]*$/, "") : "", ...rule.extraTravel.map((e) => `${e.label} ${e.calc}`)].filter(Boolean);
+    travel = {
+      mode: travel.mode === "NONE" ? "FLAT" : travel.mode,
+      amountExTax: total,
+      amountInclTax: addTax(total).amountIncl,
+      calc: `${parts.join(" ＋ ")} ＝ ${yen(total)}＋税で計算`,
+      lines: [
+        ...(travel.lines ?? (travel.amountExTax > 0 ? [{ label: "交通費相当額", calc: travel.calc ?? "", amountExTax: travel.amountExTax }] : [])),
+        ...rule.extraTravel.map((e) => ({ label: `交通費相当額\n${e.label}`, calc: e.calc, amountExTax: e.amountExTax })),
+      ],
+    };
+  }
+
+  const uni: (n: string) => string = manual
+    ? ((p) => () => p)(terms.shopSuffix ? withShopSuffix(manual.storeName) : manual.storeName)
+    : ((m) => (n: string) => (terms.shopSuffix ? withShopSuffix(m.get(n) ?? n) : (m.get(n) ?? n)))(unifyStoreNames(done.map((s) => s.storeName)));
+  return {
+    name: person.name,
+    places: [...new Set(done.map((s) => uni(s.storeName)))],
+    carriers: terms.carriers?.length ? terms.carriers : [...new Set(done.map((s) => s.carrier))],
+    dates,
+    dayPlaces: Object.fromEntries([...dayStore].map(([d, n]) => [d, uni(n)])),
+    days: dates.length,
+    serviceExTax: service,
+    serviceCalc,
+    travel,
+    extras: [],
+    ...(manual ? { manual: { storeName: manual.storeName, rateExTax: manual.rateExTax, absenceDeduction: manual.absenceDeduction, plannedDays } } : {}),
+  };
+}
+
+// 請求書の画面で「スタッフを追加」するときの、そのスタッフ1人ぶんの明細。該当する稼働がなければ staff は null。
+export async function computeManualStaff(clientId: string, yearMonth: string, staffName: string, manual: ManualStaffInput) {
+  const client = await prisma.client.findUnique({ where: { id: clientId }, select: { billingTerms: true } });
+  if (!client) throw new Error("取引先が見つかりません。");
+  const warnings: string[] = [];
+  const ctx = await makeRuleCtx((client.billingTerms ?? {}) as BillingTerms, yearMonth, warnings);
+  const rule: ShiftBillingRule = { staffName, fromMonth: yearMonth, contract: "MONTHLY", rateExTax: manual.rateExTax, absenceDeduction: manual.absenceDeduction };
+  return { staff: await staffFromRule(ctx, rule, manual), warnings };
+}
+
+// どの稼働依頼にも契約にも当てはまらない(=どの請求にも入らない)稼働を警告にする。全取引先分なので、この取引先の分があれば「スタッフを追加」で入れる。
+async function uncontractedWorkWarning(ctx: RuleCtx): Promise<string | null> {
+  const { start, end } = jstMonthRange(ctx.yearMonth);
+  const shifts = await prisma.shift.findMany({
+    where: { workOrderStaffId: null, cancelledAt: null, startTime: { gte: start, lt: end } },
+    include: { clockRecords: true, staff: { select: { name: true } } },
+    orderBy: { startTime: "asc" },
+  });
+  const byStaff = new Map<string, { days: Set<string>; stores: Set<string> }>();
+  for (const s of shifts) {
+    const key = toJstDateValue(s.startTime);
+    if (ctx.used.has(s.id) || !isWorkedShift(s)) continue;
+    if (ctx.ruleIndex.owners(s.staff.name, s.storeName, key).length > 0) continue;
+    const g = byStaff.get(s.staff.name) ?? { days: new Set<string>(), stores: new Set<string>() };
+    g.days.add(key);
+    g.stores.add(s.storeName);
+    byStaff.set(s.staff.name, g);
+  }
+  if (!byStaff.size) return null;
+  const items = [...byStaff].map(([name, g]) => `${name} ${g.days.size}日（${[...g.stores].slice(0, 3).join("・")}）`);
+  const more = items.length > 10 ? ` ほか${items.length - 10}名` : "";
+  return `契約にも稼働依頼にも当てはまらず、どの請求にも入っていない稼働があります（全取引先分）。この取引先の分なら「スタッフを追加」で入れてください: ${items.slice(0, 10).join(" / ")}${more}`;
+}
+
+// 修正を引き継ぐ元: その取引先・月の最新の請求が、未送信(下書き・承認済み)で明細書を持つ場合だけ。
+async function loadCarryOverSource(clientId: string, yearMonth: string) {
+  const latest = await prisma.invoice.findFirst({
+    where: { clientId, yearMonth },
+    orderBy: { revision: "desc" },
+    select: { status: true, statement: true, addressee: true, subject: true, note: true },
+  });
+  if (!latest?.statement || (latest.status !== "DRAFT" && latest.status !== "APPROVED")) return null;
+  return { statement: latest.statement as unknown as StatementSnapshot, addressee: latest.addressee, subject: latest.subject, note: latest.note };
+}
+
 type DraftResult = { id: string; invoiceNumber: string };
 
 // 請求下書きを作る(管理画面のボタンと、月初の自動作成の両方から使う)。
 // 権限チェックは呼び出し側で行うこと。
-export async function buildInvoiceDraft(clientId: string, yearMonth: string): Promise<DraftResult> {
+// carryOver=true なら、前の下書き(未送信)で追加したスタッフ・直した金額/稼働日/店舗/共通項目・宛名・件名・備考を引き継ぐ。
+export async function buildInvoiceDraft(clientId: string, yearMonth: string, opts: { carryOver?: boolean } = {}): Promise<DraftResult> {
   if (!clientId || !yearMonth) throw new Error("取引先と対象月は必須です。");
 
   const client = await prisma.client.findUnique({ where: { id: clientId }, select: { name: true, billingTerms: true } });
@@ -252,103 +425,30 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
 
   // ---- シフトからの請求(稼働依頼がなくてもよい) ----
   // ルールに合う「未紐付け」の完了シフトを、スタッフごとに集計する。
-  const rules = activeShiftRules(terms, yearMonth);
-  const conflicted = new Set<string>();
-  if (rules.length) {
-    const { start, end } = jstMonthRange(yearMonth);
-    const allStaff = await prisma.staff.findMany({ select: { id: true, name: true, dailyTravelInclTax: true } });
-    const used = new Set<string>();
-    const ruleIndex = await loadRuleIndex(yearMonth);
-    for (const rule of rules) {
-      const person = allStaff.find((x) => normName(x.name) === normName(rule.staffName));
-      if (!person) {
-        warnings.push(`請求ルールのスタッフ「${rule.staffName}」が見つかりません。`);
-        continue;
-      }
-      const shifts = await prisma.shift.findMany({
-        where: { staffId: person.id, workOrderStaffId: null, cancelledAt: null, startTime: { gte: start, lt: end } },
-        include: { clockRecords: true },
-        orderBy: { startTime: "asc" },
-      });
-      const done = shifts.filter(
-        (s) =>
-          !used.has(s.id) &&
-          isWorkedShift(s) &&
-          ruleMatchesShift(rule, person.name, s.storeName, toJstDateValue(s.startTime)) &&
-          // 2社以上の契約に当てはまるシフトは、二重に請求しないよう含めない(下で警告を出す)
-          (ruleIndex.owners(person.name, s.storeName, toJstDateValue(s.startTime)).length === 1 ||
-            (conflicted.add(`${person.name} ${toJstDateValue(s.startTime)} ${s.storeName}`), false))
-      );
-      done.forEach((s) => used.add(s.id));
-      const dayStore = new Map<string, string>();
-      for (const s of done) dayStore.set(toJstDateValue(s.startTime), s.storeName);
-      const dates = [...dayStore.keys()].sort();
-      if (!dates.length) continue;
+  const ctx = await makeRuleCtx(terms, yearMonth, warnings);
+  for (const rule of activeShiftRules(terms, yearMonth)) {
+    const s = await staffFromRule(ctx, rule);
+    if (s) statementStaff.push(s);
+  }
 
-      // 欠勤控除の日割りの基準は、当月に登録されたシフトの日数(キャンセル除く)。登録が無いときだけ契約の予定日数を使う。
-      const registeredDays = new Set(
-        shifts
-          .filter((s) => !used.has(s.id) || done.some((d) => d.id === s.id))
-          .filter((s) => ruleMatchesShift(rule, person.name, s.storeName, toJstDateValue(s.startTime)))
-          .filter((s) => ruleIndex.owners(person.name, s.storeName, toJstDateValue(s.startTime)).length === 1)
-          .map((s) => toJstDateValue(s.startTime))
-      ).size;
-      const plannedDays = registeredDays || (rule.plannedDays ?? 0);
-      const deduct = rule.contract === "MONTHLY" && rule.absenceDeduction === "YES" && plannedDays > 0;
-      const baseDaily = deduct ? Math.floor(rule.rateExTax / plannedDays) : 0;
-      const service = rule.contract === "DAILY" ? rule.rateExTax * dates.length : deduct ? baseDaily * dates.length : rule.rateExTax;
-      const serviceCalc =
-        rule.contract === "DAILY"
-          ? `日額 ${yen(rule.rateExTax)} × ${dates.length}日${rule.note ? `（${rule.note}）` : ""}`
-          : deduct
-            ? `月額 ${yen(rule.rateExTax)} ÷ 予定${plannedDays}日 = 1日 ${yen(baseDaily)} × ${dates.length}日${rule.note ? `（${rule.note}）` : ""}`
-            : `月額 ${yen(rule.rateExTax)}（固定${rule.note ? `・${rule.note}` : ""}）`;
-
-      let travel: StatementStaff["travel"] = { mode: "NONE", amountExTax: 0, amountInclTax: 0 };
-      const storeRules = rule.travelByStore ?? terms.travelByStore;
-      if (rule.flatTravelExTax) {
-        travel = { mode: "FLAT", amountExTax: rule.flatTravelExTax, amountInclTax: addTax(rule.flatTravelExTax).amountIncl };
-      } else if (storeRules?.length) {
-        const r = perStoreTravel(storeRules, dayStore, person.name);
-        if (r.warning) warnings.push(r.warning);
-        travel = r.travel;
-      }
-      // スタッフに「1日あたりの交通費」が決まっている場合は、それを優先する(稼働日数 × 日額)。
-      const fixedDailyTravel = dailyTravelFor(person.dailyTravelInclTax, dates.length);
-      if (fixedDailyTravel) travel = fixedDailyTravel;
-      // 新幹線代など、月ごとの固定の交通費をこのスタッフの交通費に足す
-      if (rule.extraTravel?.length) {
-        const add = rule.extraTravel.reduce((a, e) => a + e.amountExTax, 0);
-        const total = travel.amountExTax + add;
-        const parts = [travel.calc ? travel.calc.replace(/ ＝ [^＝]*$/, "") : "", ...rule.extraTravel.map((e) => `${e.label} ${e.calc}`)].filter(Boolean);
-        travel = {
-          mode: travel.mode === "NONE" ? "FLAT" : travel.mode,
-          amountExTax: total,
-          amountInclTax: addTax(total).amountIncl,
-          calc: `${parts.join(" ＋ ")} ＝ ${yen(total)}＋税で計算`,
-          lines: [
-            ...(travel.lines ?? (travel.amountExTax > 0 ? [{ label: "交通費相当額", calc: travel.calc ?? "", amountExTax: travel.amountExTax }] : [])),
-            ...rule.extraTravel.map((e) => ({ label: `交通費相当額\n${e.label}`, calc: e.calc, amountExTax: e.amountExTax })),
-          ],
-        };
-      }
-
-      const uni = ((m) => (n: string) => (terms.shopSuffix ? withShopSuffix(m.get(n) ?? n) : (m.get(n) ?? n)))(unifyStoreNames(done.map((s) => s.storeName)));
-      statementStaff.push({
-        name: person.name,
-        places: [...new Set(done.map((s) => uni(s.storeName)))],
-        carriers: terms.carriers?.length ? terms.carriers : [...new Set(done.map((s) => s.carrier))],
-        dates,
-        dayPlaces: Object.fromEntries([...dayStore].map(([d, n]) => [d, uni(n)])),
-        days: dates.length,
-        serviceExTax: service,
-        serviceCalc,
-        travel,
-        extras: [],
-      });
+  // 前の下書きで「スタッフを追加」したスタッフ(まだ契約に登録されていないもの)を、同じ条件で入れ直す。
+  const prev = opts.carryOver ? await loadCarryOverSource(clientId, yearMonth) : null;
+  if (prev) {
+    for (const old of prev.statement.staff) {
+      if (!old.manual || statementStaff.some((x) => normName(x.name) === normName(old.name))) continue;
+      const rule: ShiftBillingRule = { staffName: old.name, fromMonth: yearMonth, contract: "MONTHLY", rateExTax: old.manual.rateExTax, absenceDeduction: old.manual.absenceDeduction };
+      const s = await staffFromRule(ctx, rule, old.manual);
+      if (s) statementStaff.push(s);
+      else warnings.push(`前の下書きで追加した${old.name}さんは、今回の稼働実績がない、または他の取引先の契約に当てはまるため、引き継げませんでした。`);
     }
   }
+  const { conflicted } = ctx;
   if (conflicted.size) warnings.push(`次のシフトは2社以上の契約に当てはまるため、請求に含めていません。契約の店舗名を見直してください: ${[...conflicted].slice(0, 8).join(" / ")}`);
+  if (!orders.length && !statementStaff.length) {
+    throw new Error("対象月の承認済み稼働依頼も、シフトからの請求ルールに合う稼働実績もありません。");
+  }
+  const uncontracted = await uncontractedWorkWarning(ctx);
+  if (uncontracted) warnings.push(uncontracted);
   if (!orders.length && !statementStaff.length) {
     throw new Error("対象月の承認済み稼働依頼も、シフトからの請求ルールに合う稼働実績もありません。");
   }
@@ -378,8 +478,28 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
     }
   }
 
+  // 自動計算の結果を「元の値」として残し(次回の引き継ぎで、手で直した項目を見分けるため)、前の下書きの修正を重ねる。
+  const baseline: StatementBaseline = JSON.parse(
+    JSON.stringify({
+      staff: statementStaff.map((s) => ({ name: s.name, dates: s.dates, dayPlaces: s.dayPlaces, serviceExTax: s.serviceExTax, serviceCalc: s.serviceCalc, travel: s.travel })),
+      clientExtras,
+    })
+  );
+  let finalStaff = statementStaff;
+  let finalExtras = clientExtras;
+  if (opts.carryOver) {
+    if (prev) {
+      const merged = mergeCarryOver({ staff: statementStaff, clientExtras }, prev.statement);
+      finalStaff = merged.staff;
+      finalExtras = merged.clientExtras;
+      warnings.push(...merged.notes);
+    } else {
+      warnings.push("引き継げる前の下書き(未送信)がなかったため、新しく計算しました。");
+    }
+  }
+
   // 請求書は「業務委託費一式」の1行だけ。交通費相当額なども含めた税抜合計を単価にする。
-  const unitPrice = statementBillableExTax({ staff: statementStaff, clientExtras });
+  const unitPrice = statementBillableExTax({ staff: finalStaff, clientExtras: finalExtras });
   const t = addTax(unitPrice);
   const lines = [
     {
@@ -405,7 +525,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
   const revision = (previous?.revision ?? 0) + 1;
   const invoiceNumber = `KJ-${yearMonth.replace("-", "")}-${Date.now().toString().slice(-6)}${revision > 1 ? `-R${revision}` : ""}`;
 
-  const statement: StatementSnapshot = { clientName: client.name, yearMonth, staff: statementStaff, clientExtras, warnings };
+  const statement: StatementSnapshot = { clientName: client.name, yearMonth, staff: finalStaff, clientExtras: finalExtras, warnings, baseline };
 
   const invoice = await prisma.invoice.create({
     data: {
@@ -417,6 +537,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
       taxAmount,
       totalInclTax,
       statement,
+      ...(prev ? { addressee: prev.addressee, subject: prev.subject, note: prev.note } : {}),
       lines: { create: lines },
       workOrders: { create: orders.map((o) => ({ workOrderId: o.id })) },
     },

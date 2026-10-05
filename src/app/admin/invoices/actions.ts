@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { buildInvoiceDraft, statementBillableExTax, type StatementSnapshot } from "@/lib/invoice-draft";
+import { buildInvoiceDraft, computeManualStaff, statementBillableExTax, type StatementSnapshot } from "@/lib/invoice-draft";
+import { activeShiftRules, normName, type BillingTerms } from "@/lib/billing-terms";
 import { approveDraftInvoice, sendApprovedInvoice } from "@/lib/invoice-send";
 import { addTax, computeInvoiceTotals, splitInclusiveTax } from "@/lib/billing";
 
@@ -16,7 +17,7 @@ export async function createInvoiceDraft(formData: FormData): Promise<CreateDraf
   const clientId = String(formData.get("clientId") || "");
   const yearMonth = String(formData.get("yearMonth") || "");
   try {
-    const { id } = await buildInvoiceDraft(clientId, yearMonth);
+    const { id } = await buildInvoiceDraft(clientId, yearMonth, { carryOver: formData.get("carryOver") === "on" });
     revalidatePath("/admin/invoices");
     return { ok: true, id };
   } catch (e) {
@@ -26,14 +27,86 @@ export async function createInvoiceDraft(formData: FormData): Promise<CreateDraf
 
 export type ActionResult = { ok: true; message: string } | { ok: false; error: string };
 
+// 請求書(下書き)の画面から、契約にいないスタッフを追加する。承認すると、この内容が取引先の契約に自動登録される。
+// 請求書に書いた内容が正。月額は欠勤控除する前の税抜額。他の取引先の契約にいるスタッフは追加しない。
+export async function addStaffToDraft(
+  id: string,
+  input: { staffId: string; storeName: string; rateExTax: number; absenceDeduction: "YES" | "NO" }
+): Promise<ActionResult> {
+  await requireAdmin();
+  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true, clientId: true, yearMonth: true, statement: true } });
+  if (!invoice) return { ok: false, error: "請求書が見つかりません。" };
+  if (invoice.status !== "DRAFT") return { ok: false, error: "スタッフを追加できるのは下書きの請求だけです。" };
+  const snapshot = invoice.statement as unknown as StatementSnapshot | null;
+  if (!snapshot) return { ok: false, error: "稼働明細書のデータがありません。請求下書きを作り直してください。" };
+
+  const storeName = input.storeName.trim();
+  if (!storeName) return { ok: false, error: "店舗名を入力してください。" };
+  if (!Number.isInteger(input.rateExTax) || input.rateExTax <= 0) return { ok: false, error: "月額（税抜）は1以上の整数で入力してください。" };
+  if (input.absenceDeduction !== "YES" && input.absenceDeduction !== "NO") return { ok: false, error: "欠勤控除の有無を選んでください。" };
+
+  const person = await prisma.staff.findUnique({ where: { id: input.staffId }, select: { name: true } });
+  if (!person) return { ok: false, error: "スタッフが見つかりません。" };
+  if (snapshot.staff.some((s) => normName(s.name) === normName(person.name))) return { ok: false, error: `${person.name}さんはすでにこの請求に入っています。` };
+
+  // 他の取引先の契約にいるスタッフは追加しない(二重請求を防ぐ)。
+  const clients = await prisma.client.findMany({ select: { id: true, name: true, billingTerms: true } });
+  const other = clients.find(
+    (c) => c.id !== invoice.clientId && activeShiftRules(c.billingTerms as BillingTerms | null, invoice.yearMonth).some((r) => normName(r.staffName) === normName(person.name))
+  );
+  if (other) return { ok: false, error: `${person.name}さんは他の取引先「${other.name}」の契約に登録されているため、追加できません。契約を確認してください。` };
+
+  const { staff, warnings } = await computeManualStaff(invoice.clientId, invoice.yearMonth, person.name, { storeName, rateExTax: input.rateExTax, absenceDeduction: input.absenceDeduction });
+  if (!staff) return { ok: false, error: `${person.name}さんの${invoice.yearMonth}の稼働実績（出勤打刻のある、どの契約・稼働依頼にも入っていないシフト）がありません。` };
+
+  const next: StatementSnapshot = {
+    ...snapshot,
+    staff: [...snapshot.staff, staff],
+    warnings: [...(snapshot.warnings ?? []), ...warnings],
+    // 追加したスタッフは「自動計算の元の値」にも入れる(次の作り直しで、手で直した項目と取り違えないため)。
+    ...(snapshot.baseline
+      ? { baseline: { ...snapshot.baseline, staff: [...snapshot.baseline.staff, { name: staff.name, dates: staff.dates, dayPlaces: staff.dayPlaces, serviceExTax: staff.serviceExTax, serviceCalc: staff.serviceCalc, travel: staff.travel }] } }
+      : {}),
+  };
+  const unitPrice = statementBillableExTax(next);
+  const totals = computeInvoiceTotals([{ quantity: 1, unitPriceExTax: unitPrice }]);
+  const t = addTax(unitPrice);
+  await prisma.$transaction([
+    prisma.invoice.update({
+      where: { id },
+      data: { subtotalExTax: totals.subtotalExTax, taxAmount: totals.taxAmount, totalInclTax: totals.totalInclTax, statement: next },
+    }),
+    prisma.invoiceLine.deleteMany({ where: { invoiceId: id } }),
+    prisma.invoiceLine.create({
+      data: {
+        invoiceId: id,
+        sortOrder: 10,
+        itemType: "SERVICE",
+        label: "業務委託費一式",
+        description: "内訳は別紙「稼働明細書」のとおり",
+        unitPriceExTax: unitPrice,
+        quantity: 1,
+        subtotalExTax: unitPrice,
+        taxAmount: t.tax,
+        totalInclTax: t.amountIncl,
+      },
+    }),
+  ]);
+  revalidatePath(`/admin/invoices/${id}`);
+  revalidatePath("/admin/invoices");
+  return { ok: true, message: `${staff.name}さんを追加しました（${staff.days}日・業務委託費 ¥${staff.serviceExTax.toLocaleString("ja-JP")}）。承認すると契約に自動登録されます。` };
+}
+
 // 「承認」: 下書き → 承認済み(メールは送らない)。
 export async function approveInvoice(id: string, approverName: string): Promise<ActionResult> {
   await requireAdmin();
   try {
-    await approveDraftInvoice(id, approverName);
+    const { registered, notes } = await approveDraftInvoice(id, approverName);
     revalidatePath(`/admin/invoices/${id}`);
     revalidatePath("/admin/invoices");
-    return { ok: true, message: "承認しました。承認済みの一覧から送信できます。" };
+    revalidatePath("/admin/clients");
+    const extra = [registered.length ? `契約を自動登録しました: ${registered.join(" / ")}` : "", ...notes].filter(Boolean).join(" ");
+    return { ok: true, message: `承認しました。承認済みの一覧から送信できます。${extra ? ` ${extra}` : ""}` };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "承認に失敗しました。" };
   }

@@ -8,6 +8,8 @@ import { AdminNav } from "../../admin-nav";
 import { InvoiceActions } from "./invoice-actions";
 import { DeleteSentInvoiceButton } from "./delete-sent-button";
 import { PdfPreview } from "./pdf-preview";
+import { AddStaffForm } from "./add-staff-form";
+import type { StatementSnapshot } from "@/lib/invoice-draft";
 
 const STATUS_LABEL: Record<string, string> = { DRAFT: "下書き", APPROVED: "承認済み（未送信）", FINALIZED: "送付済み", REISSUED: "送付済み（再発行）" };
 
@@ -19,6 +21,13 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
     include: { client: true, lines: { orderBy: { sortOrder: "asc" } } },
   });
   if (!i) notFound();
+
+  const statement = i.statement as unknown as StatementSnapshot | null;
+  const warnings = statement?.warnings ?? [];
+  const staffOptions =
+    i.status === "DRAFT" && statement
+      ? (await prisma.staff.findMany({ orderBy: { employeeCode: "asc" }, select: { id: true, name: true, employeeCode: true } })).map((s) => ({ id: s.id, label: `${s.name}（${s.employeeCode}）` }))
+      : [];
 
   const admins = await prisma.adminEmail.findMany({ select: { email: true } });
   const to = invoiceRecipients(i.client).join(", ");
@@ -46,6 +55,17 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
         <p className="mt-3 rounded-xl border border-emerald-900 bg-emerald-950/30 p-3 text-sm text-emerald-300">
           {formatJst((i.sentAt ?? i.finalizedAt)!)} に送付済み{i.sentTo ? `（${i.sentTo}）` : ""}
         </p>
+      )}
+
+      {(i.status === "DRAFT" || i.status === "APPROVED") && warnings.length > 0 && (
+        <div className="mt-4 rounded-xl border border-amber-700 bg-amber-950/30 p-3 text-sm text-amber-200">
+          <p className="font-black">確認してください（下書き作成時の注意）</p>
+          <ul className="mt-1 list-disc space-y-1 pl-5">
+            {warnings.map((w, n) => (
+              <li key={n}>{w}</li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-700 bg-slate-900">
@@ -100,6 +120,8 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
           <PdfPreview url={`/invoice/${i.id}/statement?t=${i.updatedAt.getTime()}`} title="稼働明細書" />
         </section>
       </div>
+
+      {i.status === "DRAFT" && statement && <AddStaffForm invoiceId={i.id} staff={staffOptions} />}
 
       {i.status === "DRAFT" || i.status === "APPROVED" ? (
         <InvoiceActions invoiceId={i.id} status={i.status} recipients={recipients} total={i.totalInclTax} clientName={i.client.name} />
