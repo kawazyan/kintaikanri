@@ -17,6 +17,11 @@ const MAIL_SIGNATURE = [
   ">>>>>>>>>>>>>>>>>>>>>>>>>>>>",
 ];
 
+// 添付PDFのファイル名: 「請求書_2026年9月分_株式会社K.J.pdf」。ファイル名に使えない文字は _ にする。
+export function pdfFileName(kind: "請求書" | "請求内訳書", y: number, m: number) {
+  return `${kind}_${y}年${m}月分_株式会社K.J.pdf`.replace(/[\\/:*?"<>|]/g, "_");
+}
+
 // 承認: 下書き → 承認済み。メールはまだ送らない(承認済みの一覧から「送信」する)。
 // 請求書で「スタッフを追加」したスタッフがいれば、承認と同時に取引先の契約へ自動登録する(manual-contracts.ts)。
 export async function approveDraftInvoice(id: string, approverName: string) {
@@ -88,8 +93,8 @@ export async function sendApprovedInvoice(id: string) {
     subject,
     text,
     attachments: [
-      { filename: `請求書_${invoice.yearMonth}_${invoice.invoiceNumber}.pdf`, content: inv.buffer },
-      { filename: `請求内訳書_${invoice.yearMonth}_${invoice.invoiceNumber}.pdf`, content: stmt.buffer },
+      { filename: pdfFileName("請求書", y, m), content: inv.buffer },
+      { filename: pdfFileName("請求内訳書", y, m), content: stmt.buffer },
     ],
   });
 
