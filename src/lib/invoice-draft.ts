@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { addTax, computeInvoiceTotals, expenseLabel } from "@/lib/billing";
-import { jstMonthRange, toJstDateValue } from "@/lib/time";
+import { jstDayRange, jstMonthRange, toJstDateValue } from "@/lib/time";
 import { unifyStoreNames, withShopSuffix } from "@/lib/store-names";
 import { activeShiftRules, normName, ruleMatchesShift, type BillingTerms, type TravelByStore } from "@/lib/billing-terms";
 import { syncWorkOrderShiftLinks } from "@/lib/work-order-linking";
@@ -55,6 +55,14 @@ export function staffBillableExTax(s: StatementStaff) {
 }
 
 const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
+
+// 稼働日として数えるシフト。出勤・退勤の両方が打刻されたもの。
+// 退勤の打刻漏れは稼働したものとして扱う(出勤だけ打刻され、その日(JST)が終わっていれば稼働)。スタッフへの支払い(earnings.ts)と同じ判定。
+function isWorkedShift(s: { startTime: Date; clockRecords: { type: string }[] }, now: Date = new Date()) {
+  const hasIn = s.clockRecords.some((r) => r.type === "IN");
+  const hasOut = s.clockRecords.some((r) => r.type === "OUT");
+  return hasIn && (hasOut || now >= jstDayRange(s.startTime).end);
+}
 
 // 稼働日ごとの店舗から、店舗別の往復交通費を計算する。取り決めのない店舗は0円にして警告を返す。
 function perStoreTravel(rules: TravelByStore[], dayStore: Map<string, string>, staffName: string) {
@@ -128,10 +136,8 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
         throw new Error(`スタッフ「${assignment.requestedName}」が社内スタッフに紐付いていません。先に稼働依頼画面で紐付けてください。`);
       }
 
-      // 出勤・退勤の両方が打刻されたシフトだけを稼働日として数える。
-      const completedShifts = assignment.shifts.filter(
-        (s) => s.clockRecords.some((r) => r.type === "IN") && s.clockRecords.some((r) => r.type === "OUT")
-      );
+      // 出勤が打刻されたシフトを稼働日として数える(退勤忘れも稼働。isWorkedShift 参照)。
+      const completedShifts = assignment.shifts.filter((s) => isWorkedShift(s));
       const completedDates = new Set<string>(completedShifts.map((s) => toJstDateValue(s.startTime)));
       const approvedOverrideByDate = new Map(
         assignment.dailyOverrides.map((ov) => [toJstDateValue(ov.workDate), ov] as const)
@@ -255,8 +261,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
       const done = shifts.filter(
         (s) =>
           !used.has(s.id) &&
-          s.clockRecords.some((r) => r.type === "IN") &&
-          s.clockRecords.some((r) => r.type === "OUT") &&
+          isWorkedShift(s) &&
           ruleMatchesShift(rule, person.name, s.storeName, toJstDateValue(s.startTime)) &&
           // 2社以上の契約に当てはまるシフトは、二重に請求しないよう含めない(下で警告を出す)
           (ruleIndex.owners(person.name, s.storeName, toJstDateValue(s.startTime)).length === 1 ||
