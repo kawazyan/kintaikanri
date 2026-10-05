@@ -173,13 +173,17 @@ async function staffFromRule(ctx: RuleCtx, rule: ShiftBillingRule, manual?: Manu
   const plannedDays = registeredDays || (rule.plannedDays ?? 0);
   const deduct = rule.contract === "MONTHLY" && rule.absenceDeduction === "YES" && plannedDays > 0;
   const baseDaily = deduct ? Math.floor(rule.rateExTax / plannedDays) : 0;
-  const service = rule.contract === "DAILY" ? rule.rateExTax * dates.length : deduct ? baseDaily * dates.length : rule.rateExTax;
+  // 欠勤がない(登録されたシフトを全日稼働した)月は満額。日割りの式は、実際に欠勤で減算するときだけ載せる。
+  const noAbsence = deduct && dates.length >= plannedDays;
+  const service = rule.contract === "DAILY" ? rule.rateExTax * dates.length : deduct && !noAbsence ? baseDaily * dates.length : rule.rateExTax;
   const serviceCalc =
     rule.contract === "DAILY"
       ? `日額 ${yen(rule.rateExTax)} × ${dates.length}日${rule.note ? `（${rule.note}）` : ""}`
-      : deduct
-        ? `月額 ${yen(rule.rateExTax)} ÷ 予定${plannedDays}日 = 1日 ${yen(baseDaily)} × ${dates.length}日${rule.note ? `（${rule.note}）` : ""}`
-        : `月額 ${yen(rule.rateExTax)}（固定${rule.note ? `・${rule.note}` : ""}）`;
+      : noAbsence
+        ? `月額 ${yen(rule.rateExTax)}${rule.note ? `（${rule.note}）` : ""}`
+        : deduct
+          ? `月額 ${yen(rule.rateExTax)} ÷ 予定${plannedDays}日 = 1日 ${yen(baseDaily)} × ${dates.length}日${rule.note ? `（${rule.note}）` : ""}`
+          : `月額 ${yen(rule.rateExTax)}（固定${rule.note ? `・${rule.note}` : ""}）`;
 
   let travel: StatementStaff["travel"] = { mode: "NONE", amountExTax: 0, amountInclTax: 0 };
   const storeRules = rule.travelByStore ?? terms.travelByStore;
@@ -340,6 +344,10 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string, opt
           amountExTax += override?.changedRateExTax ?? assignment.rateAmountExTax;
         }
         calc = `日額 ${yen(assignment.rateAmountExTax)} × ${days}日`;
+      } else if (assignment.absenceDeduction === "YES" && days >= plannedDays && plannedDays > 0 && !hasRateOverride) {
+        // 欠勤がない月は満額(日割りの式は載せない)。
+        amountExTax = assignment.rateAmountExTax;
+        calc = `月額 ${yen(assignment.rateAmountExTax)}`;
       } else if (assignment.absenceDeduction === "YES") {
         for (const dateKey of completedDates) {
           const override = approvedOverrideByDate.get(dateKey);
