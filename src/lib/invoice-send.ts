@@ -5,6 +5,17 @@ import { invoiceRecipients, monthEndOf, nextMonthEnd } from "@/lib/invoice-defau
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// 請求書メール末尾の署名。
+const MAIL_SIGNATURE = [
+  ">>>>>>>>>>>>>>>>>>>>>>>>>>>>",
+  "株式会社K.J",
+  "〒980-0804",
+  "宮城県仙台市青葉区大町2丁目3-12 Blank仙台703",
+  "TEL:050-5369-0824（24h/AI対応）",
+  "経理課　伊藤",
+  ">>>>>>>>>>>>>>>>>>>>>>>>>>>>",
+];
+
 // 承認: 下書き → 承認済み。メールはまだ送らない(承認済みの一覧から「送信」する)。
 export async function approveDraftInvoice(id: string, approverName: string) {
   const name = approverName.trim();
@@ -63,7 +74,7 @@ export async function sendApprovedInvoice(id: string) {
     "ご不明な点がございましたら、お気軽にお知らせください。",
     "何卒よろしくお願い申し上げます。",
     "",
-    "株式会社K.J",
+    ...MAIL_SIGNATURE,
   ].join("\n");
 
   await sendMailStrict({
