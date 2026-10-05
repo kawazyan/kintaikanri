@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { formatJst } from "@/lib/time";
 import { AdminNav } from "../admin-nav";
 import { CreateInvoiceButton } from "./create-button";
+import { RowDeleteButton } from "./row-delete-button";
 
 type Row = {
   id: string;
@@ -12,6 +13,8 @@ type Row = {
   invoiceNumber: string;
   total: number;
   note: string;
+  needsNumber: boolean; // 確定済み・送付済み(削除に請求番号の入力が必要)
+  sent: boolean; // メールを送付した記録がある
 };
 
 function Section({ title, hint, rows, empty }: { title: string; hint: string; rows: Row[]; empty: string }) {
@@ -25,13 +28,16 @@ function Section({ title, hint, rows, empty }: { title: string; hint: string; ro
       <div className="mt-3 space-y-3">
         {rows.length === 0 && <p className="rounded-2xl border border-dashed border-slate-700 p-4 text-sm text-slate-500">{empty}</p>}
         {rows.map((r) => (
-          <Link key={r.id} href={`/admin/invoices/${r.id}`} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-700 bg-slate-900 p-5">
-            <div>
-              <p className="font-black">{r.clientName} ・ {r.yearMonth}</p>
-              <p className="text-xs text-slate-400">{r.invoiceNumber} ・ {r.note}</p>
-            </div>
-            <p className="text-lg font-black">¥{r.total.toLocaleString()}</p>
-          </Link>
+          <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-700 bg-slate-900 p-5">
+            <Link href={`/admin/invoices/${r.id}`} className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-black">{r.clientName} ・ {r.yearMonth}</p>
+                <p className="text-xs text-slate-400">{r.invoiceNumber} ・ {r.note}</p>
+              </div>
+              <p className="text-lg font-black">¥{r.total.toLocaleString()}</p>
+            </Link>
+            <RowDeleteButton id={r.id} invoiceNumber={r.invoiceNumber} clientName={r.clientName} total={r.total} needsNumber={r.needsNumber} sent={r.sent} />
+          </div>
         ))}
       </div>
     </section>
@@ -52,6 +58,8 @@ export default async function InvoicesPage() {
     invoiceNumber: i.invoiceNumber,
     total: i.totalInclTax,
     note,
+    needsNumber: i.status !== "DRAFT" && i.status !== "APPROVED",
+    sent: !!i.sentAt,
   });
 
   const drafts = invoices.filter((i) => i.status === "DRAFT").map((i) => toRow(i, `作成 ${formatJst(i.createdAt)}`));
