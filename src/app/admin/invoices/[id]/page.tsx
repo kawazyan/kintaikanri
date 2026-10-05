@@ -6,6 +6,7 @@ import { formatJst } from "@/lib/time";
 import { invoiceRecipients } from "@/lib/invoice-defaults";
 import { AdminNav } from "../../admin-nav";
 import { InvoiceActions } from "./invoice-actions";
+import { DeleteSentInvoiceButton } from "./delete-sent-button";
 import { PdfPreview } from "./pdf-preview";
 
 const STATUS_LABEL: Record<string, string> = { DRAFT: "下書き", APPROVED: "承認済み（未送信）", FINALIZED: "送付済み", REISSUED: "送付済み（再発行）" };
@@ -103,12 +104,15 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
       {i.status === "DRAFT" || i.status === "APPROVED" ? (
         <InvoiceActions invoiceId={i.id} status={i.status} recipients={recipients} total={i.totalInclTax} clientName={i.client.name} />
       ) : (
-        <div className="mt-5 flex flex-wrap gap-3">
-          <Link href={`/invoice/${i.id}/print`} className="rounded-xl bg-white px-4 py-3 font-black text-slate-900">請求書を開く</Link>
-          <Link href={`/invoice/${i.id}/pdf`} className="rounded-xl bg-emerald-600 px-4 py-3 font-black">請求書PDF</Link>
-          <Link href={`/invoice/${i.id}/statement`} className="rounded-xl bg-blue-600 px-4 py-3 font-black">稼働明細書PDF</Link>
-          <Link href={`/invoice/${i.id}/detail`} className="rounded-xl border border-slate-600 px-4 py-3 font-black">勤務・請求明細書</Link>
-        </div>
+        <>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Link href={`/invoice/${i.id}/print`} className="rounded-xl bg-white px-4 py-3 font-black text-slate-900">請求書を開く</Link>
+            <Link href={`/invoice/${i.id}/pdf`} className="rounded-xl bg-emerald-600 px-4 py-3 font-black">請求書PDF</Link>
+            <Link href={`/invoice/${i.id}/statement`} className="rounded-xl bg-blue-600 px-4 py-3 font-black">稼働明細書PDF</Link>
+            <Link href={`/invoice/${i.id}/detail`} className="rounded-xl border border-slate-600 px-4 py-3 font-black">勤務・請求明細書</Link>
+          </div>
+          <DeleteSentInvoiceButton invoiceId={i.id} invoiceNumber={i.invoiceNumber} clientName={i.client.name} total={i.totalInclTax} sent={!!i.sentAt} />
+        </>
       )}
     </main>
   );
