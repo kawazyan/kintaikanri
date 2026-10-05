@@ -64,7 +64,7 @@ export async function sendApprovedInvoice(id: string) {
 
   const [y, m] = invoice.yearMonth.split("-").map(Number);
   const addressee = inv.data.addressee;
-  const subject = `【請求書】${addressee} ${y}年${m}月`;
+  const subject = `【請求書】${y}年${m}月分のご請求（株式会社K.J）`;
   const text = [
     `${addressee} 御中`,
     "",
