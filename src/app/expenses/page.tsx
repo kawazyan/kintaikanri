@@ -37,8 +37,8 @@ export default async function ExpensesPage() {
           <input type="hidden" name="yearMonth" value={ym} />
           <div className="grid grid-cols-[2fr_3fr] gap-3">
             <label className="block min-w-0 text-xs font-black">
-              日付
-              <input type="date" name="expenseDate" required className="mt-1 w-full min-w-0 rounded-xl border px-2 py-3 text-sm" />
+              日付（交通費は空欄でもOK）
+              <input type="date" name="expenseDate" className="mt-1 w-full min-w-0 rounded-xl border px-2 py-3 text-sm" />
             </label>
             <label className="block min-w-0 text-xs font-black">
               区分
@@ -49,6 +49,10 @@ export default async function ExpensesPage() {
               </select>
             </label>
           </div>
+          <label className="block text-xs font-black">
+            対象月（交通費で日付を空欄にしたときに使います）
+            <input type="month" name="expenseMonth" defaultValue={ym} className="mt-1 w-full rounded-xl border p-3 text-sm" />
+          </label>
           <label className="block text-xs font-black">
             対象案件
             <select name="workOrderStaffId" className="mt-1 w-full rounded-xl border p-3 text-sm">
