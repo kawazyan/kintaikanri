@@ -12,11 +12,14 @@ const FIELD_CLASS =
 
 export default async function EditRecordPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   await requireAdmin();
   const { id } = await params;
+  const { error } = await searchParams;
 
   const record = await prisma.clockRecord.findUnique({ where: { id }, include: { staff: true, shift: true } });
   if (!record) notFound();
@@ -81,6 +84,12 @@ export default async function EditRecordPage({
               </SubmitButton>
             </form>
           )}
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-700 bg-red-950/30 p-3 text-sm font-bold text-red-200">
+          {error}
         </div>
       )}
 

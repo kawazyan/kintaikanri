@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getStaffId } from "@/lib/auth";
 import { jstDayRange } from "@/lib/time";
+import { findClockDuplicateError } from "@/lib/clock-duplicate";
 
 type ClockResult =
   | { ok: true; storeName: string | null; warning: string | null }
@@ -63,11 +64,20 @@ export async function clockAction(
     }
   }
 
+  const now = new Date();
+  const duplicateError = await findClockDuplicateError({
+    staffId,
+    type,
+    shiftId: matchedShift?.id ?? null,
+    timestamp: now,
+  });
+  if (duplicateError) return { ok: false, error: duplicateError };
+
   await prisma.clockRecord.create({
     data: {
       staffId,
       type,
-      timestamp: new Date(),
+      timestamp: now,
       latitude: latitude ?? undefined,
       longitude: longitude ?? undefined,
       storeName: matchedShift?.storeName,

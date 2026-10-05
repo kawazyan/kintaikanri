@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { fromJstInputValue, jstDayRange } from "@/lib/time";
+import { findClockDuplicateError } from "@/lib/clock-duplicate";
 
 export async function deleteClockRecord(id: string, formData: FormData) {
   await requireAdmin();
@@ -81,6 +82,16 @@ export async function createClockRecordByAdmin(formData: FormData) {
     }
   }
 
+  const duplicateError = await findClockDuplicateError({
+    staffId,
+    type,
+    shiftId: matchedShift?.id ?? null,
+    timestamp,
+  });
+  if (duplicateError) {
+    redirect(`/admin/records/new?staffId=${encodeURIComponent(staffId)}&error=${encodeURIComponent(duplicateError)}`);
+  }
+
   const created = await prisma.clockRecord.create({
     data: {
       staffId,
@@ -128,11 +139,23 @@ export async function updateClockRecord(id: string, formData: FormData) {
     if (!targetShift || targetShift.staffId !== existing.staffId) return;
   }
 
+  const newTimestamp = fromJstInputValue(timestampRaw);
+  const duplicateError = await findClockDuplicateError({
+    staffId: existing.staffId,
+    type,
+    shiftId,
+    timestamp: newTimestamp,
+    excludeId: id,
+  });
+  if (duplicateError) {
+    redirect(`/admin/records/${id}?error=${encodeURIComponent(duplicateError)}`);
+  }
+
   const updated = await prisma.clockRecord.update({
     where: { id },
     data: {
       type,
-      timestamp: fromJstInputValue(timestampRaw),
+      timestamp: newTimestamp,
       storeName,
       shiftId,
       editedByAdmin: true,

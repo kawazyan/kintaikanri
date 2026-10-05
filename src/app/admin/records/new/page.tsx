@@ -12,10 +12,10 @@ const FIELD_CLASS =
 export default async function NewRecordPage({
   searchParams,
 }: {
-  searchParams: Promise<{ staffId?: string }>;
+  searchParams: Promise<{ staffId?: string; error?: string }>;
 }) {
   await requireAdmin();
-  const { staffId } = await searchParams;
+  const { staffId, error } = await searchParams;
 
   const staffList = await prisma.staff.findMany({
     where: { status: "ACTIVE" },
@@ -36,6 +36,12 @@ export default async function NewRecordPage({
       <p className="mb-6 text-xs text-slate-500">
         スタッフが出勤・退勤の打刻を押し忘れた場合などに、管理者が代わりに時刻を指定して打刻記録を追加します。
       </p>
+
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-700 bg-red-950/30 p-3 text-sm font-bold text-red-200">
+          {error}
+        </div>
+      )}
 
       <form action={createClockRecordByAdmin} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1 text-sm text-slate-400">
