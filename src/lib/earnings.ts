@@ -91,7 +91,9 @@ export async function computeMonthlyEarnings(
     const plannedShifts = monthlyFixed ? shifts.length : bandShifts.length;
     const dailyRate = Math.floor(targetAmount / plannedShifts);
     const bandConfirmedDays = bandShifts.filter(isConfirmed).length;
-    const bandConfirmedAmount = dailyRate * bandConfirmedDays;
+    // その月のシフトがすべて月額対象で、全日確定した(欠勤なし)ときは、切り捨ての端数を出さず目標額の満額にする。
+    const fullAttendance = bandShifts.length === shifts.length && bandConfirmedDays === bandShifts.length;
+    const bandConfirmedAmount = fullAttendance ? targetAmount : dailyRate * bandConfirmedDays;
     return { confirmedAmount: bandConfirmedAmount + spotConfirmedAmount };  }
 
   return { confirmedAmount: spotConfirmedAmount };
