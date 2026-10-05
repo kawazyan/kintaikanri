@@ -140,7 +140,9 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
         (d) => approvedOverrideByDate.get(d)?.changedRateExTax != null
       );
       const days = completedDates.size;
-      const baseDaily = order.plannedDays > 0 ? Math.floor(assignment.rateAmountExTax / order.plannedDays) : 0;
+      // 欠勤控除の日割りの基準は、当月に登録されたシフトの日数(キャンセル除く)。登録が無いときだけ依頼の予定日数を使う。
+      const plannedDays = new Set(assignment.shifts.map((s) => toJstDateValue(s.startTime))).size || order.plannedDays;
+      const baseDaily = plannedDays > 0 ? Math.floor(assignment.rateAmountExTax / plannedDays) : 0;
 
       let amountExTax = 0;
       let calc = "";
@@ -155,7 +157,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
           const override = approvedOverrideByDate.get(dateKey);
           amountExTax += override?.changedRateExTax ?? baseDaily;
         }
-        calc = `月額 ${yen(assignment.rateAmountExTax)} ÷ 予定${order.plannedDays}日 = 1日 ${yen(baseDaily)} × ${days}日`;
+        calc = `月額 ${yen(assignment.rateAmountExTax)} ÷ 予定${plannedDays}日 = 1日 ${yen(baseDaily)} × ${days}日`;
       } else {
         amountExTax = assignment.rateAmountExTax;
         // 月単価固定でも、承認済みの当日単価変更がある場合は日割り基準との差額だけ加算/減算する。
@@ -266,14 +268,23 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
       const dates = [...dayStore.keys()].sort();
       if (!dates.length) continue;
 
-      const deduct = rule.contract === "MONTHLY" && rule.absenceDeduction === "YES" && (rule.plannedDays ?? 0) > 0;
-      const baseDaily = deduct ? Math.floor(rule.rateExTax / (rule.plannedDays as number)) : 0;
+      // 欠勤控除の日割りの基準は、当月に登録されたシフトの日数(キャンセル除く)。登録が無いときだけ契約の予定日数を使う。
+      const registeredDays = new Set(
+        shifts
+          .filter((s) => !used.has(s.id) || done.some((d) => d.id === s.id))
+          .filter((s) => ruleMatchesShift(rule, person.name, s.storeName, toJstDateValue(s.startTime)))
+          .filter((s) => ruleIndex.owners(person.name, s.storeName, toJstDateValue(s.startTime)).length === 1)
+          .map((s) => toJstDateValue(s.startTime))
+      ).size;
+      const plannedDays = registeredDays || (rule.plannedDays ?? 0);
+      const deduct = rule.contract === "MONTHLY" && rule.absenceDeduction === "YES" && plannedDays > 0;
+      const baseDaily = deduct ? Math.floor(rule.rateExTax / plannedDays) : 0;
       const service = rule.contract === "DAILY" ? rule.rateExTax * dates.length : deduct ? baseDaily * dates.length : rule.rateExTax;
       const serviceCalc =
         rule.contract === "DAILY"
           ? `日額 ${yen(rule.rateExTax)} × ${dates.length}日${rule.note ? `（${rule.note}）` : ""}`
           : deduct
-            ? `月額 ${yen(rule.rateExTax)} ÷ 予定${rule.plannedDays}日 = 1日 ${yen(baseDaily)} × ${dates.length}日${rule.note ? `（${rule.note}）` : ""}`
+            ? `月額 ${yen(rule.rateExTax)} ÷ 予定${plannedDays}日 = 1日 ${yen(baseDaily)} × ${dates.length}日${rule.note ? `（${rule.note}）` : ""}`
             : `月額 ${yen(rule.rateExTax)}（固定${rule.note ? `・${rule.note}` : ""}）`;
 
       let travel: StatementStaff["travel"] = { mode: "NONE", amountExTax: 0, amountInclTax: 0 };
