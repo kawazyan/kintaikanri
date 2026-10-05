@@ -52,13 +52,11 @@ export async function POST(req: NextRequest) {
     if (dailyMatch) {
       const code = dailyMatch[1].toLowerCase();
       const dailyGroup = await prisma.lineDailySummaryGroup.findUnique({ where: { linkCode: code } });
-      const staffGroup = await prisma.staff.findUnique({ where: { lineGroupId: groupId }, select: { id: true } });
       let reply = "連携コードを確認できませんでした。管理画面で新しいコードを発行してください。";
-      if (dailyGroup && !staffGroup) {
+      // 従業員の出勤アラート用グループと同じグループを、毎朝の一覧にも使える。
+      if (dailyGroup) {
         await prisma.lineDailySummaryGroup.update({ where: { id: dailyGroup.id }, data: { groupId, linkCode: null } });
         reply = "毎朝9時の出勤予定者一覧を、このグループに連携しました。";
-      } else if (staffGroup) {
-        reply = "このグループは従業員の出勤アラートに連携されています。別のグループをご利用ください。";
       }
       if (event.replyToken) await sendLineReply(event.replyToken, reply);
       continue;
@@ -70,10 +68,9 @@ export async function POST(req: NextRequest) {
     const code = match[1].toLowerCase();
     const staff = await prisma.staff.findUnique({ where: { lineLinkCode: code }, select: { id: true, name: true } });
     const alreadyAssigned = await prisma.staff.findUnique({ where: { lineGroupId: groupId }, select: { id: true } });
-    const assignedDaily = await prisma.lineDailySummaryGroup.findUnique({ where: { groupId }, select: { id: true } });
     let reply = "連携コードを確認できませんでした。管理画面で新しいコードを発行してください。";
 
-    if (staff && !assignedDaily && (!alreadyAssigned || alreadyAssigned.id === staff.id)) {
+    if (staff && (!alreadyAssigned || alreadyAssigned.id === staff.id)) {
       const result = await prisma.staff.updateMany({
         where: { id: staff.id, lineLinkCode: code },
         data: { lineGroupId: groupId, lineLinkCode: null },
@@ -81,8 +78,6 @@ export async function POST(req: NextRequest) {
       if (result.count === 1) reply = `${staff.name}さんの出勤前アラートを、このグループに連携しました。`;
     } else if (alreadyAssigned) {
       reply = "このグループは別の従業員に連携されています。管理画面で先に解除してください。";
-    } else if (assignedDaily) {
-      reply = "このグループは毎朝9時の一覧通知に連携されています。別のグループをご利用ください。";
     }
 
     if (event.replyToken) await sendLineReply(event.replyToken, reply);
