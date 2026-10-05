@@ -144,6 +144,7 @@ export async function updateStaffDetails(staffId: string, formData: FormData) {
       monthlyAmount,
       travelExpenseIncluded,
       dailyTravelInclTax,
+      simpleMode: formData.get("simpleMode") === "on",
     },
   });
 

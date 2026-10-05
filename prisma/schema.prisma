@@ -58,6 +58,10 @@ model Staff {
   lineGroupId  String? @unique
   lineLinkCode String? @unique
 
+  // 簡易モード: 出勤・退勤・欠勤・遅刻・早退のボタンだけの打刻画面にする(部署が別のスタッフ用)。
+  simpleMode   Boolean @default(false)
+  simpleAttendance SimpleAttendanceEntry[]
+
   // 個人情報(item 4)
   birthDate    DateTime?
   phoneNumber  String?
@@ -811,4 +815,24 @@ model GiftExchange {
 
   @@index([staffId, requestedAt])
   @@index([status, requestedAt])
+}
+
+
+// 簡易モードのスタッフが押した「欠勤・遅刻・早退」の記録(1日1種類につき1件)。
+enum SimpleAttendanceKind {
+  ABSENT      // 欠勤
+  LATE        // 遅刻
+  EARLY_LEAVE // 早退
+}
+
+model SimpleAttendanceEntry {
+  id        String               @id @default(cuid())
+  staffId   String
+  staff     Staff                @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  date      String               // JSTの日付(YYYY-MM-DD)
+  kind      SimpleAttendanceKind
+  createdAt DateTime             @default(now())
+
+  @@unique([staffId, date, kind])
+  @@index([date])
 }

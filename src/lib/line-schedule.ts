@@ -22,7 +22,7 @@ export async function sendUpcomingShiftAlerts(now: Date): Promise<{ sent: number
       startTime: { gte: now, lte: new Date(now.getTime() + FIVE_MINUTES_MS) },
       preShiftLineAlert: null,
       clockRecords: { none: { type: "IN" } },
-      staff: { status: "ACTIVE", lineGroupId: { not: null } },
+      staff: { status: "ACTIVE", simpleMode: false, lineGroupId: { not: null } },
     },
     include: { staff: true },
     orderBy: { startTime: "asc" },

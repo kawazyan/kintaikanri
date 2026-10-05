@@ -263,6 +263,19 @@ export default async function AdminStaffDetailPage({
           </div>
         </div>
 
+        <div className="flex flex-col gap-2 rounded-xl border border-slate-700 bg-slate-900/40 p-4">
+          <h2 className="text-sm font-semibold text-blue-400/80">打刻画面の種類</h2>
+          <label className="flex items-start gap-3 text-sm text-slate-300">
+            <input type="checkbox" name="simpleMode" defaultChecked={staff.simpleMode} className="mt-1 h-5 w-5" />
+            <span>
+              簡易モード(出勤・退勤・欠勤・遅刻・早退のボタンだけの画面にする)
+              <span className="mt-1 block text-xs text-slate-500">
+                部署が別のスタッフ用です。ゲーム・振込申請などの表示は出ません。未出勤アラート(メール・LINE)の対象にもなりません。記録は「簡易勤怠」の画面で一覧できます。
+              </span>
+            </span>
+          </label>
+        </div>
+
         <SubmitButton
           className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-3 text-white shadow-lg shadow-blue-950/50 active:scale-[0.98]"
         >

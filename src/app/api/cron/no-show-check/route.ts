@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
   let lineFailed = 0;
 
   for (const shift of overdueShifts) {
-    if (shift.staff.status !== "ACTIVE") continue;
+    if (shift.staff.status !== "ACTIVE" || shift.staff.simpleMode) continue;
 
     const subject = `【勤怠管理】未出勤アラート: ${shift.staff.name}`;
     const text = [

@@ -31,6 +31,7 @@ import { CharacterAvatar, type AvatarState } from "./character-avatar";
 import { CancelPunchButton } from "./cancel-punch-button";
 import { GamePanel } from "./game-panel";
 import { StampCard } from "./stamp-card";
+import { SimpleClockScreen } from "./simple-screen";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 
 const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
@@ -46,6 +47,9 @@ export default async function ClockPage() {
 
   const staff = await prisma.staff.findUnique({ where: { id: staffId } });
   if (!staff || staff.status !== "ACTIVE") redirect("/");
+
+  // 簡易モードのスタッフ(部署が別の人)は、出勤・退勤・欠勤・遅刻・早退のボタンだけの画面にする。
+  if (staff.simpleMode) return <SimpleClockScreen staffId={staff.id} staffName={staff.name} />;
 
   const { start: todayStart, end: todayEnd } = jstDayRange();
   const ym = currentJstYearMonth();
