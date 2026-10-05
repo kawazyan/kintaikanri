@@ -340,7 +340,6 @@ export function EditInvoiceForm({
                     </button>
                   </label>
                 )}
-                <div>
                 <label className={`${field} mt-4`}>
                   業務委託費の計算方法（明細書に表示）
                   <input value={s.serviceCalc} onChange={(e) => patchStaff(i, { serviceCalc: e.target.value })} className={`${input} mt-1`} placeholder="例: 日額 ¥20,000 × 3日" />
