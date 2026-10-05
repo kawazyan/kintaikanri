@@ -5,7 +5,7 @@ import type { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildInvoiceDraft, computeManualStaff, statementBillableExTax, type StatementSnapshot } from "@/lib/invoice-draft";
-import { activeShiftRules, normName, type BillingTerms } from "@/lib/billing-terms";
+import { normName, otherClientContracts } from "@/lib/billing-terms";
 import { approveDraftInvoice, sendApprovedInvoice } from "@/lib/invoice-send";
 import { addTax, computeInvoiceTotals, splitInclusiveTax } from "@/lib/billing";
 
@@ -28,7 +28,7 @@ export async function createInvoiceDraft(formData: FormData): Promise<CreateDraf
 export type ActionResult = { ok: true; message: string } | { ok: false; error: string };
 
 // 請求書(下書き)の画面から、契約にいないスタッフを追加する。承認すると、この内容が取引先の契約に自動登録される。
-// 請求書に書いた内容が正。月額は欠勤控除する前の税抜額。他の取引先の契約にいるスタッフは追加しない。
+// 請求書に書いた内容が正。月額は欠勤控除する前の税抜額。掛け持ちは可。他の取引先の契約と同じ店舗で重なる場合は追加しない。
 export async function addStaffToDraft(
   id: string,
   input: { staffId: string; storeName: string; rateExTax: number; absenceDeduction: "YES" | "NO" }
@@ -49,12 +49,10 @@ export async function addStaffToDraft(
   if (!person) return { ok: false, error: "スタッフが見つかりません。" };
   if (snapshot.staff.some((s) => normName(s.name) === normName(person.name))) return { ok: false, error: `${person.name}さんはすでにこの請求に入っています。` };
 
-  // 他の取引先の契約にいるスタッフは追加しない(二重請求を防ぐ)。
+  // 掛け持ちは可。ただし他の取引先の契約と同じ店舗で重なる場合は追加しない(二重請求を防ぐ)。
   const clients = await prisma.client.findMany({ select: { id: true, name: true, billingTerms: true } });
-  const other = clients.find(
-    (c) => c.id !== invoice.clientId && activeShiftRules(c.billingTerms as BillingTerms | null, invoice.yearMonth).some((r) => normName(r.staffName) === normName(person.name))
-  );
-  if (other) return { ok: false, error: `${person.name}さんは他の取引先「${other.name}」の契約に登録されているため、追加できません。契約を確認してください。` };
+  const { others, conflict } = otherClientContracts(clients, invoice.clientId, invoice.yearMonth, person.name, storeName);
+  if (conflict) return { ok: false, error: `${person.name}さんは他の取引先「${conflict}」の契約と、同じ店舗（${storeName}）で重なっているため、追加できません。契約を確認してください。` };
 
   const { staff, warnings } = await computeManualStaff(invoice.clientId, invoice.yearMonth, person.name, { storeName, rateExTax: input.rateExTax, absenceDeduction: input.absenceDeduction });
   if (!staff) return { ok: false, error: `${person.name}さんの${invoice.yearMonth}の稼働実績（出勤打刻のある、どの契約・稼働依頼にも入っていないシフト）がありません。` };
@@ -62,7 +60,11 @@ export async function addStaffToDraft(
   const next: StatementSnapshot = {
     ...snapshot,
     staff: [...snapshot.staff, staff],
-    warnings: [...(snapshot.warnings ?? []), ...warnings],
+    warnings: [
+      ...(snapshot.warnings ?? []),
+      ...warnings,
+      ...(others.length ? [`${staff.name}さんは他の取引先（${others.join("・")}）にも契約があります。追加した稼働日（${staff.dates.length}日）が、この取引先の分で合っているか確認してください。`] : []),
+    ],
     // 追加したスタッフは「自動計算の元の値」にも入れる(次の作り直しで、手で直した項目と取り違えないため)。
     ...(snapshot.baseline
       ? { baseline: { ...snapshot.baseline, staff: [...snapshot.baseline.staff, { name: staff.name, dates: staff.dates, dayPlaces: staff.dayPlaces, serviceExTax: staff.serviceExTax, serviceCalc: staff.serviceCalc, travel: staff.travel }] } }
@@ -94,7 +96,7 @@ export async function addStaffToDraft(
   ]);
   revalidatePath(`/admin/invoices/${id}`);
   revalidatePath("/admin/invoices");
-  return { ok: true, message: `${staff.name}さんを追加しました（${staff.days}日・業務委託費 ¥${staff.serviceExTax.toLocaleString("ja-JP")}）。承認すると契約に自動登録されます。` };
+  return { ok: true, message: `${staff.name}さんを追加しました（${staff.days}日・業務委託費 ¥${staff.serviceExTax.toLocaleString("ja-JP")}）。承認すると契約に自動登録されます。${others.length ? `他の取引先（${others.join("・")}）にも契約があるため、稼働日を確認してください。` : ""}` };
 }
 
 // 「承認」: 下書き → 承認済み(メールは送らない)。

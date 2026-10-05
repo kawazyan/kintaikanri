@@ -43,3 +43,27 @@ export function ruleMatchesShift(rule: ShiftBillingRule, staffName: string, stor
   if (rule.dates?.length && !rule.dates.includes(dateKey)) return false;
   return !rule.storeMatch?.length || rule.storeMatch.some((m) => storeName.includes(m));
 }
+
+// 掛け持ちのスタッフ向け: 追加するスタッフ・店舗について、他の取引先の契約との関係を調べる。
+// others=他の取引先にも契約があるスタッフ(警告用) / conflict=同じ店舗で重なる他社契約(店舗指定なし、または店舗名が重なる。日付指定つきの契約は店舗が重なるときだけ)。
+export function otherClientContracts(
+  clients: { id: string; name: string; billingTerms: unknown }[],
+  clientId: string,
+  yearMonth: string,
+  staffName: string,
+  storeName: string
+): { others: string[]; conflict: string | null } {
+  const others: string[] = [];
+  let conflict: string | null = null;
+  for (const c of clients) {
+    if (c.id === clientId) continue;
+    const rules = activeShiftRules(c.billingTerms as BillingTerms | null, yearMonth).filter((r) => normName(r.staffName) === normName(staffName));
+    if (!rules.length) continue;
+    others.push(c.name);
+    const overlap = rules.some((r) =>
+      r.storeMatch?.length ? r.storeMatch.some((x) => storeName.includes(x) || x.includes(storeName)) : !r.dates?.length
+    );
+    if (overlap && !conflict) conflict = c.name;
+  }
+  return { others, conflict };
+}

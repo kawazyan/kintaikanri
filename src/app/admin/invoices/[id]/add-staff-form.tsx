@@ -42,7 +42,7 @@ export function AddStaffForm({ invoiceId, staff }: { invoiceId: string; staff: {
       <h2 className="font-black">スタッフを追加（契約に未登録のスタッフ）</h2>
       <p className="mt-1 text-xs text-slate-400">
         請求書に書いた内容が正です。承認すると、この店舗名・月額・欠勤控除で取引先の契約に自動登録し、当月のシフトの店舗名も揃えます。
-        他の取引先の契約にいるスタッフは追加できません。交通費は個別には追加しません（取引先に共通の取り決めがあれば、その分のみ計算されます）。
+        掛け持ちのスタッフも追加できます（他の取引先の契約と同じ店舗で重なる場合だけ追加できません）。交通費は個別には追加しません（取引先に共通の取り決めがあれば、その分のみ計算されます）。
       </p>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         <select value={staffId} onChange={(e) => setStaffId(e.target.value)} className={field} aria-label="スタッフ">

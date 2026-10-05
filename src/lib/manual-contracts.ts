@@ -1,12 +1,12 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { activeShiftRules, normName, type BillingTerms, type ShiftBillingRule } from "@/lib/billing-terms";
+import { normName, otherClientContracts, type BillingTerms, type ShiftBillingRule } from "@/lib/billing-terms";
 import type { StatementSnapshot } from "@/lib/invoice-draft";
 
 // 承認時に、請求書の画面で「スタッフを追加」したスタッフを取引先の契約(Client.billingTerms.shiftBilling)へ自動登録する。
 // 請求書に書いた内容が正: 店舗名・月額(欠勤控除する前の税抜)・欠勤控除の有無をそのまま契約にし、
 // 当月の該当シフト・打刻の店舗名も請求書の表記に統一する。実際の書き込みは承認と同じトランザクションで行う。
-// 他の取引先の契約に同じスタッフがいる場合は、登録せず(承認も止めて)エラーにする。
+// 掛け持ちは可。ただし他の取引先の契約と同じ店舗で重なる場合は、登録せず(承認も止めて)エラーにする。
 
 export type ManualContractPlan = { ops: Prisma.PrismaPromise<unknown>[]; registered: string[]; notes: string[] };
 
@@ -32,10 +32,9 @@ export async function planManualContracts(invoice: { clientId: string; yearMonth
     if (matched.length !== 1) throw new Error(`${s.name}さんを社内スタッフから1人に特定できないため、契約を登録できません。`);
     const person = matched[0];
 
-    const other = clients.find(
-      (c) => c.id !== invoice.clientId && activeShiftRules(c.billingTerms as BillingTerms | null, invoice.yearMonth).some((r) => normName(r.staffName) === normName(s.name))
-    );
-    if (other) throw new Error(`${s.name}さんは他の取引先「${other.name}」の契約に登録されています。二重に請求しないよう、契約を確認してから承認してください。`);
+    const { others, conflict } = otherClientContracts(clients, invoice.clientId, invoice.yearMonth, s.name, m.storeName);
+    if (conflict) throw new Error(`${s.name}さんは他の取引先「${conflict}」の契約と、同じ店舗（${m.storeName}）で重なっています。二重に請求しないよう、契約を確認してから承認してください。`);
+    if (others.length) plan.notes.push(`${s.name}さんは他の取引先（${others.join("・")}）にも契約があります（店舗は重なっていません）。`);
 
     const exists = rules.some(
       (r) =>
