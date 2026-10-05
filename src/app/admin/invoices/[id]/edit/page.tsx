@@ -48,6 +48,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
             places: s.places.join("、"),
             carriers: s.carriers.join("、"),
             dates: s.dates,
+            dayPlaces: s.dayPlaces ?? {},
             serviceExTax: s.serviceExTax ?? 0,
             serviceCalc: s.serviceCalc ?? "",
             travelInclTax: s.travel.amountInclTax,

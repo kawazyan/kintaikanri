@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildInvoiceDraft, statementBillableExTax, type StatementSnapshot } from "@/lib/invoice-draft";
@@ -67,7 +68,8 @@ export type InvoiceEditPayload = {
   subject: string;
   note: string;
   // 稼働明細書(スタッフの並びは作成時のまま)。請求書は「業務委託費一式」1行のみで、金額は明細書の合計から自動計算する。
-  staff: { dates: string[]; serviceExTax: number; serviceCalc: string; travelInclTax: number }[];
+  // dayPlaces: 稼働日(YYYY-MM-DD) → その日の稼働場所。変更した日は、シフトと打刻履歴の店舗名にも反映する。
+  staff: { dates: string[]; dayPlaces?: Record<string, string>; serviceExTax: number; serviceCalc: string; travelInclTax: number }[];
   // 取引先全体の項目(新幹線代・広告原価・商材仕入れ代原価など)。金額は税抜。
   clientExtras: { label: string; amountExTax: number; calc?: string; store?: string; period?: string }[];
   // 明細書データがない古い請求だけ使う(業務委託費一式の税抜金額)。
@@ -96,6 +98,8 @@ export async function saveInvoiceEdit(
   const snapshot = invoice.statement as unknown as StatementSnapshot | null;
   let nextStatement: StatementSnapshot | undefined;
   let unitPrice: number;
+  // 稼働場所を変更した日のシフト・打刻履歴の更新(請求書の保存と同じトランザクションで実行する)
+  const placeSyncOps: Prisma.PrismaPromise<unknown>[] = [];
   if (snapshot) {
     if (payload.staff.length !== snapshot.staff.length) return { ok: false, error: "稼働明細書のスタッフ数が一致しません。画面を開き直してください。" };
     const datesByStaff: string[][] = [];
@@ -118,11 +122,31 @@ export async function saveInvoiceEdit(
       if (!Number.isInteger(e.amountExTax) || e.amountExTax < 0) return { ok: false, error: `共通の項目「${label}」の金額（税抜）は0以上の整数で入力してください。` };
       clientExtras.push({ label, amountExTax: e.amountExTax, amountInclTax: addTax(e.amountExTax).amountIncl, ...(e.calc?.trim() ? { calc: e.calc.trim() } : {}), ...(e.store?.trim() && e.period?.trim() ? { store: e.store.trim(), period: e.period.trim() } : {}) });
     }
+    // 稼働場所: 稼働日ごとに整える。空欄の日は「稼働店舗 要確認」と表示される(元の値は残さない)。
+    const dayPlacesByStaff: Record<string, string>[] = snapshot.staff.map((st, i) => {
+      const input = payload.staff[i].dayPlaces ?? st.dayPlaces ?? {};
+      return Object.fromEntries(datesByStaff[i].flatMap((d) => (input[d]?.trim() ? [[d, input[d].trim()]] : [])));
+    });
+    for (let i = 0; i < snapshot.staff.length; i++) {
+      const st = snapshot.staff[i];
+      const changed = Object.entries(dayPlacesByStaff[i]).filter(([d, place]) => (st.dayPlaces?.[d] ?? "") !== place);
+      if (!changed.length) continue;
+      const people = await prisma.staff.findMany({ where: { name: st.name }, select: { id: true } });
+      if (people.length !== 1) return { ok: false, error: `${st.name}さんを社内スタッフから特定できないため、稼働場所をシフトへ反映できません。` };
+      for (const [d, place] of changed) {
+        const dayStart = new Date(`${d}T00:00:00+09:00`);
+        const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+        const shiftWhere = { staffId: people[0].id, cancelledAt: null, startTime: { gte: dayStart, lt: dayEnd } };
+        placeSyncOps.push(prisma.clockRecord.updateMany({ where: { shift: shiftWhere }, data: { storeName: place } }));
+        placeSyncOps.push(prisma.shift.updateMany({ where: shiftWhere, data: { storeName: place } }));
+      }
+    }
     nextStatement = {
       ...snapshot,
       clientExtras,
       staff: snapshot.staff.map((st, i) => {
         const dates = datesByStaff[i];
+        const dayPlaces = dayPlacesByStaff[i];
         const raw = payload.staff[i].travelInclTax;
         const incl = Number.isFinite(raw) ? Math.max(0, Math.trunc(raw)) : 0;
         const ex = incl > 0 ? splitInclusiveTax(incl).amountEx : 0;
@@ -131,6 +155,8 @@ export async function saveInvoiceEdit(
         return {
           ...st,
           dates,
+          dayPlaces,
+          places: Object.keys(dayPlaces).length ? [...new Set(dates.map((d) => dayPlaces[d]).filter(Boolean))] : st.places,
           days: dates.length,
           serviceExTax: payload.staff[i].serviceExTax,
           serviceCalc: payload.staff[i].serviceCalc.trim() || st.serviceCalc,
@@ -155,6 +181,7 @@ export async function saveInvoiceEdit(
   const totals = computeInvoiceTotals([line]);
   const t = addTax(unitPrice);
   await prisma.$transaction([
+    ...placeSyncOps,
     prisma.invoice.update({
       where: { id },
       data: {
