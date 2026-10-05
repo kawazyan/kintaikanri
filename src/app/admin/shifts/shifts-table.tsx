@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatJst } from "@/lib/time";
 import { WORK_TYPE_LABEL } from "@/lib/carriers";
-import { adminDeleteShift, adminBulkDeleteShifts, adminRestoreShift } from "./actions";
+import {
+  adminDeleteShift,
+  adminBulkDeleteShifts,
+  adminRestoreShift,
+  adminRegisterClockByShift,
+} from "./actions";
 
 type ShiftRow = {
   id: string;
@@ -17,12 +22,26 @@ type ShiftRow = {
   cancelledAt: Date | null;
   cancellationReason: string | null;
   staff: { name: string; employeeCode: string };
+  clockRecords: { type: "IN" | "OUT" }[];
 };
+
+// 代理打刻(シフト通り)が必要な状態かどうかの表示用。
+function clockStatus(s: ShiftRow): { label: string; missing: boolean } {
+  const hasIn = s.clockRecords.some((r) => r.type === "IN");
+  const hasOut = s.clockRecords.some((r) => r.type === "OUT");
+  if (hasIn && hasOut) return { label: "打刻済", missing: false };
+  if (hasIn) return { label: "退勤なし", missing: true };
+  if (hasOut) return { label: "出勤なし", missing: true };
+  return { label: "打刻なし", missing: true };
+}
 
 export function ShiftsTable({ shifts }: { shifts: ShiftRow[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const router = useRouter();
+  // 画面を開いた時点の時刻。終了前のシフトにはボタンを出さない(サーバー側でも拒否する)。
+  const [now] = useState(() => Date.now());
 
   const allChecked = shifts.length > 0 && selected.size === shifts.length;
 
@@ -55,6 +74,35 @@ export function ShiftsTable({ shifts }: { shifts: ShiftRow[] }) {
     });
   }
 
+  function handleRegisterClock(s: ShiftRow) {
+    const hasIn = s.clockRecords.some((r) => r.type === "IN");
+    const hasOut = s.clockRecords.some((r) => r.type === "OUT");
+    const lines = [
+      !hasIn ? `出勤 ${formatJst(s.startTime)}` : null,
+      !hasOut ? `退勤 ${formatJst(s.endTime)}` : null,
+    ].filter(Boolean);
+    if (
+      !window.confirm(
+        `${s.staff.name}さんの打刻を、シフト通りに代理登録します。\n${lines.join("\n")}\n(すでにある打刻は変更しません)\nよろしいですか?`
+      )
+    ) {
+      return;
+    }
+    setMessage(null);
+    startTransition(async () => {
+      const result = await adminRegisterClockByShift(s.id);
+      if (result.ok) {
+        setMessage({
+          ok: true,
+          text: `${s.staff.name}さんの${result.created.map((t) => (t === "IN" ? "出勤" : "退勤")).join("・")}を登録しました。`,
+        });
+      } else {
+        setMessage({ ok: false, text: result.error });
+      }
+      router.refresh();
+    });
+  }
+
   function handleBulkDelete() {
     if (!selected.size) return;
     if (!window.confirm(`選択した${selected.size}件のシフトを削除します。元に戻せません。削除しますか？`)) return;
@@ -67,6 +115,17 @@ export function ShiftsTable({ shifts }: { shifts: ShiftRow[] }) {
 
   return (
     <div>
+      {message && (
+        <div
+          className={`mb-3 rounded-xl border px-4 py-2.5 text-sm font-bold ${
+            message.ok
+              ? "border-emerald-700 bg-emerald-950/30 text-emerald-200"
+              : "border-red-700 bg-red-950/30 text-red-200"
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
       {selected.size > 0 && (
         <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-red-800/70 bg-red-950/25 px-4 py-2.5 text-sm">
           <span className="font-black text-red-200">{selected.size}件を選択中</span>
@@ -81,7 +140,7 @@ export function ShiftsTable({ shifts }: { shifts: ShiftRow[] }) {
         </div>
       )}
       <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/40 backdrop-blur-sm">
-        <table className="w-full min-w-[840px] text-left text-sm">
+        <table className="w-full min-w-[960px] text-left text-sm">
           <thead>
             <tr className="border-b border-slate-800 text-slate-500">
               <th className="w-10 py-2 pl-4">
@@ -94,6 +153,7 @@ export function ShiftsTable({ shifts }: { shifts: ShiftRow[] }) {
               <th className="py-2 pr-3">キャリア</th>
               <th className="py-2 pr-3">店舗</th>
               <th className="py-2 pr-3">状態</th>
+              <th className="py-2 pr-3">打刻</th>
               <th className="py-2 pr-3"></th>
             </tr>
           </thead>
@@ -124,6 +184,27 @@ export function ShiftsTable({ shifts }: { shifts: ShiftRow[] }) {
                   )}
                 </td>
                 <td className="py-2 pr-3 whitespace-nowrap">
+                  {s.cancelledAt ? (
+                    "-"
+                  ) : (
+                    <span className={clockStatus(s).missing ? "text-amber-300" : "text-slate-400"}>
+                      {clockStatus(s).label}
+                    </span>
+                  )}
+                </td>
+                <td className="py-2 pr-3 whitespace-nowrap">
+                  {!s.cancelledAt && clockStatus(s).missing && s.endTime.getTime() <= now && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleRegisterClock(s)}
+                        disabled={pending}
+                        className="text-amber-300 underline disabled:opacity-50"
+                      >
+                        シフト通りに打刻
+                      </button>{" "}
+                    </>
+                  )}
                   <Link href={`/admin/shifts/${s.id}`} className="text-blue-400 underline">
                     編集
                   </Link>{" "}

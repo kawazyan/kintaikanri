@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { combineJstDateAndTime } from "@/lib/time";
+import { findClockDuplicateError } from "@/lib/clock-duplicate";
 
 export async function adminUpdateShift(shiftId: string, formData: FormData) {
   await requireAdmin();
@@ -131,4 +132,80 @@ export async function adminBulkDeleteShifts(shiftIds: string[]) {
 
   revalidatePath("/admin/shifts");
   return { ok: true as const, deleted: existing.length };
+}
+
+export type RegisterClockByShiftResult =
+  | { ok: true; created: ("IN" | "OUT")[] }
+  | { ok: false; error: string };
+
+// 管理画面からの代理打刻(シフト通り)。出勤・退勤のどちらか、または両方の
+// 打刻が漏れているシフトに、シフトの開始時刻で出勤、終了時刻で退勤の打刻を
+// 1回の操作で登録する。すでにある打刻は触らず、無いほうだけを追加する。
+// 手動の代理打刻と同じく editedByAdmin: true で登録するため、皆勤判定
+// (game.ts)の対象外になる仕様は変わらない。
+export async function adminRegisterClockByShift(shiftId: string): Promise<RegisterClockByShiftResult> {
+  await requireAdmin();
+
+  const shift = await prisma.shift.findUnique({ where: { id: shiftId } });
+  if (!shift) return { ok: false, error: "シフトが見つかりません。" };
+  if (shift.cancelledAt) return { ok: false, error: "キャンセル済みのシフトには打刻を登録できません。" };
+  // まだ終わっていないシフトに退勤時刻(未来)の打刻を入れないための制限。
+  if (shift.endTime > new Date()) {
+    return { ok: false, error: "このシフトはまだ終了していません。終了後に登録してください。" };
+  }
+
+  const existing = await prisma.clockRecord.findMany({
+    where: { shiftId: shift.id },
+    select: { type: true },
+  });
+  const hasIn = existing.some((r) => r.type === "IN");
+  const hasOut = existing.some((r) => r.type === "OUT");
+  if (hasIn && hasOut) return { ok: false, error: "このシフトには出勤・退勤の打刻がすでにあります。" };
+
+  const targets: { type: "IN" | "OUT"; timestamp: Date }[] = [];
+  if (!hasIn) targets.push({ type: "IN", timestamp: shift.startTime });
+  if (!hasOut) targets.push({ type: "OUT", timestamp: shift.endTime });
+
+  // 重複チェック(通常の代理打刻と同じ判定)。画面表示後に他の操作で打刻が
+  // 追加されていた場合に二重登録しないための最終確認。
+  for (const t of targets) {
+    const duplicateError = await findClockDuplicateError({
+      staffId: shift.staffId,
+      type: t.type,
+      shiftId: shift.id,
+      timestamp: t.timestamp,
+    });
+    if (duplicateError) return { ok: false, error: duplicateError };
+  }
+
+  // 出勤と退勤は、片方だけ登録された状態で止まらないよう1トランザクションで作る。
+  await prisma.$transaction(async (tx) => {
+    for (const t of targets) {
+      const created = await tx.clockRecord.create({
+        data: {
+          staffId: shift.staffId,
+          type: t.type,
+          timestamp: t.timestamp,
+          storeName: shift.storeName,
+          shiftId: shift.id,
+          editedByAdmin: true,
+        },
+      });
+      await tx.clockRecordHistory.create({
+        data: {
+          clockRecordId: created.id,
+          staffId: shift.staffId,
+          changeType: "CREATE",
+          after: JSON.parse(JSON.stringify(created)),
+          operatorName: null,
+        },
+      });
+    }
+  });
+
+  revalidatePath("/admin/shifts");
+  revalidatePath("/admin/records");
+  revalidatePath("/clock");
+  revalidatePath("/titles");
+  return { ok: true, created: targets.map((t) => t.type) };
 }

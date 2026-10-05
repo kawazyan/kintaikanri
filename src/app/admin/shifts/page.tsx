@@ -34,7 +34,7 @@ export default async function AdminShiftsPage({
   const [shifts, staffList] = await Promise.all([
     prisma.shift.findMany({
       where,
-      include: { staff: true },
+      include: { staff: true, clockRecords: { select: { type: true } } },
       orderBy: { startTime: "desc" },
       // 月で絞ったときは、1か月ぶんを見渡せるよう件数を広げる。
       take: month && !date ? 1000 : 200,
