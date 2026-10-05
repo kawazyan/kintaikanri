@@ -124,6 +124,8 @@ export async function updateStaffDetails(staffId: string, formData: FormData) {
   const monthlyAmount = payType === "MONTHLY" ? nonNegIntOrNull(formData, "monthlyAmount") : null;
   const travelRaw = String(formData.get("travelExpenseIncluded") ?? "");
   const travelExpenseIncluded = travelRaw === "true" ? true : travelRaw === "false" ? false : null;
+  // 1日あたりの交通費(税込)。決まっている人だけ入力する(空欄=なし)。
+  const dailyTravelInclTax = nonNegIntOrNull(formData, "dailyTravelInclTax");
 
   await prisma.staff.update({
     where: { id: staffId },
@@ -141,6 +143,7 @@ export async function updateStaffDetails(staffId: string, formData: FormData) {
       dailyRate,
       monthlyAmount,
       travelExpenseIncluded,
+      dailyTravelInclTax,
     },
   });
 

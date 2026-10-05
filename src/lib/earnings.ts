@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { jstDayRange, jstMonthRange, toJstDateValue } from "@/lib/time";
-
 export type MonthlyEarnings = {
   // The amount confirmed so far this month. `null` means it cannot be
   // computed yet (e.g. a BAND staff member hasn't entered a monthly target
@@ -38,7 +37,7 @@ export async function computeMonthlyEarnings(
     }),
     prisma.staff.findUnique({
       where: { id: staffId },
-      select: { payType: true, dailyRate: true, monthlyAmount: true },
+      select: { payType: true, dailyRate: true, monthlyAmount: true, dailyTravelInclTax: true },
     }),
   ]);
 
@@ -73,7 +72,10 @@ export async function computeMonthlyEarnings(
   } else if (staffPay?.payType === "MONTHLY" && withoutOwnAmount.length > 0) {
     settingAmount = staffPay.monthlyAmount ?? 0;
   }
-  const spotConfirmedAmount = ownAmountTotal + settingAmount;
+  // 1日あたりの交通費(税込)が決まっている人は、確定した稼働日数(日付の重複は1日)× その額を加える。
+  const confirmedDays = new Set(shifts.filter(isConfirmed).map((s) => toJstDateValue(s.startTime))).size;
+  const travelAmount = (staffPay?.dailyTravelInclTax ?? 0) * confirmedDays;
+  const spotConfirmedAmount = ownAmountTotal + settingAmount + travelAmount;
 
   if (bandShifts.length > 0) {
     // 基準額は、その月の目標額。月固定の人で目標額が未入力なら、報酬設定の月額を使う。
@@ -86,8 +88,7 @@ export async function computeMonthlyEarnings(
     const dailyRate = Math.floor(targetAmount / bandShifts.length);
     const bandConfirmedDays = bandShifts.filter(isConfirmed).length;
     const bandConfirmedAmount = dailyRate * bandConfirmedDays;
-    return { confirmedAmount: bandConfirmedAmount + spotConfirmedAmount };
-  }
+    return { confirmedAmount: bandConfirmedAmount + spotConfirmedAmount };  }
 
   return { confirmedAmount: spotConfirmedAmount };
 }
