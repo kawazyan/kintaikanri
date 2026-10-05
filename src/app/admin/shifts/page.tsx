@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { jstDayRange } from "@/lib/time";
+import { jstDayRange, jstMonthRange } from "@/lib/time";
 import { AdminNav } from "../admin-nav";
 import { ShiftsTable } from "./shifts-table";
 import type { Prisma } from "@prisma/client";
@@ -12,16 +12,21 @@ const FIELD_CLASS =
 export default async function AdminShiftsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ staffId?: string; date?: string; workType?: string; cancelledOnly?: string }>;
+  searchParams: Promise<{ staffId?: string; month?: string; date?: string; workType?: string; cancelledOnly?: string }>;
 }) {
   await requireAdmin();
-  const { staffId, date, workType, cancelledOnly } = await searchParams;
+  const { staffId, month: monthRaw, date, workType, cancelledOnly } = await searchParams;
+  const month = monthRaw && /^\d{4}-\d{2}$/.test(monthRaw) ? monthRaw : undefined;
 
   const where: Prisma.ShiftWhereInput = {};
   if (staffId) where.staffId = staffId;
   if (workType === "BAND" || workType === "SPOT") where.workType = workType;
+  // 日付を指定したときは日付を優先し、日付が空なら月で絞り込む(月だけの指定もできる)。
   if (date) {
     const { start, end } = jstDayRange(new Date(`${date}T00:00:00+09:00`));
+    where.startTime = { gte: start, lt: end };
+  } else if (month) {
+    const { start, end } = jstMonthRange(month);
     where.startTime = { gte: start, lt: end };
   }
   if (cancelledOnly === "1") where.cancelledAt = { not: null };
@@ -31,7 +36,8 @@ export default async function AdminShiftsPage({
       where,
       include: { staff: true },
       orderBy: { startTime: "desc" },
-      take: 200,
+      // 月で絞ったときは、1か月ぶんを見渡せるよう件数を広げる。
+      take: month && !date ? 1000 : 200,
     }),
     prisma.staff.findMany({ orderBy: { employeeCode: "asc" } }),
   ]);
@@ -66,7 +72,11 @@ export default async function AdminShiftsPage({
           </select>
         </label>
         <label className="flex flex-col gap-1">
-          日付
+          月
+          <input type="month" name="month" defaultValue={month ?? ""} className={FIELD_CLASS} />
+        </label>
+        <label className="flex flex-col gap-1">
+          日付(指定すると月より優先)
           <input type="date" name="date" defaultValue={date ?? ""} className={FIELD_CLASS} />
         </label>
         <label className="flex flex-col gap-1">

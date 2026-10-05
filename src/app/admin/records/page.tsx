@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatJst, jstDayRange } from "@/lib/time";
+import { formatJst, jstDayRange, jstMonthRange } from "@/lib/time";
 import { AdminNav } from "../admin-nav";
 import { deleteClockRecord } from "./actions";
 import type { Prisma } from "@prisma/client";
@@ -12,15 +12,20 @@ const FIELD_CLASS =
 export default async function AdminRecordsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ staffId?: string; date?: string; unlinkedOnly?: string }>;
+  searchParams: Promise<{ staffId?: string; month?: string; date?: string; unlinkedOnly?: string }>;
 }) {
   await requireAdmin();
-  const { staffId, date, unlinkedOnly } = await searchParams;
+  const { staffId, month: monthRaw, date, unlinkedOnly } = await searchParams;
+  const month = monthRaw && /^\d{4}-\d{2}$/.test(monthRaw) ? monthRaw : undefined;
 
   const where: Prisma.ClockRecordWhereInput = {};
   if (staffId) where.staffId = staffId;
+  // 日付を指定したときは日付を優先し、日付が空なら月で絞り込む(月だけの指定もできる)。
   if (date) {
     const { start, end } = jstDayRange(new Date(`${date}T00:00:00+09:00`));
+    where.timestamp = { gte: start, lt: end };
+  } else if (month) {
+    const { start, end } = jstMonthRange(month);
     where.timestamp = { gte: start, lt: end };
   }
 
@@ -34,7 +39,7 @@ export default async function AdminRecordsPage({
       orderBy: { timestamp: "desc" },
       // 「集計対象外のみ」はDBのwhereでは絞り込めない条件(紐付き先シフトの
       // スタッフ不一致)を含むため、取得件数を広げて取得後にJS側で判定する。
-      take: unlinkedOnly === "1" ? 1000 : 200,
+      take: unlinkedOnly === "1" || (month && !date) ? 1000 : 200,
     }),
     prisma.staff.findMany({ orderBy: { employeeCode: "asc" } }),
   ]);
@@ -72,7 +77,11 @@ export default async function AdminRecordsPage({
             </select>
           </label>
           <label className="flex flex-col gap-1">
-            日付
+            月
+            <input type="month" name="month" defaultValue={month ?? ""} className={FIELD_CLASS} />
+          </label>
+          <label className="flex flex-col gap-1">
+            日付(指定すると月より優先)
             <input type="date" name="date" defaultValue={date ?? ""} className={FIELD_CLASS} />
           </label>
           <label className="flex items-center gap-1.5 pb-1.5 text-slate-300">
