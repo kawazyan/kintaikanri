@@ -8,6 +8,11 @@ import { sendDailyShiftSummary, sendUpcomingShiftAlerts } from "@/lib/line-sched
 
 export const dynamic = "force-dynamic";
 
+// 開始5分後の「未出勤アラート」(メール+従業員LINE)は停止中。
+// 出勤5分前のLINE通知と毎朝の出勤一覧は、この設定に関係なく動く。
+// 再開する場合は true にする。
+const NO_SHOW_ALERT_ENABLED = false;
+
 const GRACE_PERIOD_MS = 5 * 60 * 1000; // 5 minutes
 const LOOKBACK_MS = 24 * 60 * 60 * 1000; // ignore shifts older than this
 
@@ -25,6 +30,9 @@ export async function GET(req: NextRequest) {
   const now = new Date();
   const upcoming = await sendUpcomingShiftAlerts(now);
   const dailySummary = await sendDailyShiftSummary(now);
+  if (!NO_SHOW_ALERT_ENABLED) {
+    return NextResponse.json({ checked: 0, sent: 0, lineSent: 0, lineFailed: 0, noShowAlert: "disabled", preShiftLineSent: upcoming.sent, preShiftLineFailed: upcoming.failed, dailySummary });
+  }
   const deadline = new Date(now.getTime() - GRACE_PERIOD_MS);
   const earliest = new Date(now.getTime() - LOOKBACK_MS);
 
