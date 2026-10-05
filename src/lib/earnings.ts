@@ -15,8 +15,9 @@ export type MonthlyEarnings = {
 // 退勤打刻漏れは稼働したものとして扱う), rather than leaving the day stuck
 // unconfirmed forever until someone notices and fixes it manually.
 //
-// BAND: monthly target ÷ planned BAND days this month (floored) × confirmed
-// BAND days. If no target amount has been entered yet, the BAND portion is
+// BAND (and SPOT shifts of staff whose pay type is MONTHLY): monthly target
+// (falls back to the staff's monthlyAmount) ÷ planned days this month (floored)
+// × confirmed days. If no target amount has been entered yet, the BAND portion is
 // undetermined and the whole total is reported as `null` rather than
 // guessed or defaulted to 0.
 // SPOT: each confirmed SPOT shift contributes its own per-shift unitAmount.
@@ -49,8 +50,13 @@ export async function computeMonthlyEarnings(
     return false;
   };
 
-  const bandShifts = shifts.filter((s) => s.workType === "BAND");
-  const spotShifts = shifts.filter((s) => s.workType === "SPOT");
+  // 報酬設定が「月固定」の人は、シフトの種別(BAND/SPOT)に関係なく、欠勤したら日割りで引く。
+  // 単価が入っているSPOTシフト(unitAmount)だけは、従来どおりそのシフトの単価で計算する。
+  const monthlyFixed = staffPay?.payType === "MONTHLY";
+  const isBandLike = (s: (typeof shifts)[number]) =>
+    s.workType === "BAND" || (monthlyFixed && s.workType === "SPOT" && s.unitAmount === null);
+  const bandShifts = shifts.filter(isBandLike);
+  const spotShifts = shifts.filter((s) => !isBandLike(s));
 
   // SPOT: シフトに単価(unitAmount)が入っているものはその金額を使う(既存データを維持)。
   // 単価が入っていないシフトは、スタッフの報酬設定(管理者が設定)で計算する:
@@ -70,7 +76,8 @@ export async function computeMonthlyEarnings(
   const spotConfirmedAmount = ownAmountTotal + settingAmount;
 
   if (bandShifts.length > 0) {
-    const targetAmount = target?.targetAmount ?? null;
+    // 基準額は、その月の目標額。月固定の人で目標額が未入力なら、報酬設定の月額を使う。
+    const targetAmount = target?.targetAmount ?? (monthlyFixed ? (staffPay?.monthlyAmount ?? null) : null);
     if (targetAmount === null) {
       // A BAND plan exists but the monthly target hasn't been entered yet:
       // the per-day rate can't be derived, so the whole total is unknown.

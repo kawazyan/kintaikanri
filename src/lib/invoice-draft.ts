@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { addTax, computeInvoiceTotals, expenseLabel } from "@/lib/billing";
-import { jstMonthRange, toJstDateValue } from "@/lib/time";
+import { jstDayRange, jstMonthRange, toJstDateValue } from "@/lib/time";
 import { unifyStoreNames, withShopSuffix } from "@/lib/store-names";
 import { activeShiftRules, normName, ruleMatchesShift, type BillingTerms, type TravelByStore } from "@/lib/billing-terms";
 import { syncWorkOrderShiftLinks } from "@/lib/work-order-linking";
@@ -55,6 +55,14 @@ export function staffBillableExTax(s: StatementStaff) {
 }
 
 const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
+
+// 稼働日として数えるシフト。出勤・退勤の両方が打刻されたもの。
+// 退勤の打刻漏れは稼働したものとして扱う(出勤だけ打刻され、その日(JST)が終わっていれば稼働)。スタッフへの支払い(earnings.ts)と同じ判定。
+function isWorkedShift(s: { startTime: Date; clockRecords: { type: string }[] }, now: Date = new Date()) {
+  const hasIn = s.clockRecords.some((r) => r.type === "IN");
+  const hasOut = s.clockRecords.some((r) => r.type === "OUT");
+  return hasIn && (hasOut || now >= jstDayRange(s.startTime).end);
+}
 
 // 稼働日ごとの店舗から、店舗別の往復交通費を計算する。取り決めのない店舗は0円にして警告を返す。
 function perStoreTravel(rules: TravelByStore[], dayStore: Map<string, string>, staffName: string) {
@@ -128,10 +136,8 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
         throw new Error(`スタッフ「${assignment.requestedName}」が社内スタッフに紐付いていません。先に稼働依頼画面で紐付けてください。`);
       }
 
-      // 出勤・退勤の両方が打刻されたシフトだけを稼働日として数える。
-      const completedShifts = assignment.shifts.filter(
-        (s) => s.clockRecords.some((r) => r.type === "IN") && s.clockRecords.some((r) => r.type === "OUT")
-      );
+      // 出勤が打刻されたシフトを稼働日として数える(退勤忘れも稼働。isWorkedShift 参照)。
+      const completedShifts = assignment.shifts.filter((s) => isWorkedShift(s));
       const completedDates = new Set<string>(completedShifts.map((s) => toJstDateValue(s.startTime)));
       const approvedOverrideByDate = new Map(
         assignment.dailyOverrides.map((ov) => [toJstDateValue(ov.workDate), ov] as const)
@@ -140,7 +146,9 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
         (d) => approvedOverrideByDate.get(d)?.changedRateExTax != null
       );
       const days = completedDates.size;
-      const baseDaily = order.plannedDays > 0 ? Math.floor(assignment.rateAmountExTax / order.plannedDays) : 0;
+      // 欠勤控除の日割りの基準は、当月に登録されたシフトの日数(キャンセル除く)。登録が無いときだけ依頼の予定日数を使う。
+      const plannedDays = new Set(assignment.shifts.map((s) => toJstDateValue(s.startTime))).size || order.plannedDays;
+      const baseDaily = plannedDays > 0 ? Math.floor(assignment.rateAmountExTax / plannedDays) : 0;
 
       let amountExTax = 0;
       let calc = "";
@@ -155,7 +163,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
           const override = approvedOverrideByDate.get(dateKey);
           amountExTax += override?.changedRateExTax ?? baseDaily;
         }
-        calc = `月額 ${yen(assignment.rateAmountExTax)} ÷ 予定${order.plannedDays}日 = 1日 ${yen(baseDaily)} × ${days}日`;
+        calc = `月額 ${yen(assignment.rateAmountExTax)} ÷ 予定${plannedDays}日 = 1日 ${yen(baseDaily)} × ${days}日`;
       } else {
         amountExTax = assignment.rateAmountExTax;
         // 月単価固定でも、承認済みの当日単価変更がある場合は日割り基準との差額だけ加算/減算する。
@@ -253,8 +261,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
       const done = shifts.filter(
         (s) =>
           !used.has(s.id) &&
-          s.clockRecords.some((r) => r.type === "IN") &&
-          s.clockRecords.some((r) => r.type === "OUT") &&
+          isWorkedShift(s) &&
           ruleMatchesShift(rule, person.name, s.storeName, toJstDateValue(s.startTime)) &&
           // 2社以上の契約に当てはまるシフトは、二重に請求しないよう含めない(下で警告を出す)
           (ruleIndex.owners(person.name, s.storeName, toJstDateValue(s.startTime)).length === 1 ||
@@ -266,14 +273,23 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string): Pr
       const dates = [...dayStore.keys()].sort();
       if (!dates.length) continue;
 
-      const deduct = rule.contract === "MONTHLY" && rule.absenceDeduction === "YES" && (rule.plannedDays ?? 0) > 0;
-      const baseDaily = deduct ? Math.floor(rule.rateExTax / (rule.plannedDays as number)) : 0;
+      // 欠勤控除の日割りの基準は、当月に登録されたシフトの日数(キャンセル除く)。登録が無いときだけ契約の予定日数を使う。
+      const registeredDays = new Set(
+        shifts
+          .filter((s) => !used.has(s.id) || done.some((d) => d.id === s.id))
+          .filter((s) => ruleMatchesShift(rule, person.name, s.storeName, toJstDateValue(s.startTime)))
+          .filter((s) => ruleIndex.owners(person.name, s.storeName, toJstDateValue(s.startTime)).length === 1)
+          .map((s) => toJstDateValue(s.startTime))
+      ).size;
+      const plannedDays = registeredDays || (rule.plannedDays ?? 0);
+      const deduct = rule.contract === "MONTHLY" && rule.absenceDeduction === "YES" && plannedDays > 0;
+      const baseDaily = deduct ? Math.floor(rule.rateExTax / plannedDays) : 0;
       const service = rule.contract === "DAILY" ? rule.rateExTax * dates.length : deduct ? baseDaily * dates.length : rule.rateExTax;
       const serviceCalc =
         rule.contract === "DAILY"
           ? `日額 ${yen(rule.rateExTax)} × ${dates.length}日${rule.note ? `（${rule.note}）` : ""}`
           : deduct
-            ? `月額 ${yen(rule.rateExTax)} ÷ 予定${rule.plannedDays}日 = 1日 ${yen(baseDaily)} × ${dates.length}日${rule.note ? `（${rule.note}）` : ""}`
+            ? `月額 ${yen(rule.rateExTax)} ÷ 予定${plannedDays}日 = 1日 ${yen(baseDaily)} × ${dates.length}日${rule.note ? `（${rule.note}）` : ""}`
             : `月額 ${yen(rule.rateExTax)}（固定${rule.note ? `・${rule.note}` : ""}）`;
 
       let travel: StatementStaff["travel"] = { mode: "NONE", amountExTax: 0, amountInclTax: 0 };
