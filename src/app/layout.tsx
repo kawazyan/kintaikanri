@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import { FixedSupportBot } from "@/components/fixed-support-bot";
 import { prisma } from "@/lib/prisma";
+import { getStaffId } from "@/lib/auth";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,6 +40,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     })
     .catch(() => []);
 
+  // 簡易モードのスタッフ(業種が別の人。現在は外崎さんのみ)には、販売サポートBOTを出さない。
+  const staffId = await getStaffId().catch(() => null);
+  const simple = staffId
+    ? await prisma.staff.findUnique({ where: { id: staffId }, select: { simpleMode: true } }).catch(() => null)
+    : null;
+  const hideBot = !!simple?.simpleMode;
+
   return (
     <html
       lang="ja"
@@ -46,7 +54,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         {children}
-        <FixedSupportBot faqs={faqs} />
+        {!hideBot && <FixedSupportBot faqs={faqs} />}
       </body>
     </html>
   );
