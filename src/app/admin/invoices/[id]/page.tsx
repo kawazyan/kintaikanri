@@ -10,7 +10,7 @@ import { DeleteSentInvoiceButton } from "./delete-sent-button";
 import { PdfPreview } from "./pdf-preview";
 import { AddStaffForm } from "./add-staff-form";
 import { CorrectionButton } from "./correction-button";
-import type { StatementSnapshot } from "@/lib/invoice-draft";
+import { statementBillableExTax, type StatementSnapshot } from "@/lib/invoice-draft";
 
 const STATUS_LABEL: Record<string, string> = { DRAFT: "下書き", APPROVED: "承認済み（未送信）", FINALIZED: "送付済み", REISSUED: "送付済み（再発行）" };
 
@@ -67,6 +67,12 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
             ))}
           </ul>
         </div>
+      )}
+
+      {!!statement?.manualLines?.length && statementBillableExTax(statement) !== i.subtotalExTax && (
+        <p className="mt-4 rounded-xl border border-amber-700 bg-amber-950/30 p-3 text-sm font-bold text-amber-200">
+          ⚠ 請求書の品目は手入力です。請求書の合計（税抜 ¥{i.subtotalExTax.toLocaleString()}）が、稼働明細書の合計（税抜 ¥{statementBillableExTax(statement).toLocaleString()}）と違います。
+        </p>
       )}
 
       <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-700 bg-slate-900">

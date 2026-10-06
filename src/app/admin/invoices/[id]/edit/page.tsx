@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_INVOICE_NOTE, defaultSubject, invoiceRecipients } from "@/lib/invoice-defaults";
 import type { StatementSnapshot } from "@/lib/invoice-draft";
+import { buildInvoiceLines } from "@/lib/invoice-lines";
 import { AdminNav } from "../../../admin-nav";
 import { EditInvoiceForm } from "./edit-form";
 
@@ -41,6 +42,12 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
           note: i.note?.trim() ? i.note : DEFAULT_INVOICE_NOTE,
           amountExTax: i.subtotalExTax,
           hasStatement: !!statement,
+          lineMode: statement?.manualLines?.length ? "MANUAL" : "AUTO",
+          manualLines: (statement?.manualLines ?? []).map((m) => ({ label: m.label, quantity: m.quantity, unitPriceExTax: m.unitPriceExTax })),
+          // 「手入力」に切り替えたときの最初の行(稼働費用・交通費相当額などに分けた案)
+          suggestedLines: statement
+            ? buildInvoiceLines({ staff: statement.staff, clientExtras: statement.clientExtras }, true).map((l) => ({ label: l.label, quantity: l.quantity, unitPriceExTax: l.unitPriceExTax }))
+            : [],
           warnings: statement?.warnings ?? [],
           clientExtras: (statement?.clientExtras ?? []).map((e) => ({ label: e.label, amountExTax: e.amountExTax, calc: e.calc ?? "", store: e.store, period: e.period })),
           staff: (statement?.staff ?? []).map((s) => ({

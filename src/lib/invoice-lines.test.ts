@@ -29,3 +29,10 @@ test("split=true: 交通費0なら交通費の行は出さない・複数人は�
   const total = l.reduce((s, x) => s + x.unitPriceExTax, 0);
   assert.equal(l.reduce((s, x) => s + x.taxAmount, 0), Math.floor(total / 10));
 });
+
+test("手入力の品目(manualLines): 数量×単価で行を作り、税の合計は全体の10%切り捨てに合う", () => {
+  const d = { staff: [staff("加藤　柊", 400000, 15437)], clientExtras: [], manualLines: [{ label: "A", quantity: 2, unitPriceExTax: 1005 }, { label: "B", quantity: 1, unitPriceExTax: 7 }] };
+  const l = buildInvoiceLines(d, true);
+  assert.deepEqual(l.map((x) => [x.label, x.quantity, x.unitPriceExTax, x.subtotalExTax]), [["A", 2, 1005, 2010], ["B", 1, 7, 7]]);
+  assert.equal(l.reduce((s, x) => s + x.taxAmount, 0), Math.floor(2017 / 10));
+});
