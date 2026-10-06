@@ -129,11 +129,8 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
   const manual = data.manualLines?.length ? data.manualLines : null;
   const incl = data.manualTaxMode === "INCL";
   const manualSub = manual ? manual.reduce((a, l) => a + l.quantity * l.unitPriceExTax, 0) : 0;
-  const manualCalc = (l: NonNullable<StatementSnapshot["manualLines"]>[number]) =>
-    l.calc?.trim() ||
-    (incl && l.unitPriceInclTax != null
-      ? `${yen(l.unitPriceInclTax)}（税込）${l.quantity > 1 ? ` × ${l.quantity}` : ""} → 税抜に換算`
-      : l.quantity > 1 ? `${yen(l.unitPriceExTax)} × ${l.quantity}` : "―");
+  // 手入力の「計算方法」は、入力した文章だけを出す。どの行にも入力がなければ、列ごと(「計算方法」の見出しも)出さない。
+  const showCalc = !!manual?.some((l) => l.calc?.trim());
   return (
     <Document title={`請求内訳書 ${data.clientName} ${data.yearMonth}`}>
       <Page size="A4" style={st.page}>
@@ -198,14 +195,14 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
               <Text style={st.staffName}>ご請求内訳</Text>
             </View>
             <View style={st.itemHead}>
-              <Text style={[st.cItem, st.small]}>項目</Text>
-              <Text style={[st.cCalc, st.small]}>計算方法</Text>
+              <Text style={[st.cItem, st.small, ...(showCalc ? [] : [{ width: "78%" }])]}>項目</Text>
+              {showCalc && <Text style={[st.cCalc, st.small]}>計算方法</Text>}
               <Text style={[st.cAmt, st.small]}>金額（税抜）</Text>
             </View>
             {manual.map((l, k) => (
               <View key={k} style={st.itemRow}>
-                <Text style={st.cItem}>{l.label}</Text>
-                <Text style={st.cCalc}>{manualCalc(l)}</Text>
+                <Text style={[st.cItem, ...(showCalc ? [] : [{ width: "78%" }])]}>{l.label}</Text>
+                {showCalc && <Text style={st.cCalc}>{l.calc?.trim() ?? ""}</Text>}
                 <Text style={st.cAmt}>{yen(l.quantity * l.unitPriceExTax)}</Text>
               </View>
             ))}
