@@ -50,7 +50,11 @@ export type StatementSnapshot = {
   clientExtras?: StatementExtra[];
   warnings?: string[]; // 下書き作成時の注意(画面にだけ表示。PDFには載せない)
   baseline?: StatementBaseline;
+  // 請求書の品目を手入力にしているときだけ入る(あれば、請求書の品目はこの行になる)。なければ「業務委託費一式」(または自動で分けた行)。
+  manualLines?: ManualInvoiceLine[];
 };
+
+export type ManualInvoiceLine = { label: string; quantity: number; unitPriceExTax: number };
 
 // 請求書の「業務委託費一式」(税抜)= 全スタッフ分 + 取引先全体の項目
 export function statementBillableExTax(d: Pick<StatementSnapshot, "staff" | "clientExtras">) {
