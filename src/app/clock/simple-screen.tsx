@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { formatJst, jstDayRange, toJstDateValue } from "@/lib/time";
 import { KIND_LABEL, SimplePanel } from "./simple-panel";
 import { LiveClock } from "./live-clock";
+import { LogoutButton } from "../menu/logout-button";
 
 const WEEKDAY = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -68,6 +69,10 @@ export async function SimpleClockScreen({ staffId, staffName }: { staffId: strin
             </ul>
           </section>
         )}
+
+        <div className="mt-8">
+          <LogoutButton />
+        </div>
       </div>
     </main>
   );
