@@ -156,6 +156,8 @@ export type InvoiceEditPayload = {
     serviceExTax: number;
     serviceCalc: string;
     travelInclTax: number;
+    // 税別で入力したときだけ入る(交通費相当額の税別の金額。これを優先し、税込は税別×1.1(切り捨て)で出す)。
+    travelExTax?: number;
     travelCalc?: string;
     travelLines?: { label: string; calc: string; amountExTax: number }[];
   }[];
@@ -272,8 +274,11 @@ export async function saveInvoiceEdit(
         const useLines = payload.staff[i].travelLines !== undefined;
         const raw = payload.staff[i].travelInclTax;
         const lineEx = tLines.reduce((a, l) => a + l.amountExTax, 0);
-        const incl = useLines ? addTax(lineEx).amountIncl * (lineEx > 0 ? 1 : 0) : Number.isFinite(raw) ? Math.max(0, Math.trunc(raw)) : 0;
-        const ex = useLines ? lineEx : incl > 0 ? splitInclusiveTax(incl).amountEx : 0;
+        const enteredEx = payload.staff[i].travelExTax;
+        const useEx = !useLines && enteredEx !== undefined && Number.isFinite(enteredEx);
+        const exIn = useEx ? Math.max(0, Math.trunc(enteredEx)) : 0;
+        const incl = useLines ? addTax(lineEx).amountIncl * (lineEx > 0 ? 1 : 0) : useEx ? addTax(exIn).amountIncl : Number.isFinite(raw) ? Math.max(0, Math.trunc(raw)) : 0;
+        const ex = useLines ? lineEx : useEx ? exIn : incl > 0 ? splitInclusiveTax(incl).amountEx : 0;
         // 1文の計算方法: 金額を変えたのに古い文のままのときは、自動表示に戻す。
         const calcText = payload.staff[i].travelCalc?.trim();
         const calc = calcText === undefined ? (st.travel.calc && st.travel.amountInclTax === incl ? st.travel.calc : undefined)

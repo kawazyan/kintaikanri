@@ -27,6 +27,9 @@ type Initial = {
     serviceExTax: number;
     serviceCalc: string;
     travelInclTax: number;
+    // 交通費相当額を税別・税込のどちらで入力するか(省略=税込)と、入力した金額(省略=travelInclTax)。
+    travelMode?: "INCL" | "EX";
+    travelEntered?: number;
     // 交通費相当額の計算方法。行に分けている人(店舗別・新幹線代など)は travelLines、それ以外は travelCalc の1文。
     travelCalc: string;
     travelLines: TravelLine[] | null;
@@ -94,8 +97,12 @@ export function EditInvoiceForm({
 
   // 請求書は「業務委託費一式」1行。金額は稼働明細書の合計(業務委託費＋交通費相当額＋その他)。
   const travelEx = (incl: number) => (incl > 0 ? Math.floor((incl * 100) / 110) : 0);
+  // 交通費相当額(行に分けていない人): 税別で入力したときは入力どおりの税別、税込で入力したときは税別(円未満切り捨て)に直す。
+  const travelEntered = (st: Initial["staff"][number]) => Number(st.travelEntered ?? st.travelInclTax) || 0;
+  const travelExSingle = (st: Initial["staff"][number]) => (st.travelMode === "EX" ? travelEntered(st) : travelEx(travelEntered(st)));
+  const travelInclSingle = (st: Initial["staff"][number]) => (st.travelMode === "EX" ? travelEntered(st) + Math.floor(travelEntered(st) / 10) : travelEntered(st));
   const travelExOf = (st: Initial["staff"][number]) =>
-    st.travelLines ? st.travelLines.reduce((a, l) => a + (Number(l.amountExTax) || 0), 0) : travelEx(Number(st.travelInclTax) || 0);
+    st.travelLines ? st.travelLines.reduce((a, l) => a + (Number(l.amountExTax) || 0), 0) : travelExSingle(st);
   const subtotal = initial.hasStatement
     ? staff.reduce((sum, st) => sum + (Number(st.serviceExTax) || 0) + travelExOf(st) + st.extrasExTax, 0) +
       extras.reduce((sum, e) => sum + (Number(e.amountExTax) || 0), 0)
@@ -132,7 +139,8 @@ export function EditInvoiceForm({
         dayPlaces: s.dayPlaces,
         serviceExTax: Number(s.serviceExTax) || 0,
         serviceCalc: s.serviceCalc,
-        travelInclTax: Number(s.travelInclTax) || 0,
+        travelInclTax: travelInclSingle(s),
+        ...(s.travelMode === "EX" ? { travelExTax: travelEntered(s) } : {}),
         travelCalc: s.travelCalc,
         travelLines: s.travelLines?.map((l) => ({ label: l.label, calc: l.calc, amountExTax: Number(l.amountExTax) || 0 })),
       })),
@@ -357,14 +365,22 @@ export function EditInvoiceForm({
                       <span className={hint}>下の行の合計です。全部の行を消すと、交通費相当額は載りません</span>
                     </div>
                   ) : (
-                    <label className={field}>
-                      交通費相当額（税込・円）
-                      <NumInput value={s.travelInclTax} onChange={(n) => patchStaff(i, { travelInclTax: n })} className={`${input} mt-1`} />
+                    <div className={field}>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span>交通費相当額（円）</span>
+                        <label className="flex items-center gap-1 font-normal"><input type="radio" name={`travelMode-${i}`} checked={s.travelMode !== "EX"} onChange={() => patchStaff(i, { travelMode: "INCL" })} />税込で入力</label>
+                        <label className="flex items-center gap-1 font-normal"><input type="radio" name={`travelMode-${i}`} checked={s.travelMode === "EX"} onChange={() => patchStaff(i, { travelMode: "EX" })} />税別で入力</label>
+                      </div>
+                      <NumInput value={travelEntered(s)} onChange={(n) => patchStaff(i, { travelEntered: n, travelInclTax: s.travelMode === "EX" ? n + Math.floor(n / 10) : n })} className={`${input} mt-1`} />
                       <span className={hint}>
-                        0なら載せません。税別で計算します
-                        {Number(s.travelInclTax) > 0 ? `（税込${Number(s.travelInclTax).toLocaleString("ja-JP")}円 → ${yen(travelEx(Number(s.travelInclTax)))}＋税）` : "（例: 税込1,100円 → 1,000円＋税）"}
+                        0なら載せません。
+                        {travelEntered(s) > 0
+                          ? s.travelMode === "EX"
+                            ? `（税別${travelEntered(s).toLocaleString("ja-JP")}円 → 税込${travelInclSingle(s).toLocaleString("ja-JP")}円）`
+                            : `（税込${travelEntered(s).toLocaleString("ja-JP")}円 → ${yen(travelEx(travelEntered(s)))}＋税。円未満は切り捨て）`
+                          : "（例: 税込1,100円 → 1,000円＋税）"}
                       </span>
-                    </label>
+                    </div>
                   )}
                 </div>
 
@@ -419,7 +435,7 @@ export function EditInvoiceForm({
                       type="button"
                       onClick={() =>
                         patchStaff(i, {
-                          travelLines: [{ key: `n${Date.now()}`, label: "交通費相当額", calc: s.travelCalc, amountExTax: travelEx(Number(s.travelInclTax) || 0) }],
+                          travelLines: [{ key: `n${Date.now()}`, label: "交通費相当額", calc: s.travelCalc, amountExTax: travelExSingle(s) }],
                         })
                       }
                       className="mt-2 block rounded-lg border border-slate-600 px-3 py-1 text-xs font-bold"
