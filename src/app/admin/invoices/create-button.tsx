@@ -30,7 +30,7 @@ export function CreateInvoiceButton({ clients }: { clients: { id: string; name: 
           ))}
         </select>
         <input type="month" name="yearMonth" required className="rounded-xl bg-slate-800 px-3 py-2" />
-        <button disabled={pending} className="rounded-xl bg-red-600 px-5 py-2 font-black">
+        <button disabled={pending} className="rounded-xl bg-blue-600 px-5 py-2 font-black text-white disabled:opacity-50">
           {pending ? "作成中…" : "請求下書きを作成"}
         </button>
       </div>
