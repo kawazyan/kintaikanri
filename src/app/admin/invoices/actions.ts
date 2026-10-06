@@ -5,7 +5,9 @@ import type { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildInvoiceDraft, computeManualStaff, statementBillableExTax, type StatementSnapshot } from "@/lib/invoice-draft";
-import { normName, otherClientContracts } from "@/lib/billing-terms";
+import { normName, otherClientContracts, type BillingTerms } from "@/lib/billing-terms";
+import { buildInvoiceLines } from "@/lib/invoice-lines";
+import { createCorrectionDraft } from "@/lib/invoice-correction";
 import { approveDraftInvoice, sendApprovedInvoice } from "@/lib/invoice-send";
 import { addTax, computeInvoiceTotals, splitInclusiveTax } from "@/lib/billing";
 
@@ -173,7 +175,7 @@ export async function saveInvoiceEdit(
   approverName: string
 ): Promise<ActionResult> {
   await requireAdmin();
-  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true, yearMonth: true, statement: true } });
+  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true, yearMonth: true, statement: true, client: { select: { billingTerms: true } } } });
   if (!invoice) return { ok: false, error: "請求書が見つかりません。" };
   if (invoice.status !== "DRAFT" && invoice.status !== "APPROVED") return { ok: false, error: "送付済みの請求は修正できません。" };
 
@@ -280,9 +282,10 @@ export async function saveInvoiceEdit(
     unitPrice = v;
   }
 
-  const line = { quantity: 1, unitPriceExTax: unitPrice };
-  const totals = computeInvoiceTotals([line]);
-  const t = addTax(unitPrice);
+  // 請求書の品目: 取引先の設定がONなら「稼働費用（スタッフ名）」「交通費相当額」などに分ける。それ以外は「業務委託費一式」。
+  const split = !!((invoice.client.billingTerms ?? {}) as BillingTerms).splitInvoiceLines;
+  const lines = nextStatement ? buildInvoiceLines(nextStatement, split) : buildInvoiceLines({ staff: [], clientExtras: [{ label: "業務委託費一式", amountExTax: unitPrice, amountInclTax: addTax(unitPrice).amountIncl }] }, false);
+  const totals = computeInvoiceTotals(lines);
   await prisma.$transaction([
     ...placeSyncOps,
     prisma.invoice.update({
@@ -298,24 +301,25 @@ export async function saveInvoiceEdit(
       },
     }),
     prisma.invoiceLine.deleteMany({ where: { invoiceId: id } }),
-    prisma.invoiceLine.create({
-      data: {
-        invoiceId: id,
-        sortOrder: 10,
-        itemType: "SERVICE",
-        label: "業務委託費一式",
-        description: "内訳は別紙「稼働明細書」のとおり",
-        unitPriceExTax: unitPrice,
-        quantity: 1,
-        subtotalExTax: unitPrice,
-        taxAmount: t.tax,
-        totalInclTax: t.amountIncl,
-      },
-    }),
+    prisma.invoiceLine.createMany({ data: lines.map((l) => ({ ...l, invoiceId: id })) }),
   ]);
   revalidatePath(`/admin/invoices/${id}`);
   revalidatePath("/admin/invoices");
 
   if (!approveAfter || invoice.status !== "DRAFT") return { ok: true, message: "修正を保存しました。" };
   return approveInvoice(id, approverName);
+}
+
+// 「訂正版を作成」: 送付済みの請求を、そのまま写した新しい版(訂正版・下書き)にする。
+// 送付済みの請求は書き換えず残す(送付した記録を守るため)。訂正版を直して承認・送信する。
+export async function createCorrection(id: string): Promise<CreateDraftResult> {
+  await requireAdmin();
+  try {
+    const r = await createCorrectionDraft(id);
+    revalidatePath("/admin/invoices");
+    revalidatePath(`/admin/invoices/${id}`);
+    return { ok: true, id: r.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "訂正版の作成に失敗しました。" };
+  }
 }

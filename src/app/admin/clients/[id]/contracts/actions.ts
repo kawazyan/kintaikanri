@@ -77,3 +77,11 @@ export async function adminDeleteContract(clientId: string, index: number) {
   rules.splice(index, 1);
   await save(clientId, terms, rules);
 }
+
+// 請求書の品目を「稼働費用（スタッフ名）」「交通費相当額」などに分けて表示するか。他の取り決めはそのまま残す。
+export async function setSplitInvoiceLines(clientId: string, formData: FormData) {
+  await requireAdmin();
+  const { terms, rules } = await load(clientId);
+  const on = formData.get("splitInvoiceLines") === "on";
+  await save(clientId, { ...terms, splitInvoiceLines: on || undefined }, rules);
+}

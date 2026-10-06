@@ -69,15 +69,22 @@ export async function sendApprovedInvoice(id: string) {
 
   const [y, m] = invoice.yearMonth.split("-").map(Number);
   const addressee = inv.data.addressee;
-  const subject = `【請求書】${y}年${m}月分のご請求（株式会社K.J）`;
+  // 同じ取引先・同じ月に、すでに送付済みの前の版があれば「訂正版」として送る。
+  const sentBefore = await prisma.invoice.findFirst({
+    where: { clientId: invoice.clientId, yearMonth: invoice.yearMonth, revision: { lt: invoice.revision }, sentAt: { not: null } },
+    select: { id: true },
+  });
+  const isCorrection = !!sentBefore;
+  const subject = isCorrection ? `【請求書（訂正）】${y}年${m}月分のご請求（株式会社K.J）` : `【請求書】${y}年${m}月分のご請求（株式会社K.J）`;
   const text = [
     `${addressee} 御中`,
     "",
     "いつも大変お世話になっております。",
     "株式会社K.Jです。",
     "",
-    `${y}年${m}月の請求書と請求内訳書をお送りいたします。`,
-    "添付ファイルをご確認くださいますようお願い申し上げます。",
+    ...(isCorrection
+      ? [`先日お送りした${y}年${m}月分の請求書に訂正がございましたため、訂正版の請求書と請求内訳書をお送りいたします。`, "お手数をおかけいたしますが、前回の請求書は破棄のうえ、添付ファイルをご確認くださいますようお願い申し上げます。"]
+      : [`${y}年${m}月の請求書と請求内訳書をお送りいたします。`, "添付ファイルをご確認くださいますようお願い申し上げます。"]),
     "",
     `ご請求金額（税込）：¥${invoice.totalInclTax.toLocaleString("ja-JP")}`,
     "",

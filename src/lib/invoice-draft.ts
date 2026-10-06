@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { addTax, computeInvoiceTotals, expenseLabel, splitInclusiveTax } from "@/lib/billing";
 import { jstDayRange, jstMonthRange, toJstDateValue } from "@/lib/time";
 import { unifyStoreNames, withShopSuffix } from "@/lib/store-names";
+import { buildInvoiceLines } from "@/lib/invoice-lines";
 import { activeShiftRules, normName, ruleMatchesShift, type BillingTerms, type ShiftBillingRule, type TravelByStore } from "@/lib/billing-terms";
 import { syncWorkOrderShiftLinks } from "@/lib/work-order-linking";
 import { fetchEventAds } from "@/lib/event-ads";
@@ -506,22 +507,9 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string, opt
     }
   }
 
-  // 請求書は「業務委託費一式」の1行だけ。交通費相当額なども含めた税抜合計を単価にする。
-  const unitPrice = statementBillableExTax({ staff: finalStaff, clientExtras: finalExtras });
-  const t = addTax(unitPrice);
-  const lines = [
-    {
-      sortOrder: 10,
-      itemType: "SERVICE",
-      label: "業務委託費一式",
-      description: "内訳は別紙「稼働明細書」のとおり",
-      unitPriceExTax: unitPrice,
-      quantity: 1,
-      subtotalExTax: unitPrice,
-      taxAmount: t.tax,
-      totalInclTax: t.amountIncl,
-    },
-  ];
+  // 請求書の品目: 既定は「業務委託費一式」の1行(交通費相当額なども含めた税抜合計)。
+  // 取引先の設定(splitInvoiceLines)がONなら「稼働費用（スタッフ名）」「交通費相当額」などに分ける。
+  const lines = buildInvoiceLines({ staff: finalStaff, clientExtras: finalExtras }, !!terms.splitInvoiceLines);
 
   // 請求書テンプレートと同じ方式: 消費税 = 税抜合計 × 10% を切り捨て。
   const { subtotalExTax, taxAmount, totalInclTax } = computeInvoiceTotals(lines);

@@ -28,6 +28,8 @@ export type BillingTerms = {
   carriers?: string[];
   // true なら、請求内訳書の店名(稼働場所・広告のイベント主催店舗)の末尾に「店」を付けて表示する。
   shopSuffix?: boolean;
+  // true なら、請求書の品目を「業務委託費一式」ではなく「稼働費用（スタッフ名）」「交通費相当額」などに分けて表示する。
+  splitInvoiceLines?: boolean;
 };
 
 export const normName = (s: string) => s.replace(/[\s　]/g, "");
