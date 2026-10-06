@@ -3,6 +3,8 @@ import { sendMailStrict } from "@/lib/mail";
 import { renderInvoicePdf, renderStatementPdf } from "@/lib/invoice-render";
 import { invoiceRecipients } from "@/lib/invoice-defaults";
 import { planManualContracts } from "@/lib/manual-contracts";
+import { invoiceMismatch } from "@/lib/invoice-consistency";
+import type { StatementSnapshot } from "@/lib/invoice-draft";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -27,10 +29,13 @@ export function pdfFileName(kind: "請求書" | "請求内訳書", y: number, m:
 export async function approveDraftInvoice(id: string, approverName: string) {
   const name = approverName.trim();
   if (!name) throw new Error("承認者名を入力してください。");
-  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true, statement: true, clientId: true, yearMonth: true } });
+  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true, statement: true, clientId: true, yearMonth: true, subtotalExTax: true, taxAmount: true, totalInclTax: true, lines: true } });
   if (!invoice) throw new Error("請求書が見つかりません。");
   if (invoice.status !== "DRAFT") throw new Error("下書きの請求だけ承認できます。");
   if (!invoice.statement) throw new Error("稼働明細書のデータがありません。請求下書きを作り直してください。");
+  // 請求書と請求内訳書の金額が一致しているときだけ承認できる。
+  const mismatch = invoiceMismatch(invoice, invoice.statement as unknown as StatementSnapshot);
+  if (mismatch) throw new Error(mismatch);
   const plan = await planManualContracts(invoice);
   await prisma.$transaction([
     ...plan.ops,
@@ -44,13 +49,17 @@ export async function approveDraftInvoice(id: string, approverName: string) {
 export async function sendApprovedInvoice(id: string) {
   const invoice = await prisma.invoice.findUnique({
     where: { id },
-    include: { client: true },
+    include: { client: true, lines: true },
   });
   if (!invoice) throw new Error("請求書が見つかりません。");
   if (invoice.status !== "APPROVED") throw new Error("承認済みの請求だけ送信できます。");
   if (!invoice.statement) {
     throw new Error("稼働明細書のデータがありません。請求下書きを作り直してください。");
   }
+
+  // 送信の直前にも確認する(承認後にデータが変わっていても、金額が食い違ったまま送らない)。
+  const mismatch = invoiceMismatch(invoice, invoice.statement as unknown as StatementSnapshot);
+  if (mismatch) throw new Error(mismatch);
 
   const to = invoiceRecipients(invoice.client);
   if (!to.length) {
