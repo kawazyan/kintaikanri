@@ -36,3 +36,10 @@ test("手入力の品目(manualLines): 数量×単価で行を作り、税の合
   assert.deepEqual(l.map((x) => [x.label, x.quantity, x.unitPriceExTax, x.subtotalExTax]), [["A", 2, 1005, 2010], ["B", 1, 7, 7]]);
   assert.equal(l.reduce((s, x) => s + x.taxAmount, 0), Math.floor(2017 / 10));
 });
+
+test("手入力の税込入力: 税別は円未満切り捨て(16,980円→15,436円ではなく、税込から換算した値)", async () => {
+  const { manualUnitExTax } = await import("./invoice-lines");
+  assert.equal(manualUnitExTax("EX", 15437), 15437);
+  assert.equal(manualUnitExTax("INCL", 16980), 15436);
+  assert.equal(manualUnitExTax("INCL", 440000), 400000);
+});

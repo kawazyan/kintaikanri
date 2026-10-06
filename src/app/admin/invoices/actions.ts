@@ -6,7 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildInvoiceDraft, computeManualStaff, statementBillableExTax, type StatementSnapshot } from "@/lib/invoice-draft";
 import { normName, otherClientContracts, type BillingTerms } from "@/lib/billing-terms";
-import { buildInvoiceLines } from "@/lib/invoice-lines";
+import { buildInvoiceLines, manualUnitExTax } from "@/lib/invoice-lines";
 import { createCorrectionDraft } from "@/lib/invoice-correction";
 import { approveDraftInvoice, sendApprovedInvoice } from "@/lib/invoice-send";
 import { addTax, computeInvoiceTotals, splitInclusiveTax } from "@/lib/billing";
@@ -165,7 +165,10 @@ export type InvoiceEditPayload = {
   amountExTax?: number;
   // 請求書の品目。AUTO=「業務委託費一式」(取引先の設定によっては自動で分けた行) / MANUAL=手入力(manualLines)。明細書データがある請求だけ。
   lineMode?: "AUTO" | "MANUAL";
-  manualLines?: { label: string; quantity: number; unitPriceExTax: number }[];
+  // unitPrice = 入力した単価(manualTaxMode が EX なら税別、INCL なら税込)。calc = 請求内訳書の「計算方法」。
+  manualLines?: { label: string; calc?: string; quantity: number; unitPrice: number }[];
+  manualTaxMode?: "EX" | "INCL";
+  manualShowAttendance?: boolean;
 };
 
 // 「修正」画面の保存。請求書は税率(10%固定)と発行日(稼働月の月末日に自動)以外を直せる。
@@ -239,23 +242,25 @@ export async function saveInvoiceEdit(
     }
     // 品目の手入力: 空の行は無視する。MANUALなのに行がない、数量・単価が不正なときは保存しない。
     let manualLines: StatementSnapshot["manualLines"];
+    const taxMode: "EX" | "INCL" = payload.manualTaxMode === "INCL" ? "INCL" : "EX";
     if (payload.lineMode === "MANUAL") {
       manualLines = [];
       for (const m of payload.manualLines ?? []) {
         const label = m.label.trim();
-        if (!label && !m.unitPriceExTax) continue;
+        if (!label && !m.unitPrice) continue;
         if (!label) return { ok: false, error: "品目に、名前のない行があります。名前を入力するか、行を削除してください。" };
         if (!Number.isInteger(m.quantity) || m.quantity < 1) return { ok: false, error: `品目「${label}」の数量は1以上の整数で入力してください。` };
-        if (!Number.isInteger(m.unitPriceExTax) || m.unitPriceExTax < 0) return { ok: false, error: `品目「${label}」の単価（税抜）は0以上の整数で入力してください。` };
-        manualLines.push({ label, quantity: m.quantity, unitPriceExTax: m.unitPriceExTax });
+        if (!Number.isInteger(m.unitPrice) || m.unitPrice < 0) return { ok: false, error: `品目「${label}」の単価は0以上の整数で入力してください。` };
+        const calc = m.calc?.trim();
+        manualLines.push({ label, quantity: m.quantity, unitPriceExTax: manualUnitExTax(taxMode, m.unitPrice), ...(taxMode === "INCL" ? { unitPriceInclTax: m.unitPrice } : {}), ...(calc ? { calc } : {}) });
       }
       if (!manualLines.length) return { ok: false, error: "品目を手入力にする場合は、品目を1行以上入力してください。" };
     }
-    const { manualLines: _dropManual, ...snapshotBase } = snapshot;
-    void _dropManual;
+    const { manualLines: _dropManual, manualTaxMode: _dropMode, manualShowAttendance: _dropAtt, ...snapshotBase } = snapshot;
+    void _dropManual; void _dropMode; void _dropAtt;
     nextStatement = {
       ...snapshotBase,
-      ...(manualLines ? { manualLines } : {}),
+      ...(manualLines ? { manualLines, manualTaxMode: taxMode, manualShowAttendance: payload.manualShowAttendance !== false } : {}),
       clientExtras,
       staff: snapshot.staff.map((st, i) => {
         const dates = datesByStaff[i];

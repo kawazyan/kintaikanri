@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveInvoiceEdit, type InvoiceEditPayload } from "../../actions";
+import { manualUnitExTax } from "@/lib/invoice-lines";
 
 type Initial = {
   addressee: string;
@@ -11,8 +12,10 @@ type Initial = {
   amountExTax: number;
   hasStatement: boolean;
   lineMode: "AUTO" | "MANUAL";
-  manualLines: ManualLine[];
-  suggestedLines: ManualLine[];
+  manualTaxMode: "EX" | "INCL";
+  manualShowAttendance: boolean;
+  manualLines: ManualLineIn[];
+  suggestedLines: ManualLineIn[];
   warnings: string[];
   clientExtras: { label: string; amountExTax: number; calc: string; store?: string; period?: string }[];
   staff: {
@@ -32,7 +35,11 @@ type Initial = {
   }[];
 };
 
-type ManualLine = { label: string; quantity: number; unitPriceExTax: number };
+// 手入力の行。unitPrice は入力した単価(税別入力なら税別、税込入力なら税込)。key は行の入れ替え・削除で入力欄の中身がずれないための印。
+type ManualLineIn = { label: string; calc: string; quantity: number; unitPrice: number };
+type ManualLine = ManualLineIn & { key: number };
+let manualKeySeq = 0;
+const withKey = (xs: ManualLineIn[]): ManualLine[] => xs.map((x) => ({ ...x, key: ++manualKeySeq }));
 type TravelLine = { key: string; label: string; calc: string; amountExTax: number };
 
 const input = "w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-100";
@@ -76,7 +83,9 @@ export function EditInvoiceForm({
   const [note, setNote] = useState(initial.note);
   const [amount, setAmount] = useState(initial.amountExTax);
   const [lineMode, setLineMode] = useState<"AUTO" | "MANUAL">(initial.lineMode);
-  const [manual, setManual] = useState<ManualLine[]>(initial.manualLines);
+  const [manual, setManual] = useState<ManualLine[]>(() => withKey(initial.manualLines));
+  const [taxMode, setTaxMode] = useState<"EX" | "INCL">(initial.manualTaxMode);
+  const [showAttendance, setShowAttendance] = useState(initial.manualShowAttendance);
   const [staff, setStaff] = useState(initial.staff);
   const [extras, setExtras] = useState(initial.clientExtras);
   const [approver, setApprover] = useState("");
@@ -92,7 +101,10 @@ export function EditInvoiceForm({
       extras.reduce((sum, e) => sum + (Number(e.amountExTax) || 0), 0)
     : Number(amount) || 0;
   // 品目を手入力にしているときの請求書の合計(税抜)。稼働明細書の合計(subtotal)と違うときは警告する。
-  const manualSubtotal = manual.reduce((sum, m) => sum + (Number(m.quantity) || 0) * (Number(m.unitPriceExTax) || 0), 0);
+  // 税込で入力したときは、税別(円未満切り捨て)に直した単価で請求する。
+  const exOf = (m: ManualLine) => (Number(m.quantity) || 0) * manualUnitExTax(taxMode, Number(m.unitPrice) || 0);
+  const manualSubtotal = manual.reduce((sum, m) => sum + exOf(m), 0);
+  const manualEnteredTotal = taxMode === "INCL" ? manual.reduce((sum, m) => sum + (Number(m.quantity) || 0) * (Number(m.unitPrice) || 0), 0) : 0;
   const isManual = initial.hasStatement && lineMode === "MANUAL";
   const invoiceSubtotal = isManual ? manualSubtotal : subtotal;
   const tax = Math.floor((invoiceSubtotal * 10) / 100);
@@ -100,7 +112,7 @@ export function EditInvoiceForm({
   function chooseMode(mode: "AUTO" | "MANUAL") {
     setLineMode(mode);
     // 初めて手入力にしたときは、今の内訳を分けた案(稼働費用・交通費相当額など)を最初の行にする。
-    if (mode === "MANUAL" && manual.length === 0) setManual(initial.suggestedLines);
+    if (mode === "MANUAL" && manual.length === 0) { setTaxMode("EX"); setManual(withKey(initial.suggestedLines)); }
   }
 
   function payload(): InvoiceEditPayload {
@@ -109,7 +121,9 @@ export function EditInvoiceForm({
       subject,
       note,
       amountExTax: initial.hasStatement ? undefined : Number(amount),
-      ...(initial.hasStatement ? { lineMode, manualLines: lineMode === "MANUAL" ? manual.map((m) => ({ label: m.label, quantity: Number(m.quantity) || 0, unitPriceExTax: Number(m.unitPriceExTax) || 0 })) : undefined } : {}),
+      ...(initial.hasStatement
+        ? { lineMode, manualTaxMode: taxMode, manualShowAttendance: showAttendance, manualLines: lineMode === "MANUAL" ? manual.map((m) => ({ label: m.label, calc: m.calc, quantity: Number(m.quantity) || 0, unitPrice: Number(m.unitPrice) || 0 })) : undefined }
+        : {}),
       clientExtras: extras.map((e) => (e.store !== undefined && e.period !== undefined
         ? { label: `${e.store} ${e.period}`, store: e.store, period: e.period, amountExTax: Number(e.amountExTax) || 0, calc: e.calc }
         : { label: e.label, amountExTax: Number(e.amountExTax) || 0, calc: e.calc })),
@@ -189,7 +203,7 @@ export function EditInvoiceForm({
           </label>
           {initial.hasStatement ? (
             <div className="rounded-xl bg-slate-950 p-4">
-              <p className="text-xs font-bold text-slate-300">請求書の品目</p>
+              <p className="text-xs font-bold text-slate-300">請求書の品目・請求内訳書の金額</p>
               <div className="mt-2 flex flex-wrap gap-4 text-sm">
                 <label className="flex items-center gap-2">
                   <input type="radio" name="lineMode" checked={lineMode === "AUTO"} onChange={() => chooseMode("AUTO")} />
@@ -203,23 +217,39 @@ export function EditInvoiceForm({
               {lineMode === "AUTO" ? (
                 <p className="mt-2 text-xs text-slate-500">金額は稼働明細書の合計から自動で計算します（取引先の設定によっては「稼働費用（スタッフ名）」「交通費相当額」の行に分かれます）。</p>
               ) : (
-                <div className="mt-3 space-y-2">
-                  <div className="hidden grid-cols-[1fr_80px_130px_110px_auto] gap-2 text-xs text-slate-400 md:grid">
-                    <span>品目</span><span>数量</span><span>単価（税抜）</span><span className="text-right">金額（税抜）</span><span />
+                <div className="mt-3 space-y-3">
+                  <div className="flex flex-wrap items-center gap-4 text-sm">
+                    <span className="text-xs font-bold text-slate-300">金額の入力方法</span>
+                    <label className="flex items-center gap-2"><input type="radio" name="taxMode" checked={taxMode === "EX"} onChange={() => setTaxMode("EX")} />税別で入力</label>
+                    <label className="flex items-center gap-2"><input type="radio" name="taxMode" checked={taxMode === "INCL"} onChange={() => setTaxMode("INCL")} />税込で入力</label>
+                  </div>
+                  <p className="text-xs text-slate-500">この表は、請求書の品目と請求内訳書の行を兼ねます。{taxMode === "INCL" ? "税込で入力した単価は、税別（円未満切り捨て）に直して請求します。" : ""}</p>
+                  <div className="hidden grid-cols-[1fr_1fr_64px_110px_100px_auto] gap-2 text-xs text-slate-400 md:grid">
+                    <span>品目</span><span>計算方法（内訳書に載る・任意）</span><span>数量</span><span>単価（{taxMode === "INCL" ? "税込" : "税別"}）</span><span className="text-right">金額（税別）</span><span />
                   </div>
                   {manual.map((m, i) => (
-                    <div key={i} className="grid grid-cols-2 items-center gap-2 rounded-lg border border-slate-800 p-2 md:grid-cols-[1fr_80px_130px_110px_auto] md:border-0 md:p-0">
+                    <div key={m.key} className="grid grid-cols-2 items-center gap-2 rounded-lg border border-slate-800 p-2 md:grid-cols-[1fr_1fr_64px_110px_100px_auto] md:border-0 md:p-0">
                       <input value={m.label} onChange={(e) => patchManual(i, { label: e.target.value })} placeholder="品目名" className={`${input} col-span-2 md:col-span-1`} />
+                      <input value={m.calc} onChange={(e) => patchManual(i, { calc: e.target.value })} placeholder="例: ¥15,437＋税で計算" className={`${input} col-span-2 md:col-span-1`} />
                       <NumInput value={m.quantity} onChange={(n) => patchManual(i, { quantity: n })} className={input} />
-                      <NumInput value={m.unitPriceExTax} onChange={(n) => patchManual(i, { unitPriceExTax: n })} className={input} />
-                      <p className="text-right text-sm text-slate-300">{yen((Number(m.quantity) || 0) * (Number(m.unitPriceExTax) || 0))}</p>
-                      <button type="button" onClick={() => setManual(manual.filter((_, mi) => mi !== i))} className="rounded-lg border border-slate-700 px-2 py-1 text-xs font-bold text-slate-300">削除</button>
+                      <NumInput value={m.unitPrice} onChange={(n) => patchManual(i, { unitPrice: n })} className={input} />
+                      <p className="text-right text-sm text-slate-300">{yen(exOf(m))}</p>
+                      <button type="button" onClick={() => setManual(manual.filter((x) => x.key !== m.key))} className="rounded-lg border border-slate-700 px-2 py-1 text-xs font-bold text-slate-300">削除</button>
                     </div>
                   ))}
-                  <button type="button" onClick={() => setManual([...manual, { label: "", quantity: 1, unitPriceExTax: 0 }])} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-black text-white">＋ 行を追加</button>
+                  <button type="button" onClick={() => setManual([...manual, ...withKey([{ label: "", calc: "", quantity: 1, unitPrice: 0 }])])} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-black text-white">＋ 行を追加</button>
+                  <label className="flex items-start gap-2 text-xs text-slate-300">
+                    <input type="checkbox" checked={showAttendance} onChange={(e) => setShowAttendance(e.target.checked)} className="mt-0.5" />
+                    <span>請求内訳書に、スタッフごとの稼働日・店舗の表も載せる（金額の表は、上の表に置き換わります）</span>
+                  </label>
+                  {taxMode === "INCL" && manualEnteredTotal > 0 && manualEnteredTotal !== manualSubtotal + Math.floor(manualSubtotal / 10) && (
+                    <p className="rounded-lg border border-amber-700 bg-amber-950/30 p-2 text-xs font-bold text-amber-200">
+                      ⚠ 入力した税込の合計（{yen(manualEnteredTotal)}）と、請求書の税込合計（{yen(manualSubtotal + Math.floor(manualSubtotal / 10))}）が、端数の処理で1円ずれます。請求書は、税別の合計の10%（切り捨て）で計算します。
+                    </p>
+                  )}
                   {manualSubtotal !== subtotal && (
                     <p className="rounded-lg border border-amber-700 bg-amber-950/30 p-2 text-xs font-bold text-amber-200">
-                      ⚠ 品目の合計（税抜 {yen(manualSubtotal)}）が、稼働明細書の合計（税抜 {yen(subtotal)}）と違います。意図した金額か、確認してから保存してください。
+                      ⚠ 品目の合計（税別 {yen(manualSubtotal)}）が、自動で計算した金額（税別 {yen(subtotal)}）と違います。意図した金額か、確認してから保存してください。
                     </p>
                   )}
                 </div>

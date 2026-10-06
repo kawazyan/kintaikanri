@@ -1,4 +1,4 @@
-import { addTax, computeInvoiceTotals } from "@/lib/billing";
+import { addTax, computeInvoiceTotals, splitInclusiveTax } from "@/lib/billing";
 import { normName } from "@/lib/billing-terms";
 import type { StatementSnapshot } from "@/lib/invoice-draft";
 
@@ -56,4 +56,9 @@ function adjustTax(lines: InvoiceLineInput[]): InvoiceLineInput[] {
   last.taxAmount += diff;
   last.totalInclTax = last.subtotalExTax + last.taxAmount;
   return lines;
+}
+
+// 手入力の単価(入力した金額)から、請求する税別の単価を求める。税別入力はそのまま、税込入力は税別(円未満切り捨て)に直す。
+export function manualUnitExTax(mode: "EX" | "INCL", entered: number) {
+  return mode === "INCL" ? splitInclusiveTax(entered).amountEx : entered;
 }

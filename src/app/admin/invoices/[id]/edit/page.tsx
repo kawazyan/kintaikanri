@@ -43,10 +43,13 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
           amountExTax: i.subtotalExTax,
           hasStatement: !!statement,
           lineMode: statement?.manualLines?.length ? "MANUAL" : "AUTO",
-          manualLines: (statement?.manualLines ?? []).map((m) => ({ label: m.label, quantity: m.quantity, unitPriceExTax: m.unitPriceExTax })),
+          manualTaxMode: statement?.manualTaxMode === "INCL" ? "INCL" : "EX",
+          manualShowAttendance: statement?.manualShowAttendance !== false,
+          // 入力欄に出す単価(税込で入力した行は税込の単価)
+          manualLines: (statement?.manualLines ?? []).map((m) => ({ label: m.label, calc: m.calc ?? "", quantity: m.quantity, unitPrice: statement?.manualTaxMode === "INCL" ? (m.unitPriceInclTax ?? m.unitPriceExTax) : m.unitPriceExTax })),
           // 「手入力」に切り替えたときの最初の行(稼働費用・交通費相当額などに分けた案)
           suggestedLines: statement
-            ? buildInvoiceLines({ staff: statement.staff, clientExtras: statement.clientExtras }, true).map((l) => ({ label: l.label, quantity: l.quantity, unitPriceExTax: l.unitPriceExTax }))
+            ? buildInvoiceLines({ staff: statement.staff, clientExtras: statement.clientExtras }, true).map((l) => ({ label: l.label, calc: "", quantity: l.quantity, unitPrice: l.unitPriceExTax }))
             : [],
           warnings: statement?.warnings ?? [],
           clientExtras: (statement?.clientExtras ?? []).map((e) => ({ label: e.label, amountExTax: e.amountExTax, calc: e.calc ?? "", store: e.store, period: e.period })),

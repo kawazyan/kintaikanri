@@ -52,9 +52,15 @@ export type StatementSnapshot = {
   baseline?: StatementBaseline;
   // 請求書の品目を手入力にしているときだけ入る(あれば、請求書の品目はこの行になる)。なければ「業務委託費一式」(または自動で分けた行)。
   manualLines?: ManualInvoiceLine[];
+  // 手入力の金額を税別(EX)・税込(INCL)のどちらで入力したか。税込のときは、税別(切り捨て)に直した金額で請求する。
+  manualTaxMode?: "EX" | "INCL";
+  // 手入力のとき、請求内訳書にスタッフごとの稼働日・店舗の表を載せるか(省略=載せる)。
+  manualShowAttendance?: boolean;
 };
 
-export type ManualInvoiceLine = { label: string; quantity: number; unitPriceExTax: number };
+// 手入力の1行。請求書の品目であり、請求内訳書の行でもある。calc=内訳書の「計算方法」。
+// unitPriceInclTax は、税込で入力したときだけ入る(入力した税込の単価)。unitPriceExTax はその税別(円未満切り捨て)。
+export type ManualInvoiceLine = { label: string; calc?: string; quantity: number; unitPriceExTax: number; unitPriceInclTax?: number };
 
 // 請求書の「業務委託費一式」(税抜)= 全スタッフ分 + 取引先全体の項目
 export function statementBillableExTax(d: Pick<StatementSnapshot, "staff" | "clientExtras">) {

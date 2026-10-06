@@ -125,6 +125,15 @@ function summaryRows(data: StatementSnapshot): { label: string; amountExTax: num
 
 export function StatementDocument({ data, totals }: { data: StatementSnapshot; totals: StatementTotals }) {
   const [y, m] = data.yearMonth.split("-").map(Number);
+  // 手入力: 金額の表は手入力の行(請求書の品目と同じ)に置き換える。スタッフの稼働日・店舗の表は、設定により載せる。
+  const manual = data.manualLines?.length ? data.manualLines : null;
+  const incl = data.manualTaxMode === "INCL";
+  const manualSub = manual ? manual.reduce((a, l) => a + l.quantity * l.unitPriceExTax, 0) : 0;
+  const manualCalc = (l: NonNullable<StatementSnapshot["manualLines"]>[number]) =>
+    l.calc?.trim() ||
+    (incl && l.unitPriceInclTax != null
+      ? `${yen(l.unitPriceInclTax)}（税込）${l.quantity > 1 ? ` × ${l.quantity}` : ""} → 税抜に換算`
+      : l.quantity > 1 ? `${yen(l.unitPriceExTax)} × ${l.quantity}` : "―");
   return (
     <Document title={`請求内訳書 ${data.clientName} ${data.yearMonth}`}>
       <Page size="A4" style={st.page}>
@@ -135,11 +144,11 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
           <Text style={st.client}>{data.clientName}　御中</Text>
           <Text style={st.month}>{y}年{m}月稼働分</Text>
         </View>
-        <Text style={st.lead}>請求書「業務委託費一式」の内訳です。金額は税抜、消費税は合計に対して10%で計算しています。</Text>
+        <Text style={st.lead}>{manual ? "請求書の内訳です。" : "請求書「業務委託費一式」の内訳です。"}金額は税抜、消費税は合計に対して10%で計算しています。</Text>
 
         {data.staff.length === 0 && <Text style={st.note}>対象月の稼働実績はありません。</Text>}
 
-        {data.staff.map((s, i) => (
+        {(manual && data.manualShowAttendance === false ? [] : data.staff).map((s, i) => (
           <View key={`${s.name}-${i}`} style={st.staffBlock} wrap={false}>
             <View style={st.staffHead}>
               <Text style={st.staffName}>スタッフ名　{s.name}</Text>
@@ -160,26 +169,54 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
               <Text style={st.label}>合計稼働日数</Text>
               <Text style={st.value}>{s.days}日</Text>
             </View>
+            {!manual && (
+              <>
+                <View style={st.itemHead}>
+                  <Text style={[st.cItem, st.small]}>項目</Text>
+                  <Text style={[st.cCalc, st.small]}>計算方法</Text>
+                  <Text style={[st.cAmt, st.small]}>金額（税抜）</Text>
+                </View>
+                {staffItems(s).map((it, k) => (
+                  <View key={k} style={st.itemRow}>
+                    <Text style={st.cItem}>{it.label}</Text>
+                    <Text style={st.cCalc}>{it.calc}</Text>
+                    <Text style={st.cAmt}>{yen(it.amountExTax)}</Text>
+                  </View>
+                ))}
+                <View style={st.subRow}>
+                  <Text style={st.subLabel}>小計（税抜）</Text>
+                  <Text style={st.cAmt}>{yen(staffBillableExTax(s))}</Text>
+                </View>
+              </>
+            )}
+          </View>
+        ))}
+
+        {manual && (
+          <View style={st.staffBlock} wrap={false}>
+            <View style={st.staffHead}>
+              <Text style={st.staffName}>ご請求内訳</Text>
+            </View>
             <View style={st.itemHead}>
               <Text style={[st.cItem, st.small]}>項目</Text>
               <Text style={[st.cCalc, st.small]}>計算方法</Text>
               <Text style={[st.cAmt, st.small]}>金額（税抜）</Text>
             </View>
-            {staffItems(s).map((it, k) => (
+            {manual.map((l, k) => (
               <View key={k} style={st.itemRow}>
-                <Text style={st.cItem}>{it.label}</Text>
-                <Text style={st.cCalc}>{it.calc}</Text>
-                <Text style={st.cAmt}>{yen(it.amountExTax)}</Text>
+                <Text style={st.cItem}>{l.label}</Text>
+                <Text style={st.cCalc}>{manualCalc(l)}</Text>
+                <Text style={st.cAmt}>{yen(l.quantity * l.unitPriceExTax)}</Text>
               </View>
             ))}
             <View style={st.subRow}>
               <Text style={st.subLabel}>小計（税抜）</Text>
-              <Text style={st.cAmt}>{yen(staffBillableExTax(s))}</Text>
+              <Text style={st.cAmt}>{yen(manualSub)}</Text>
             </View>
           </View>
-        ))}
+        )}
 
-        {(data.clientExtras ?? []).length > 0 && (
+        {!manual && (data.clientExtras ?? []).length > 0 && (
           <View style={st.staffBlock} wrap={false}>
             <View style={st.staffHead}>
               <Text style={st.staffName}>広告費</Text>
@@ -224,15 +261,17 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
         )}
 
         <View wrap={false}>
-        <View style={st.summary}>
-          <Text style={st.summaryHead}>ご請求金額のまとめ</Text>
-          {summaryRows(data).map((r, i) => (
-            <View key={i} style={st.sRow}>
-              <Text>{r.label}</Text>
-              <Text>{yen(r.amountExTax)}</Text>
-            </View>
-          ))}
-        </View>
+        {!manual && (
+          <View style={st.summary}>
+            <Text style={st.summaryHead}>ご請求金額のまとめ</Text>
+            {summaryRows(data).map((r, i) => (
+              <View key={i} style={st.sRow}>
+                <Text>{r.label}</Text>
+                <Text>{yen(r.amountExTax)}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 6 }}>
           <View style={st.totalBox}>
