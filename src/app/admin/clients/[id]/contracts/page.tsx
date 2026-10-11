@@ -35,7 +35,7 @@ export default async function ContractsPage({ params }: { params: Promise<{ id: 
         <label className="mt-1 flex items-center gap-2"><input type="radio" name="pdfBundle" value="SEPARATE" defaultChecked={terms.pdfBundle !== "COMBINED"} />2つバラ（請求書・請求内訳書を別々のPDFで添付）</label>
         <label className="mt-1 flex items-center gap-2"><input type="radio" name="pdfBundle" value="COMBINED" defaultChecked={terms.pdfBundle === "COMBINED"} />1つにまとめる（請求書 → 請求内訳書 の順）</label>
       </div>
-      <button type="submit" className="mt-3 rounded-lg bg-slate-900 px-4 py-2 text-sm font-black text-white">保存</button>
+      <button type="submit" className="mt-4 rounded-2xl bg-[#14283b] px-5 py-3 text-sm font-black text-white">設定を保存</button>
     </form>
     <section className="mt-6"><ContractsEditor clientId={client.id} rules={rules} staffNames={staff.map((s) => s.name)} /></section>
   </main>;
