@@ -4,6 +4,8 @@ import { renderInvoicePdf, renderStatementPdf } from "@/lib/invoice-render";
 import { invoiceRecipients } from "@/lib/invoice-defaults";
 import { planManualContracts } from "@/lib/manual-contracts";
 import { invoiceMismatch } from "@/lib/invoice-consistency";
+import { mergePdfs } from "@/lib/pdf-bundle";
+import type { BillingTerms } from "@/lib/billing-terms";
 import type { StatementSnapshot } from "@/lib/invoice-draft";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -20,7 +22,7 @@ const MAIL_SIGNATURE = [
 ];
 
 // 添付PDFのファイル名: 「請求書_2026年9月分_株式会社K.J.pdf」。ファイル名に使えない文字は _ にする。
-export function pdfFileName(kind: "請求書" | "請求内訳書", y: number, m: number) {
+export function pdfFileName(kind: "請求書" | "請求内訳書" | "請求書・請求内訳書", y: number, m: number) {
   return `${kind}_${y}年${m}月分_株式会社K.J.pdf`.replace(/[\\/:*?"<>|]/g, "_");
 }
 
@@ -108,10 +110,14 @@ export async function sendApprovedInvoice(id: string) {
     cc,
     subject,
     text,
-    attachments: [
-      { filename: pdfFileName("請求書", y, m), content: inv.buffer },
-      { filename: pdfFileName("請求内訳書", y, m), content: stmt.buffer },
-    ],
+    // 取引先の設定で、請求書→請求内訳書の順に1つのPDFにまとめるか、2つバラで添付するか(標準はバラ)。
+    attachments:
+      ((invoice.client.billingTerms ?? {}) as BillingTerms).pdfBundle === "COMBINED"
+        ? [{ filename: pdfFileName("請求書・請求内訳書", y, m), content: await mergePdfs([inv.buffer, stmt.buffer]) }]
+        : [
+            { filename: pdfFileName("請求書", y, m), content: inv.buffer },
+            { filename: pdfFileName("請求内訳書", y, m), content: stmt.buffer },
+          ],
   });
 
   await prisma.invoice.update({

@@ -30,6 +30,8 @@ export type BillingTerms = {
   shopSuffix?: boolean;
   // true なら、請求書の品目を「業務委託費一式」ではなく「稼働費用（スタッフ名）」「交通費相当額」などに分けて表示する。
   splitInvoiceLines?: boolean;
+  // 請求メールのPDFの付け方。COMBINED=請求書→請求内訳書の順に1つのPDF / 省略(SEPARATE)=2つのPDFをバラで添付。
+  pdfBundle?: "COMBINED" | "SEPARATE";
 };
 
 export const normName = (s: string) => s.replace(/[\s　]/g, "");

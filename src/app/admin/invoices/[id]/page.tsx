@@ -12,6 +12,7 @@ import { AddStaffForm } from "./add-staff-form";
 import { CorrectionButton } from "./correction-button";
 import { statementBillableExTax, type StatementSnapshot } from "@/lib/invoice-draft";
 import { invoiceMismatch } from "@/lib/invoice-consistency";
+import type { BillingTerms } from "@/lib/billing-terms";
 
 const STATUS_LABEL: Record<string, string> = { DRAFT: "下書き", APPROVED: "承認済み（未送信）", FINALIZED: "送付済み", REISSUED: "送付済み（再発行）" };
 
@@ -142,6 +143,9 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
             <Link href={`/invoice/${i.id}/print`} className="rounded-xl bg-white px-4 py-3 font-black text-slate-900">請求書を開く</Link>
             <Link href={`/invoice/${i.id}/pdf`} className="rounded-xl bg-emerald-600 px-4 py-3 font-black">請求書PDF</Link>
             <Link href={`/invoice/${i.id}/statement`} className="rounded-xl bg-blue-600 px-4 py-3 font-black">稼働明細書PDF</Link>
+            {((i.client.billingTerms ?? {}) as BillingTerms).pdfBundle === "COMBINED" && (
+              <Link href={`/invoice/${i.id}/bundle`} className="rounded-xl bg-emerald-700 px-4 py-3 font-black">請求書＋内訳書PDF（1つ）</Link>
+            )}
             <Link href={`/invoice/${i.id}/detail`} className="rounded-xl border border-slate-600 px-4 py-3 font-black">勤務・請求明細書</Link>
           </div>
           <CorrectionButton invoiceId={i.id} invoiceNumber={i.invoiceNumber} />

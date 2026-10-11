@@ -83,5 +83,7 @@ export async function setSplitInvoiceLines(clientId: string, formData: FormData)
   await requireAdmin();
   const { terms, rules } = await load(clientId);
   const on = formData.get("splitInvoiceLines") === "on";
-  await save(clientId, { ...terms, splitInvoiceLines: on || undefined }, rules);
+  // 請求メールのPDFの付け方(標準はバラ=設定しない)。
+  const combined = formData.get("pdfBundle") === "COMBINED";
+  await save(clientId, { ...terms, splitInvoiceLines: on || undefined, pdfBundle: combined ? "COMBINED" : undefined }, rules);
 }
