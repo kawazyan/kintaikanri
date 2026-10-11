@@ -28,7 +28,16 @@ export type EstimateInput = {
   lines: EstimateLineInput[];
 };
 
-export const DEFAULT_ESTIMATE_SUBJECT = "お見積りに関して";
+// 送付するたびに、確認用として自動でBCC(取引先には見えない)で送るアドレス。
+export const ESTIMATE_CONFIRM_BCC = "keiri@kjgroup.info";
+
+// 件名の自動入力: 「◯月分お見積りに関して」。◯月は発行日の翌月(12月発行なら1月分)。発行日が正しくないときは空。
+export function defaultEstimateSubject(issuedDate: string | null | undefined) {
+  const d = issuedDate?.trim() ?? "";
+  if (!isRealDate(d)) return "";
+  const nextMonth = (Number(d.slice(5, 7)) % 12) + 1;
+  return `${nextMonth}月分お見積りに関して`;
+}
 
 // 見積番号: KJ-見積-YYYYMM-連番(YYYYMM は発行日の年月、連番は月ごとに001から)。
 export function estimateNumberPrefix(issuedDate: string) {

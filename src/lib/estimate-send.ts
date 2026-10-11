@@ -2,7 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { sendMailStrict } from "@/lib/mail";
 import { renderEstimatePdf } from "@/lib/estimate-render";
 import { invoiceRecipients } from "@/lib/invoice-defaults";
-import { estimatePdfFileName, resolveEstimateRecipients } from "@/lib/estimate";
+import { registerClientForSentEstimate, registerNote } from "@/lib/estimate-register-client";
+import { ESTIMATE_CONFIRM_BCC, estimatePdfFileName, resolveEstimateRecipients } from "@/lib/estimate";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -17,14 +18,14 @@ const MAIL_SIGNATURE = [
   ">>>>>>>>>>>>>>>>>>>>>>>>>>>>",
 ];
 
-// 送付: 保存済み → 送付済み。見積書PDFを添付して送る(管理者アドレスをCC)。
+// 送付: 保存済み → 送付済み(送付済みの再送も可)。見積書PDFを添付して送る(管理者アドレスをCC、keiri@kjgroup.info をBCC)。
 // 送信先は、見積書に手入力した送信先メールアドレスがあればそれ、なければ取引先の請求用の宛先。どちらもなければ送らない。
-// 送信に成功したときだけ送付済みにする(失敗したら保存済みのまま。何も変わらない)。
+// 送信に成功したときだけ送付済みにする(失敗したら状態は変わらない)。
+// 送信後、宛名が取引先一覧になければ自動で登録する(失敗しても送付は成功のまま)。
 // 呼び出すのは画面の「送付」ボタンを押したときだけ。自動では送らない。
 export async function sendSavedEstimate(id: string) {
   const estimate = await prisma.estimate.findUnique({ where: { id }, include: { client: true } });
   if (!estimate) throw new Error("見積書が見つかりません。");
-  if (estimate.status !== "SAVED") throw new Error("保存済み（未送付）の見積書だけ送付できます。");
 
   const to = resolveEstimateRecipients(estimate.recipientEmails, estimate.client ? invoiceRecipients(estimate.client) : []);
   if (!to.length) {
@@ -35,6 +36,9 @@ export async function sendSavedEstimate(id: string) {
 
   const admins = await prisma.adminEmail.findMany({ select: { email: true } });
   const cc = [...new Set(admins.map((a) => a.email.trim()).filter((x) => EMAIL_RE.test(x) && !to.includes(x)))];
+
+  const lower = new Set([...to, ...cc].map((x) => x.toLowerCase()));
+  const bcc = lower.has(ESTIMATE_CONFIRM_BCC) ? [] : [ESTIMATE_CONFIRM_BCC];
 
   const pdf = await renderEstimatePdf(id);
   if (!pdf) throw new Error("PDFの作成に失敗しました。");
@@ -61,6 +65,7 @@ export async function sendSavedEstimate(id: string) {
   await sendMailStrict({
     to,
     cc,
+    bcc,
     subject,
     text,
     attachments: [{ filename: estimatePdfFileName(estimate.estimateNumber), content: pdf.buffer }],
@@ -68,7 +73,15 @@ export async function sendSavedEstimate(id: string) {
 
   await prisma.estimate.update({
     where: { id },
-    data: { status: "SENT", sentAt: new Date(), sentTo: [...to, ...cc].join(", ") },
+    data: { status: "SENT", sentAt: new Date(), sentTo: [...to, ...cc, ...bcc].join(", ") },
   });
-  return { to, cc };
+
+  let registered = "";
+  try {
+    registered = registerNote(await registerClientForSentEstimate(id, to));
+  } catch (e) {
+    console.error("Failed to register client for estimate", { id, e });
+    registered = "送付は完了しましたが、取引先の自動登録に失敗しました（手動で登録してください）";
+  }
+  return { to, cc, bcc, registered };
 }

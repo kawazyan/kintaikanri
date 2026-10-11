@@ -3,10 +3,11 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ESTIMATE_CONFIRM_BCC } from "@/lib/estimate";
 import { deleteEstimate, sendEstimate, type EstimateActionResult } from "../actions";
 
-// 保存済み(未送付)の見積書: 送付 / 修正 / 削除。メールは「送付」を押したときだけ送られる。
-export function EstimateActions({ estimateId, recipients, total, clientName }: { estimateId: string; recipients: string; total: number; clientName: string }) {
+// 保存済み: 送付 / 修正 / 削除。送付済み: 再送 / 修正 / 削除。メールは「送付」「再送」を押したときだけ送られる。
+export function EstimateActions({ estimateId, recipients, total, clientName, sent }: { estimateId: string; recipients: string; total: number; clientName: string; sent: boolean }) {
   const router = useRouter();
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
@@ -26,21 +27,21 @@ export function EstimateActions({ estimateId, recipients, total, clientName }: {
   }
 
   function send() {
-    if (!window.confirm(`見積書（税込 ¥${total.toLocaleString("ja-JP")}）を\n${recipients || "（取引先のメールアドレス未登録）"}\nへメール送付します。よろしいですか？`)) return;
+    if (!window.confirm(`見積書（税込 ¥${total.toLocaleString("ja-JP")}）を\n${recipients || "（取引先のメールアドレス未登録）"}\nへメール${sent ? "を再送" : "送付"}します（確認用に ${ESTIMATE_CONFIRM_BCC} へもBCCで送ります）。\n\n送付しますか？`)) return;
     run(() => sendEstimate(estimateId));
   }
   function remove() {
-    if (!window.confirm(`${clientName ? `${clientName} の` : "この"}見積書（税込 ¥${total.toLocaleString("ja-JP")}）を削除します。元に戻せません。よろしいですか？`)) return;
+    if (!window.confirm(`${clientName ? `${clientName} の` : "この"}見積書（税込 ¥${total.toLocaleString("ja-JP")}）を削除します。${sent ? "送付済みの記録も一緒に消えます（相手に送ったメールは取り消せません）。" : ""}元に戻せません。\n\n削除しますか？`)) return;
     run(() => deleteEstimate(estimateId), () => router.push("/admin/estimates"));
   }
 
   return (
     <div className="mt-5 rounded-2xl border border-slate-700 bg-slate-900 p-5">
-      <p className="text-sm text-slate-300">保存済みです。メールはまだ送られていません。「送付」を押すと取引先へメールで送ります。</p>
+      <p className="text-sm text-slate-300">{sent ? "送付済みです。修正したあと「再送」を押すと、もう一度メールで送ります（修正だけでは送られません）。" : "保存済みです。メールはまだ送られていません。「送付」を押すと取引先へメールで送ります。"}</p>
       <p className="mt-1 text-xs text-slate-500">送付先: {recipients || "（取引先のメールアドレス未登録）"}</p>
       <div className="mt-3 flex flex-wrap gap-3">
         <button type="button" onClick={send} disabled={pending} className="rounded-xl bg-blue-600 px-6 py-3 font-black text-white disabled:opacity-50">
-          {pending ? "処理中..." : "送付（メールで送る）"}
+          {pending ? "処理中..." : sent ? "再送（メールで送る）" : "送付（メールで送る）"}
         </button>
         <Link href={`/admin/estimates/${estimateId}/edit`} className="rounded-xl border border-slate-500 px-6 py-3 font-black text-slate-100">
           修正

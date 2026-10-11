@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { toJstDateValue } from "@/lib/time";
 import { invoiceRecipients } from "@/lib/invoice-defaults";
-import { DEFAULT_ESTIMATE_SUBJECT } from "@/lib/estimate";
+import { defaultEstimateSubject } from "@/lib/estimate";
 import { AdminNav } from "../../admin-nav";
 import { EstimateForm } from "../estimate-form";
 
@@ -29,7 +29,7 @@ export default async function NewEstimatePage() {
           addressee: "",
           storeName: "",
           recipientEmails: "",
-          subject: DEFAULT_ESTIMATE_SUBJECT,
+          subject: defaultEstimateSubject(toJstDateValue(new Date())),
           note: "",
           taxMode: "EX",
           lines: [],

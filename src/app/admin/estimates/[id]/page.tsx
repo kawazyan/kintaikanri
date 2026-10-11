@@ -88,7 +88,7 @@ export default async function EstimateDetail({ params }: { params: Promise<{ id:
         <PdfPreview url={`/estimate/${e.id}/pdf?t=${e.updatedAt.getTime()}`} title="見積書" />
       </section>
 
-      {e.status === "SAVED" && <EstimateActions estimateId={e.id} recipients={recipients} total={e.totalInclTax} clientName={e.client?.name || e.addressee || ""} />}
+      <EstimateActions estimateId={e.id} recipients={recipients} total={e.totalInclTax} clientName={e.client?.name || e.addressee || ""} sent={e.status === "SENT"} />
     </main>
   );
 }

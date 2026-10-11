@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatJst } from "@/lib/time";
 import { AdminNav } from "../admin-nav";
+import { RowDeleteButton } from "./row-delete-button";
 
 export default async function EstimatesPage() {
   await requireAdmin();
@@ -24,17 +25,20 @@ export default async function EstimatesPage() {
       <div className="mt-6 space-y-3">
         {estimates.length === 0 && <p className="rounded-2xl border border-dashed border-slate-700 p-4 text-sm text-slate-500">見積書はまだありません。</p>}
         {estimates.map((e) => (
-          <Link key={e.id} href={`/admin/estimates/${e.id}`} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-700 bg-slate-900 p-5">
-            <div>
+          <div key={e.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-700 bg-slate-900 p-5">
+            <Link href={`/admin/estimates/${e.id}`} className="min-w-0 flex-1">
               <p className="font-black">
                 {[e.client?.name || e.addressee, e.storeName, e.subject].filter(Boolean).join(" ・ ") || "（内容未入力）"}
               </p>
               <p className="text-xs text-slate-400">
                 {e.estimateNumber} ・ 発行日 {e.issuedDate} ・ {e.status === "SENT" ? `送付済み ${e.sentAt ? formatJst(e.sentAt) : ""}` : "保存済み（未送付）"}
               </p>
+            </Link>
+            <div className="flex items-center gap-4">
+              <p className="text-lg font-black">¥{e.totalInclTax.toLocaleString()}</p>
+              <RowDeleteButton id={e.id} estimateNumber={e.estimateNumber} label={e.client?.name || e.addressee || ""} total={e.totalInclTax} sent={e.status === "SENT"} />
             </div>
-            <p className="text-lg font-black">¥{e.totalInclTax.toLocaleString()}</p>
-          </Link>
+          </div>
         ))}
       </div>
     </main>

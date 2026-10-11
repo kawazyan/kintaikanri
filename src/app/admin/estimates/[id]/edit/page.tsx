@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { invoiceRecipients } from "@/lib/invoice-defaults";
@@ -11,7 +11,6 @@ export default async function EditEstimatePage({ params }: { params: Promise<{ i
   const { id } = await params;
   const e = await prisma.estimate.findUnique({ where: { id }, include: { lines: { orderBy: { sortOrder: "asc" } } } });
   if (!e) notFound();
-  if (e.status !== "SAVED") redirect(`/admin/estimates/${id}`);
 
   const [clients, admins] = await Promise.all([
     // 取引先が無効になっていても、この見積書の取引先は選べるようにする。
@@ -29,6 +28,7 @@ export default async function EditEstimatePage({ params }: { params: Promise<{ i
       <EstimateForm
         existingId={id}
         existingNumber={e.estimateNumber}
+        alreadySent={e.status === "SENT"}
         clients={clients.map((c) => ({ id: c.id, name: c.name, emails: invoiceRecipients(c), cc }))}
         initial={{
           clientId: e.clientId ?? "",

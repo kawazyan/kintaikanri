@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   computeEstimateTotals,
+  defaultEstimateSubject,
   estimateNumberPrefix,
   estimatePdfFileName,
   estimateUnitExTax,
@@ -107,4 +108,14 @@ test("送信先: 手入力があればそれを使い、なければ取引先の
 
 test("PDFファイル名", () => {
   assert.equal(estimatePdfFileName("KJ-見積-202610-001"), "御見積書_KJ-見積-202610-001_株式会社K.J.pdf");
+});
+
+test("件名の自動入力は「発行日の翌月」(12月は1月、正しくない日付は空)", () => {
+  assert.equal(defaultEstimateSubject("2026-10-12"), "11月分お見積りに関して");
+  assert.equal(defaultEstimateSubject("2026-12-31"), "1月分お見積りに関して");
+  assert.equal(defaultEstimateSubject("2026-01-01"), "2月分お見積りに関して");
+  assert.equal(defaultEstimateSubject("2026-11-30"), "12月分お見積りに関して");
+  assert.equal(defaultEstimateSubject(""), "");
+  assert.equal(defaultEstimateSubject("2026-02-30"), "");
+  assert.equal(defaultEstimateSubject(null), "");
 });

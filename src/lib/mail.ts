@@ -37,6 +37,7 @@ export async function sendMail(params: {
 export async function sendMailStrict(params: {
   to: string[];
   cc?: string[];
+  bcc?: string[];
   subject: string;
   text: string;
   attachments?: { filename: string; content: Buffer }[];
@@ -47,6 +48,7 @@ export async function sendMailStrict(params: {
     from,
     to: params.to,
     cc: params.cc && params.cc.length ? params.cc : undefined,
+    bcc: params.bcc && params.bcc.length ? params.bcc : undefined,
     subject: params.subject,
     text: params.text,
     // Buffer をそのまま渡すとJSON化の際にオブジェクトになってしまうため、base64文字列で渡す。

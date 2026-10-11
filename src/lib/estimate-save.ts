@@ -78,13 +78,12 @@ export async function createEstimate(input: EstimateInput) {
   throw new Error("見積番号を付けられませんでした。もう一度お試しください。");
 }
 
-// 保存済み(未送付)の見積書を直す。見積番号は変わらない(発行日の年月を変えても同じ)。送付済みの見積書は直せない。
+// 見積書を直す(保存済みも送付済みも可)。見積番号・状態は変わらない(発行日の年月を変えても同じ)。送付済みを直しても、再送するまで相手には届かない。
 export async function updateEstimate(id: string, input: EstimateInput) {
   const problem = validateEstimateInput(input);
   if (problem) throw new Error(problem);
   const current = await prisma.estimate.findUnique({ where: { id }, select: { status: true, estimateNumber: true } });
   if (!current) throw new Error("見積書が見つかりません。");
-  if (current.status !== "SAVED") throw new Error("送付済みの見積書は修正できません。");
   const { rows, ...data } = normalize(input);
   await assertClientExists(data.clientId);
 
