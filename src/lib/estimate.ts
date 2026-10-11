@@ -1,4 +1,5 @@
 import { computeInvoiceTotals, splitInclusiveTax } from "@/lib/billing";
+import { splitEmails } from "@/lib/invoice-defaults";
 
 // 見積書の純粋なロジック(DB・画面に依存しない。テストできる範囲)。
 // 請求書(invoice-*.ts)とは別。請求書の計算・画面・PDFには影響しない。
@@ -13,10 +14,14 @@ export type EstimateLineInput = {
   unitPrice: number;
 };
 
+// 必須の項目はない(取引先・宛名・件名・品目なども空のまま保存できる)。
+// 入力した値の形が正しくないとき(日付・数量・単価・メールアドレス)だけ、保存できない。
 export type EstimateInput = {
-  clientId: string;
-  issuedDate: string; // YYYY-MM-DD
-  addressee: string;
+  clientId?: string; // 取引先(任意)
+  issuedDate?: string; // YYYY-MM-DD。空なら今日(日本時間)
+  addressee: string; // 宛名(会社名)
+  storeName?: string; // 店舗名(宛名の下に表示)
+  recipientEmails?: string; // 送信先メールアドレス(手入力。複数可。あれば取引先の登録より優先)
   subject: string;
   note?: string;
   taxMode: EstimateTaxMode;
@@ -57,28 +62,37 @@ export function computeEstimateTotals(mode: EstimateTaxMode, lines: Pick<Estimat
   return computeInvoiceTotals(lines.map((l) => ({ quantity: l.quantity, unitPriceExTax: estimateUnitExTax(mode, l.unitPrice) })));
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function isRealDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const d = new Date(`${value}T00:00:00Z`);
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
 }
 
-// 入力の検査。問題があれば画面に出すメッセージを返す(なければ null)。
+// 入力の検査。問題があれば画面に出すメッセージを返す(なければ null)。必須項目はない。
 export function validateEstimateInput(input: EstimateInput): string | null {
-  if (!input.clientId) return "取引先を選択してください。";
-  if (!isRealDate(input.issuedDate)) return "発行日は、正しい日付で入力してください。";
-  if (!input.addressee.trim()) return "宛名を入力してください。";
-  if (!input.subject.trim()) return "件名を入力してください。";
+  if (input.issuedDate?.trim() && !isRealDate(input.issuedDate.trim())) return "発行日は、正しい日付で入力してください。";
   if (input.taxMode !== "EX" && input.taxMode !== "INCL") return "単価の入力方法（税別・税込）を選んでください。";
-  const filled = input.lines.filter((l) => l.label.trim() || l.unitPrice);
-  if (!filled.length) return "品目を1行以上入力してください。";
-  for (const l of filled) {
-    const label = l.label.trim();
-    if (!label) return "品目に、名前のない行があります。名前を入力するか、行を削除してください。";
-    if (!Number.isInteger(l.quantity) || l.quantity < 1) return `品目「${label}」の数量は1以上の整数で入力してください。`;
-    if (!Number.isInteger(l.unitPrice) || l.unitPrice < 0) return `品目「${label}」の単価は0以上の整数で入力してください。`;
+  const badTo = splitEmails(input.recipientEmails).find((x) => !EMAIL_RE.test(x));
+  if (badTo) return `送信先メールアドレスの形式が正しくありません: ${badTo}`;
+  for (const l of filledLines(input.lines)) {
+    const name = l.label.trim() || "（内容なし）";
+    if (!Number.isInteger(l.quantity) || l.quantity < 1) return `「${name}」の数量は1以上の整数で入力してください。`;
+    if (!Number.isInteger(l.unitPrice) || l.unitPrice < 0) return `「${name}」の単価は0以上の整数で入力してください。`;
   }
   return null;
+}
+
+// 何か入力のある行だけ(内容・補足・単価のどれもない行は無視する)。
+export function filledLines<T extends Pick<EstimateLineInput, "label" | "unitPrice"> & { description?: string }>(lines: T[]) {
+  return lines.filter((l) => l.label.trim() || l.description?.trim() || l.unitPrice);
+}
+
+// 送信先: 見積書に手入力した送信先メールアドレスがあればそれを使い、なければ取引先に登録された請求用の宛先を使う。
+export function resolveEstimateRecipients(manual: string | null | undefined, clientRecipients: string[]) {
+  const typed = [...new Set(splitEmails(manual))];
+  return typed.length ? typed : clientRecipients;
 }
 
 // 添付PDFのファイル名。例: 御見積書_KJ-見積-202610-001_株式会社K.J.pdf(ファイル名に使えない文字は _ にする)

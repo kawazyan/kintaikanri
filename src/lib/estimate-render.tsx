@@ -12,6 +12,7 @@ export async function renderEstimatePdf(id: string) {
   const data: EstimateDocData = {
     estimateNumber: estimate.estimateNumber,
     addressee: estimate.addressee,
+    storeName: estimate.storeName,
     subject: estimate.subject,
     issuedAtLabel: estimate.issuedDate.replaceAll("-", "/"),
     lines: estimate.lines.map((l) => ({ label: l.label, description: l.description, quantity: l.quantity, unitPriceExTax: l.unitPriceExTax })),

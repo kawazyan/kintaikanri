@@ -20,16 +20,15 @@ export default async function NewEstimatePage() {
       <AdminNav />
       <Link href="/admin/estimates" className="text-sm text-blue-400 underline">← 見積書の一覧へ戻る</Link>
       <h1 className="mt-3 text-2xl font-black">見積書を作成</h1>
-      <p className="mt-1 text-sm text-slate-400">見積番号は「KJ-見積-年月-連番」で自動で付きます。有効期限の欄はありません。</p>
+      <p className="mt-1 text-sm text-slate-400">見積番号は「KJ-見積-年月-連番」で自動で付きます。入力は全て任意で、空のままでも保存できます。</p>
       <EstimateForm
-        clients={clients.map((c) => {
-          const to = invoiceRecipients(c).join(", ");
-          return { id: c.id, name: c.name, recipients: to ? `${to}${cc}` : "" };
-        })}
+        clients={clients.map((c) => ({ id: c.id, name: c.name, emails: invoiceRecipients(c), cc }))}
         initial={{
           clientId: "",
           issuedDate: toJstDateValue(new Date()),
           addressee: "",
+          storeName: "",
+          recipientEmails: "",
           subject: DEFAULT_ESTIMATE_SUBJECT,
           note: "",
           taxMode: "EX",

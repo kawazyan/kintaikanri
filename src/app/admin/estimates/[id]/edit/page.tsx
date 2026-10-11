@@ -15,7 +15,7 @@ export default async function EditEstimatePage({ params }: { params: Promise<{ i
 
   const [clients, admins] = await Promise.all([
     // 取引先が無効になっていても、この見積書の取引先は選べるようにする。
-    prisma.client.findMany({ where: { OR: [{ active: true }, { id: e.clientId }] }, orderBy: { name: "asc" } }),
+    prisma.client.findMany({ where: { OR: [{ active: true }, ...(e.clientId ? [{ id: e.clientId }] : [])] }, orderBy: { name: "asc" } }),
     prisma.adminEmail.findMany({ select: { email: true } }),
   ]);
   const cc = admins.length ? `（CC: ${admins.map((a) => a.email).join(", ")}）` : "";
@@ -29,14 +29,13 @@ export default async function EditEstimatePage({ params }: { params: Promise<{ i
       <EstimateForm
         existingId={id}
         existingNumber={e.estimateNumber}
-        clients={clients.map((c) => {
-          const to = invoiceRecipients(c).join(", ");
-          return { id: c.id, name: c.name, recipients: to ? `${to}${cc}` : "" };
-        })}
+        clients={clients.map((c) => ({ id: c.id, name: c.name, emails: invoiceRecipients(c), cc }))}
         initial={{
-          clientId: e.clientId,
+          clientId: e.clientId ?? "",
           issuedDate: e.issuedDate,
           addressee: e.addressee,
+          storeName: e.storeName ?? "",
+          recipientEmails: e.recipientEmails ?? "",
           subject: e.subject,
           note: e.note ?? "",
           taxMode: incl ? "INCL" : "EX",

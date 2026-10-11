@@ -5,9 +5,11 @@ import {
   estimateNumberPrefix,
   estimatePdfFileName,
   estimateUnitExTax,
+  filledLines,
   formatEstimateNumber,
   isRealDate,
   nextEstimateSeq,
+  resolveEstimateRecipients,
   validateEstimateInput,
   type EstimateInput,
 } from "./estimate";
@@ -65,16 +67,42 @@ test("入力が正しければ null", () => {
   assert.equal(validateEstimateInput({ ...base, lines: [...base.lines, { label: "", quantity: 1, unitPrice: 0 }] }), null);
 });
 
-test("入力の誤りは理由を返す", () => {
-  assert.match(validateEstimateInput({ ...base, clientId: "" })!, /取引先/);
+test("必須項目はない(取引先・宛名・件名・店舗名・送信先・発行日・品目が全て空でも保存できる)", () => {
+  assert.equal(validateEstimateInput({ addressee: "", subject: "", taxMode: "EX", lines: [] }), null);
+  assert.equal(validateEstimateInput({ ...base, clientId: undefined, issuedDate: "", addressee: "", subject: "", storeName: "", recipientEmails: "", lines: [] }), null);
+  // 内容(品名)がなくても、単価だけの行は保存できる
+  assert.equal(validateEstimateInput({ ...base, lines: [{ label: "", quantity: 1, unitPrice: 100 }] }), null);
+});
+
+test("入力した値の形が正しくないときだけ理由を返す", () => {
   assert.match(validateEstimateInput({ ...base, issuedDate: "2026-02-30" })!, /発行日/);
-  assert.match(validateEstimateInput({ ...base, addressee: " " })!, /宛名/);
-  assert.match(validateEstimateInput({ ...base, subject: "" })!, /件名/);
-  assert.match(validateEstimateInput({ ...base, lines: [] })!, /品目を1行以上/);
-  assert.match(validateEstimateInput({ ...base, lines: [{ label: "", quantity: 1, unitPrice: 100 }] })!, /名前のない行/);
+  assert.match(validateEstimateInput({ ...base, recipientEmails: "abc" })!, /送信先メールアドレス/);
+  assert.match(validateEstimateInput({ ...base, recipientEmails: "a@example.com, bad" })!, /bad/);
   assert.match(validateEstimateInput({ ...base, lines: [{ label: "a", quantity: 0, unitPrice: 100 }] })!, /数量/);
   assert.match(validateEstimateInput({ ...base, lines: [{ label: "a", quantity: 1, unitPrice: -1 }] })!, /単価/);
   assert.match(validateEstimateInput({ ...base, lines: [{ label: "a", quantity: 1, unitPrice: 1.5 }] })!, /単価/);
+});
+
+test("送信先メールアドレスは複数(カンマ・読点・改行区切り)を受け付ける", () => {
+  assert.equal(validateEstimateInput({ ...base, recipientEmails: "a@example.com, b@example.co.jp\nc@example.com" }), null);
+});
+
+test("何か入力のある行だけを対象にする", () => {
+  const rows = [
+    { label: "", quantity: 1, unitPrice: 0 },
+    { label: "a", quantity: 1, unitPrice: 0 },
+    { label: "", description: "補足のみ", quantity: 1, unitPrice: 0 },
+    { label: "", quantity: 1, unitPrice: 5 },
+  ];
+  assert.equal(filledLines(rows).length, 3);
+});
+
+test("送信先: 手入力があればそれを使い、なければ取引先の登録を使う", () => {
+  assert.deepEqual(resolveEstimateRecipients("x@example.com, y@example.com", ["reg@example.com"]), ["x@example.com", "y@example.com"]);
+  assert.deepEqual(resolveEstimateRecipients("x@example.com, x@example.com", []), ["x@example.com"]);
+  assert.deepEqual(resolveEstimateRecipients("", ["reg@example.com"]), ["reg@example.com"]);
+  assert.deepEqual(resolveEstimateRecipients(null, ["reg@example.com"]), ["reg@example.com"]);
+  assert.deepEqual(resolveEstimateRecipients("  ", []), []);
 });
 
 test("PDFファイル名", () => {

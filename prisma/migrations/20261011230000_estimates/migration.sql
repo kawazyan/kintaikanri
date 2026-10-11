@@ -5,12 +5,14 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS "Estimate" (
   "id" TEXT NOT NULL,
-  "clientId" TEXT NOT NULL,
+  "clientId" TEXT,
   "estimateNumber" TEXT NOT NULL,
   "status" "EstimateStatus" NOT NULL DEFAULT 'SAVED',
   "issuedDate" TEXT NOT NULL,
-  "addressee" TEXT NOT NULL,
-  "subject" TEXT NOT NULL,
+  "addressee" TEXT NOT NULL DEFAULT '',
+  "subject" TEXT NOT NULL DEFAULT '',
+  "storeName" TEXT,
+  "recipientEmails" TEXT,
   "note" TEXT,
   "taxMode" TEXT NOT NULL DEFAULT 'EX',
   "subtotalExTax" INTEGER NOT NULL DEFAULT 0,
@@ -21,7 +23,7 @@ CREATE TABLE IF NOT EXISTS "Estimate" (
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "Estimate_pkey" PRIMARY KEY ("id"),
-  CONSTRAINT "Estimate_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE RESTRICT ON UPDATE CASCADE
+  CONSTRAINT "Estimate_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "Estimate_estimateNumber_key" ON "Estimate"("estimateNumber");
 CREATE INDEX IF NOT EXISTS "Estimate_clientId_issuedDate_idx" ON "Estimate"("clientId", "issuedDate");

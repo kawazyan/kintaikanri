@@ -16,8 +16,9 @@ const HAIR = "#d4d8df";
 
 export type EstimateDocData = {
   estimateNumber: string;
-  addressee: string;
-  subject: string;
+  addressee: string; // 空でもよい
+  storeName: string | null; // 宛名の下に表示(空なら出さない)
+  subject: string; // 空でもよい
   issuedAtLabel: string; // 例 2026/10/11
   lines: { label: string; description: string | null; quantity: number; unitPriceExTax: number }[];
   subtotalExTax: number;
@@ -35,6 +36,7 @@ const s = StyleSheet.create({
   top: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginTop: 26 },
   left: { width: "55%" },
   addressee: { fontSize: 15, paddingBottom: 5, borderBottomWidth: 1, borderBottomColor: INK },
+  storeName: { marginTop: 6, fontSize: 10.5 },
   subjectLabel: { marginTop: 16, fontSize: 8, color: MUTED },
   subject: { marginTop: 2, fontSize: 10.5 },
   intro: { marginTop: 14, fontSize: 9, color: MUTED },
@@ -68,16 +70,21 @@ const s = StyleSheet.create({
 export function EstimateDocument({ data }: { data: EstimateDocData }) {
   const note = data.note?.trim();
   return (
-    <Document title={`御見積書 ${data.addressee} ${data.subject}`}>
+    <Document title={`御見積書 ${data.addressee} ${data.subject}`.trim()}>
       <Page size="A4" style={s.page}>
         <Text style={s.title}>御見積書</Text>
         <View style={s.titleRule} />
 
         <View style={s.top}>
           <View style={s.left}>
-            <Text style={s.addressee}>{data.addressee}　御中</Text>
-            <Text style={s.subjectLabel}>件名</Text>
-            <Text style={s.subject}>{data.subject}</Text>
+            <Text style={s.addressee}>{data.addressee ? `${data.addressee}　御中` : " "}</Text>
+            {data.storeName ? <Text style={s.storeName}>{data.storeName}</Text> : null}
+            {data.subject ? (
+              <>
+                <Text style={s.subjectLabel}>件名</Text>
+                <Text style={s.subject}>{data.subject}</Text>
+              </>
+            ) : null}
             <Text style={s.intro}>下記の通りお見積り申し上げます。</Text>
           </View>
           {/* eslint-disable-next-line jsx-a11y/alt-text */}

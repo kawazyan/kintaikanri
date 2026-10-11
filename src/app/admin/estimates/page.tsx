@@ -27,7 +27,7 @@ export default async function EstimatesPage() {
           <Link key={e.id} href={`/admin/estimates/${e.id}`} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-700 bg-slate-900 p-5">
             <div>
               <p className="font-black">
-                {e.client.name} ・ {e.subject}
+                {[e.client?.name || e.addressee, e.storeName, e.subject].filter(Boolean).join(" ・ ") || "（内容未入力）"}
               </p>
               <p className="text-xs text-slate-400">
                 {e.estimateNumber} ・ 発行日 {e.issuedDate} ・ {e.status === "SENT" ? `送付済み ${e.sentAt ? formatJst(e.sentAt) : ""}` : "保存済み（未送付）"}

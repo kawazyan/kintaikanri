@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatJst } from "@/lib/time";
 import { invoiceRecipients } from "@/lib/invoice-defaults";
+import { resolveEstimateRecipients } from "@/lib/estimate";
 import { AdminNav } from "../../admin-nav";
 import { PdfPreview } from "../../invoices/[id]/pdf-preview";
 import { EstimateActions } from "./estimate-actions";
@@ -17,8 +18,10 @@ export default async function EstimateDetail({ params }: { params: Promise<{ id:
   if (!e) notFound();
 
   const admins = await prisma.adminEmail.findMany({ select: { email: true } });
-  const to = invoiceRecipients(e.client).join(", ");
+  // 送信先: 見積書に手入力した送信先メールアドレスがあればそれ、なければ取引先の登録。
+  const to = resolveEstimateRecipients(e.recipientEmails, e.client ? invoiceRecipients(e.client) : []).join(", ");
   const recipients = to ? `${to}${admins.length ? `（CC: ${admins.map((a) => a.email).join(", ")}）` : ""}` : "";
+  const title = [e.client?.name || e.addressee, e.storeName, e.subject].filter(Boolean).join(" / ") || "（内容未入力）";
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 text-slate-100">
@@ -28,7 +31,7 @@ export default async function EstimateDetail({ params }: { params: Promise<{ id:
         <div>
           <p className="text-sm text-slate-400">{e.estimateNumber}</p>
           <h1 className="text-2xl font-black">
-            {e.client.name} / {e.subject}
+            {title}
           </h1>
           <p className="mt-1 text-xs text-slate-500">発行日 {e.issuedDate}</p>
         </div>
@@ -85,7 +88,7 @@ export default async function EstimateDetail({ params }: { params: Promise<{ id:
         <PdfPreview url={`/estimate/${e.id}/pdf?t=${e.updatedAt.getTime()}`} title="見積書" />
       </section>
 
-      {e.status === "SAVED" && <EstimateActions estimateId={e.id} recipients={recipients} total={e.totalInclTax} clientName={e.client.name} />}
+      {e.status === "SAVED" && <EstimateActions estimateId={e.id} recipients={recipients} total={e.totalInclTax} clientName={e.client?.name || e.addressee || ""} />}
     </main>
   );
 }

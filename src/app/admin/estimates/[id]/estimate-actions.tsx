@@ -30,7 +30,7 @@ export function EstimateActions({ estimateId, recipients, total, clientName }: {
     run(() => sendEstimate(estimateId));
   }
   function remove() {
-    if (!window.confirm(`${clientName} の見積書（税込 ¥${total.toLocaleString("ja-JP")}）を削除します。元に戻せません。よろしいですか？`)) return;
+    if (!window.confirm(`${clientName ? `${clientName} の` : "この"}見積書（税込 ¥${total.toLocaleString("ja-JP")}）を削除します。元に戻せません。よろしいですか？`)) return;
     run(() => deleteEstimate(estimateId), () => router.push("/admin/estimates"));
   }
 

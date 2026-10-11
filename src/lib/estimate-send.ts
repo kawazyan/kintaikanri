@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { sendMailStrict } from "@/lib/mail";
 import { renderEstimatePdf } from "@/lib/estimate-render";
 import { invoiceRecipients } from "@/lib/invoice-defaults";
-import { estimatePdfFileName } from "@/lib/estimate";
+import { estimatePdfFileName, resolveEstimateRecipients } from "@/lib/estimate";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -17,7 +17,8 @@ const MAIL_SIGNATURE = [
   ">>>>>>>>>>>>>>>>>>>>>>>>>>>>",
 ];
 
-// 送付: 保存済み → 送付済み。取引先の請求用メール宛に、見積書PDFを添付して送る(管理者アドレスをCC)。
+// 送付: 保存済み → 送付済み。見積書PDFを添付して送る(管理者アドレスをCC)。
+// 送信先は、見積書に手入力した送信先メールアドレスがあればそれ、なければ取引先の請求用の宛先。どちらもなければ送らない。
 // 送信に成功したときだけ送付済みにする(失敗したら保存済みのまま。何も変わらない)。
 // 呼び出すのは画面の「送付」ボタンを押したときだけ。自動では送らない。
 export async function sendSavedEstimate(id: string) {
@@ -25,12 +26,12 @@ export async function sendSavedEstimate(id: string) {
   if (!estimate) throw new Error("見積書が見つかりません。");
   if (estimate.status !== "SAVED") throw new Error("保存済み（未送付）の見積書だけ送付できます。");
 
-  const to = invoiceRecipients(estimate.client);
+  const to = resolveEstimateRecipients(estimate.recipientEmails, estimate.client ? invoiceRecipients(estimate.client) : []);
   if (!to.length) {
-    throw new Error(`取引先「${estimate.client.name}」にメールアドレスが登録されていません。取引先窓口の画面で登録してから、もう一度送付してください。`);
+    throw new Error("送信先のメールアドレスがありません。見積書の「送信先メールアドレス」を入力するか、取引先を選んで（取引先窓口でメールアドレスを登録して）から、もう一度送付してください。");
   }
   const badTo = to.find((x) => !EMAIL_RE.test(x));
-  if (badTo) throw new Error(`取引先のメールアドレスの形式が正しくありません: ${badTo}`);
+  if (badTo) throw new Error(`送信先メールアドレスの形式が正しくありません: ${badTo}`);
 
   const admins = await prisma.adminEmail.findMany({ select: { email: true } });
   const cc = [...new Set(admins.map((a) => a.email.trim()).filter((x) => EMAIL_RE.test(x) && !to.includes(x)))];
@@ -38,14 +39,14 @@ export async function sendSavedEstimate(id: string) {
   const pdf = await renderEstimatePdf(id);
   if (!pdf) throw new Error("PDFの作成に失敗しました。");
 
-  const subject = `【御見積書】${estimate.subject}（株式会社K.J）`;
+  // 宛名・件名が空でも送れるようにする(空のときは、その行を省く)。
+  const subject = `【御見積書】${estimate.subject ? `${estimate.subject}` : estimate.estimateNumber}（株式会社K.J）`;
   const text = [
-    `${estimate.addressee} 御中`,
-    "",
+    ...(estimate.addressee ? [`${estimate.addressee} 御中`, ""] : []),
     "いつも大変お世話になっております。",
     "株式会社K.Jです。",
     "",
-    `「${estimate.subject}」の御見積書をお送りいたします。`,
+    estimate.subject ? `「${estimate.subject}」の御見積書をお送りいたします。` : "御見積書をお送りいたします。",
     "添付ファイルをご確認くださいますようお願い申し上げます。",
     "",
     `お見積金額（税込）：¥${estimate.totalInclTax.toLocaleString("ja-JP")}`,

@@ -3,14 +3,18 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveEstimate } from "./actions";
-import { computeEstimateTotals, DEFAULT_ESTIMATE_SUBJECT, type EstimateTaxMode } from "@/lib/estimate";
+import { computeEstimateTotals, DEFAULT_ESTIMATE_SUBJECT, resolveEstimateRecipients, type EstimateTaxMode } from "@/lib/estimate";
+import { splitEmails } from "@/lib/invoice-defaults";
 
-export type EstimateClientOption = { id: string; name: string; recipients: string };
+// emails: 取引先に登録された請求用の宛先。cc: 管理者CCの表示用(例「（CC: a@b.c）」)。
+export type EstimateClientOption = { id: string; name: string; emails: string[]; cc: string };
 
 export type EstimateFormInitial = {
   clientId: string;
   issuedDate: string;
   addressee: string;
+  storeName: string;
+  recipientEmails: string;
   subject: string;
   note: string;
   taxMode: EstimateTaxMode;
@@ -57,6 +61,8 @@ export function EstimateForm({
   const [clientId, setClientId] = useState(initial.clientId);
   const [issuedDate, setIssuedDate] = useState(initial.issuedDate);
   const [addressee, setAddressee] = useState(initial.addressee);
+  const [storeName, setStoreName] = useState(initial.storeName);
+  const [recipientEmails, setRecipientEmails] = useState(initial.recipientEmails);
   const [subject, setSubject] = useState(initial.subject || DEFAULT_ESTIMATE_SUBJECT);
   const [note, setNote] = useState(initial.note);
   const [taxMode, setTaxMode] = useState<EstimateTaxMode>(initial.taxMode);
@@ -65,6 +71,9 @@ export function EstimateForm({
   const [pending, startTransition] = useTransition();
 
   const client = clients.find((c) => c.id === clientId);
+  // 送付先: 手入力した送信先メールアドレスがあればそれ、なければ取引先の登録(どちらもなければ未設定)。
+  const toList = resolveEstimateRecipients(recipientEmails, client?.emails ?? []);
+  const toText = toList.length ? `${toList.join(", ")}${client?.cc && !splitEmails(recipientEmails).length ? client.cc : ""}` : "";
   const totals = computeEstimateTotals(taxMode, lines.filter((l) => l.label.trim() || l.unitPrice));
   const patch = (i: number, p: Partial<Line>) => setLines(lines.map((l, li) => (li === i ? { ...l, ...p } : l)));
 
@@ -79,10 +88,8 @@ export function EstimateForm({
   function submit(sendAfter: boolean) {
     setMsg(null);
     if (sendAfter) {
-      if (!client) return setMsg({ ok: false, text: "取引先を選択してください。" });
-      const ok = window.confirm(
-        `見積書（税込 ¥${totals.totalInclTax.toLocaleString("ja-JP")}）を保存して、\n${client.recipients || "（取引先のメールアドレス未登録）"}\nへメール送付します。よろしいですか？`
-      );
+      if (!toList.length) return setMsg({ ok: false, text: "送付するには、送信先メールアドレスを入力するか、メールアドレスが登録された取引先を選んでください。（「保存だけ」なら入力なしで保存できます）" });
+      const ok = window.confirm(`見積書（税込 ¥${totals.totalInclTax.toLocaleString("ja-JP")}）を保存して、\n${toText}\nへメール送付します。よろしいですか？`);
       if (!ok) return;
     }
     startTransition(async () => {
@@ -91,6 +98,8 @@ export function EstimateForm({
           clientId,
           issuedDate,
           addressee,
+          storeName,
+          recipientEmails,
           subject,
           note,
           taxMode,
@@ -117,9 +126,9 @@ export function EstimateForm({
       <section className="rounded-2xl border border-slate-700 bg-slate-900 p-5">
         <div className="grid gap-3 md:grid-cols-2">
           <label className="text-sm text-slate-300">
-            取引先
+            取引先（任意）
             <select value={clientId} onChange={(e) => chooseClient(e.target.value)} className={`${input} mt-1`}>
-              <option value="">取引先を選択</option>
+              <option value="">選ばない</option>
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -132,8 +141,16 @@ export function EstimateForm({
             <input type="date" value={issuedDate} onChange={(e) => setIssuedDate(e.target.value)} className={`${input} mt-1`} />
           </label>
           <label className="text-sm text-slate-300">
-            宛名（「御中」は自動で付きます）
+            会社名（宛名。「御中」は自動で付きます）
             <input value={addressee} onChange={(e) => setAddressee(e.target.value)} className={`${input} mt-1`} />
+          </label>
+          <label className="text-sm text-slate-300">
+            店舗名
+            <input value={storeName} onChange={(e) => setStoreName(e.target.value)} className={`${input} mt-1`} />
+          </label>
+          <label className="text-sm text-slate-300 md:col-span-2">
+            送信先メールアドレス（複数はカンマ区切り。空なら取引先の登録を使います）
+            <input type="text" inputMode="email" value={recipientEmails} onChange={(e) => setRecipientEmails(e.target.value)} placeholder="例: example@example.com" className={`${input} mt-1`} />
           </label>
           <label className="text-sm text-slate-300">
             件名
@@ -162,7 +179,7 @@ export function EstimateForm({
           {lines.map((l, i) => (
             <div key={l.key} className="rounded-xl border border-slate-700 p-3">
               <div className="grid gap-2 md:grid-cols-[1fr_90px_160px_auto]">
-                <input value={l.label} onChange={(e) => patch(i, { label: e.target.value })} placeholder="品名" className={input} />
+                <input value={l.label} onChange={(e) => patch(i, { label: e.target.value })} placeholder="内容" className={input} />
                 <NumInput value={l.quantity} onChange={(n) => patch(i, { quantity: n })} className={`${input} text-right`} />
                 <NumInput value={l.unitPrice} onChange={(n) => patch(i, { unitPrice: n })} className={`${input} text-right`} />
                 <button type="button" onClick={() => setLines(lines.filter((_, li) => li !== i))} disabled={lines.length <= 1} className="rounded-lg border border-red-700 px-3 py-2 text-sm font-black text-red-300 disabled:opacity-30">
@@ -170,7 +187,7 @@ export function EstimateForm({
                 </button>
               </div>
               <input value={l.description} onChange={(e) => patch(i, { description: e.target.value })} placeholder="補足（任意）" className={`${input} mt-2`} />
-              <p className="mt-1 text-xs text-slate-500">数量 ／ 単価（{taxMode === "EX" ? "税別" : "税込"}）</p>
+              <p className="mt-1 text-xs text-slate-500">内容 ／ 数量 ／ 単価（{taxMode === "EX" ? "税別" : "税込"}）</p>
             </div>
           ))}
           <button type="button" onClick={() => setLines([...lines, ...withKey([{ label: "", description: "", quantity: 1, unitPrice: 0 }])])} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-black text-white">
@@ -193,7 +210,7 @@ export function EstimateForm({
 
       <section className="rounded-2xl border border-slate-700 bg-slate-900 p-5">
         <p className="text-sm text-slate-300">「保存だけ」ではメールは送られません。「保存して送付」を押したときだけ、取引先へメールで送ります。</p>
-        <p className="mt-1 text-xs text-slate-500">送付先: {client ? client.recipients || "（取引先のメールアドレス未登録）" : "（取引先を選ぶと表示されます）"}</p>
+        <p className="mt-1 text-xs text-slate-500">送付先: {toText || "（未設定。送信先メールアドレスを入力するか、取引先を選んでください）"}</p>
         <div className="mt-3 flex flex-wrap gap-3">
           <button type="button" onClick={() => submit(false)} disabled={pending} className="rounded-2xl bg-[#14283b] px-5 py-3 text-sm font-black text-white disabled:opacity-50">
             {pending ? "処理中..." : "保存だけ"}

@@ -847,13 +847,15 @@ enum EstimateStatus {
 // 見積書。請求書(Invoice)とは別の独立したテーブル(請求の計算・画面・PDFには影響しない)。
 model Estimate {
   id String @id @default(cuid())
-  clientId String
-  client Client @relation(fields: [clientId], references: [id])
+  clientId String? // 取引先(任意。選ばなくても保存できる)
+  client Client? @relation(fields: [clientId], references: [id])
   estimateNumber String @unique // KJ-見積-YYYYMM-連番(YYYYMM は発行日の年月)
   status EstimateStatus @default(SAVED)
   issuedDate String // 発行日 YYYY-MM-DD
-  addressee String // 宛名
-  subject String // 件名
+  addressee String @default("") // 宛名(会社名)。必須ではない
+  subject String @default("") // 件名。必須ではない
+  storeName String? // 店舗名(宛名の下に表示)
+  recipientEmails String? // 送信先メールアドレス(手入力。カンマ区切り。あれば取引先の登録より優先)
   note String? // 備考(任意)
   taxMode String @default("EX") // 単価の入力方法: EX=税別 / INCL=税込
   subtotalExTax Int @default(0)
