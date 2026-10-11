@@ -425,6 +425,7 @@ model Client {
   viewTokens ClientViewToken[]
   workOrders WorkOrder[]
   invoices Invoice[]
+  estimates Estimate[]
 }
 
 model ClientAccessToken {
@@ -836,4 +837,45 @@ model SimpleAttendanceEntry {
 
   @@unique([staffId, date, kind])
   @@index([date])
+}
+
+enum EstimateStatus {
+  SAVED // 保存済み(まだ取引先へ送っていない)
+  SENT // 取引先へメール送付済み
+}
+
+// 見積書。請求書(Invoice)とは別の独立したテーブル(請求の計算・画面・PDFには影響しない)。
+model Estimate {
+  id String @id @default(cuid())
+  clientId String
+  client Client @relation(fields: [clientId], references: [id])
+  estimateNumber String @unique // KJ-見積-YYYYMM-連番(YYYYMM は発行日の年月)
+  status EstimateStatus @default(SAVED)
+  issuedDate String // 発行日 YYYY-MM-DD
+  addressee String // 宛名
+  subject String // 件名
+  note String? // 備考(任意)
+  taxMode String @default("EX") // 単価の入力方法: EX=税別 / INCL=税込
+  subtotalExTax Int @default(0)
+  taxAmount Int @default(0)
+  totalInclTax Int @default(0)
+  sentAt DateTime? // 取引先へメール送信した日時
+  sentTo String? // 送信先(カンマ区切り。CC含む)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lines EstimateLine[]
+  @@index([clientId, issuedDate])
+}
+
+model EstimateLine {
+  id String @id @default(cuid())
+  estimateId String
+  estimate Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  sortOrder Int
+  label String
+  description String?
+  quantity Int @default(1)
+  unitPriceExTax Int // 税別単価(税込で入力したときは、税別に直した値)
+  unitPriceInclTax Int? // 税込で入力したときの、入力した税込単価
+  @@index([estimateId])
 }

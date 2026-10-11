@@ -76,6 +76,10 @@ export default async function InvoicesPage() {
       <AdminNav />
       <h1 className="text-2xl font-black">請求管理</h1>
       <p className="mt-1 text-sm text-slate-400">毎月1日に前月分の下書きが自動で作られます。下書き → 承認 → 送信 の順に進めます。</p>
+      <div className="mt-5 flex flex-wrap gap-3">
+        <Link href="/admin/estimates/new" className="rounded-xl bg-blue-600 px-5 py-3 font-black text-white">見積書を作成</Link>
+        <Link href="/admin/estimates" className="rounded-xl border border-slate-500 px-5 py-3 font-black text-slate-100">見積書の一覧</Link>
+      </div>
       <div className="mt-5">
         <CreateInvoiceButton clients={clients.map((c) => ({ id: c.id, name: c.name }))} />
       </div>
