@@ -16,7 +16,8 @@ export async function loadInvoiceDoc(id: string) {
     subject: invoice.subject?.trim() || defaultSubject(invoice.yearMonth),
     // 発行日は稼働月の月末日(例: 9月分 → 2026/09/30)。下書き・確定後とも同じ。
     issuedAtLabel: monthEndOf(invoice.yearMonth).replaceAll("-", "/"),
-    dueLabel: nextMonthEnd(monthEndOf(invoice.yearMonth)).replaceAll("-", "/"),
+    // お支払期限: 修正画面で選んだ日付。未設定なら稼働月の翌月末。
+    dueLabel: (invoice.dueDate?.trim() || nextMonthEnd(monthEndOf(invoice.yearMonth))).replaceAll("-", "/"),
     lines: invoice.lines.map((l) => ({
       label: l.label,
       description: l.description,

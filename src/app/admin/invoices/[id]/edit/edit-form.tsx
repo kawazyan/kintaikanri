@@ -4,9 +4,11 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveInvoiceEdit, type InvoiceEditPayload } from "../../actions";
 import { manualUnitExTax } from "@/lib/invoice-lines";
+import { monthEndOf, nextMonthEnd } from "@/lib/invoice-defaults";
 
 type Initial = {
   addressee: string;
+  dueDate: string;
   subject: string;
   note: string;
   amountExTax: number;
@@ -83,6 +85,7 @@ export function EditInvoiceForm({
   const router = useRouter();
   const [addressee, setAddressee] = useState(initial.addressee);
   const [subject, setSubject] = useState(initial.subject);
+  const [dueDate, setDueDate] = useState(initial.dueDate);
   const [note, setNote] = useState(initial.note);
   const [amount, setAmount] = useState(initial.amountExTax);
   const [lineMode, setLineMode] = useState<"AUTO" | "MANUAL">(initial.lineMode);
@@ -125,6 +128,7 @@ export function EditInvoiceForm({
   function payload(): InvoiceEditPayload {
     return {
       addressee,
+      dueDate,
       subject,
       note,
       amountExTax: initial.hasStatement ? undefined : Number(amount),
@@ -205,6 +209,22 @@ export function EditInvoiceForm({
             件名
             <input value={subject} onChange={(e) => setSubject(e.target.value)} className={`${input} mt-1`} />
           </label>
+          <div className={field}>
+            お支払（振込）期限
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={`${input} max-w-[200px]`} />
+              {[
+                ["当月末", monthEndOf(yearMonth)],
+                ["翌月末", nextMonthEnd(monthEndOf(yearMonth))],
+                ["翌々月末", nextMonthEnd(nextMonthEnd(monthEndOf(yearMonth)))],
+              ].map(([label, d]) => (
+                <button key={label} type="button" onClick={() => setDueDate(d)} className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${dueDate === d ? "border-blue-500 bg-blue-600 text-white" : "border-slate-600 text-slate-300"}`}>
+                  {label}（{d.slice(5).replace("-", "/")}）
+                </button>
+              ))}
+            </div>
+            <span className={hint}>請求書の「お支払期限」に載ります。最初は、稼働月の翌月末です。発行日（稼働月の月末日）より前にはできません。</span>
+          </div>
           <label className={field}>
             振込先情報・備考
             <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={6} className={`${input} mt-1`} />

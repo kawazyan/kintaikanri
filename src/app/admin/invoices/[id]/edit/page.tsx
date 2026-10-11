@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { DEFAULT_INVOICE_NOTE, defaultSubject, invoiceRecipients } from "@/lib/invoice-defaults";
+import { DEFAULT_INVOICE_NOTE, defaultSubject, invoiceRecipients, monthEndOf, nextMonthEnd } from "@/lib/invoice-defaults";
 import type { StatementSnapshot } from "@/lib/invoice-draft";
 import { buildInvoiceLines } from "@/lib/invoice-lines";
 import { AdminNav } from "../../../admin-nav";
@@ -38,6 +38,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
         recipients={recipients}
         initial={{
           addressee: i.addressee?.trim() || i.client.name,
+          dueDate: i.dueDate?.trim() || nextMonthEnd(monthEndOf(i.yearMonth)),
           subject: i.subject?.trim() || defaultSubject(i.yearMonth),
           note: i.note?.trim() ? i.note : DEFAULT_INVOICE_NOTE,
           amountExTax: i.subtotalExTax,

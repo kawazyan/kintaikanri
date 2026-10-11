@@ -43,6 +43,7 @@ export async function createCorrectionDraft(id: string) {
       ...totals,
       ...(statement ? { statement: statement as object } : {}),
       addressee: src.addressee,
+      dueDate: src.dueDate,
       subject: src.subject,
       note: src.note,
       lines: { create: lines },

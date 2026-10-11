@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { buildInvoiceDraft, computeManualStaff, statementBillableExTax, type StatementSnapshot } from "@/lib/invoice-draft";
 import { normName, otherClientContracts, type BillingTerms } from "@/lib/billing-terms";
 import { buildInvoiceLines, manualUnitExTax } from "@/lib/invoice-lines";
+import { monthEndOf, nextMonthEnd } from "@/lib/invoice-defaults";
 import { createCorrectionDraft } from "@/lib/invoice-correction";
 import { approveDraftInvoice, sendApprovedInvoice } from "@/lib/invoice-send";
 import { addTax, computeInvoiceTotals, splitInclusiveTax } from "@/lib/billing";
@@ -145,6 +146,8 @@ export async function deleteInvoice(id: string, confirmInvoiceNumber?: string): 
 
 export type InvoiceEditPayload = {
   addressee: string;
+  // お支払(振込)期限 YYYY-MM-DD。空なら自動(稼働月の翌月末)。
+  dueDate?: string;
   subject: string;
   note: string;
   // 稼働明細書(スタッフの並びは作成時のまま)。請求書は「業務委託費一式」1行のみで、金額は明細書の合計から自動計算する。
@@ -191,6 +194,15 @@ export async function saveInvoiceEdit(
   const subject = payload.subject.trim();
   if (!addressee) return { ok: false, error: "宛名を入力してください。" };
   if (!subject) return { ok: false, error: "件名を入力してください。" };
+  // お支払(振込)期限: 空=自動(翌月末)。日付は、発行日(稼働月の月末日)以降で、実在する日付だけ。自動と同じ日付なら「自動」として保存する。
+  let dueDate: string | null = null;
+  const dueRaw = payload.dueDate?.trim();
+  if (dueRaw) {
+    const valid = /^\d{4}-\d{2}-\d{2}$/.test(dueRaw) && !Number.isNaN(new Date(`${dueRaw}T00:00:00Z`).getTime()) && new Date(`${dueRaw}T00:00:00Z`).toISOString().slice(0, 10) === dueRaw;
+    if (!valid) return { ok: false, error: "お支払期限は、正しい日付で入力してください。" };
+    if (dueRaw < monthEndOf(invoice.yearMonth)) return { ok: false, error: `お支払期限は、請求書の発行日（${monthEndOf(invoice.yearMonth)}）より前にはできません。` };
+    dueDate = dueRaw === nextMonthEnd(monthEndOf(invoice.yearMonth)) ? null : dueRaw;
+  }
 
   const snapshot = invoice.statement as unknown as StatementSnapshot | null;
   let nextStatement: StatementSnapshot | undefined;
@@ -322,6 +334,7 @@ export async function saveInvoiceEdit(
       where: { id },
       data: {
         addressee,
+        dueDate,
         subject,
         note: payload.note,
         subtotalExTax: totals.subtotalExTax,

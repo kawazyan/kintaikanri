@@ -282,10 +282,10 @@ async function loadCarryOverSource(clientId: string, yearMonth: string) {
   const latest = await prisma.invoice.findFirst({
     where: { clientId, yearMonth },
     orderBy: { revision: "desc" },
-    select: { status: true, statement: true, addressee: true, subject: true, note: true },
+    select: { status: true, statement: true, addressee: true, subject: true, note: true, dueDate: true },
   });
   if (!latest?.statement || (latest.status !== "DRAFT" && latest.status !== "APPROVED")) return null;
-  return { statement: latest.statement as unknown as StatementSnapshot, addressee: latest.addressee, subject: latest.subject, note: latest.note };
+  return { statement: latest.statement as unknown as StatementSnapshot, addressee: latest.addressee, subject: latest.subject, note: latest.note, dueDate: latest.dueDate };
 }
 
 type DraftResult = { id: string; invoiceNumber: string };
@@ -543,7 +543,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string, opt
       taxAmount,
       totalInclTax,
       statement,
-      ...(prev ? { addressee: prev.addressee, subject: prev.subject, note: prev.note } : {}),
+      ...(prev ? { addressee: prev.addressee, subject: prev.subject, note: prev.note, dueDate: prev.dueDate } : {}),
       lines: { create: lines },
       workOrders: { create: orders.map((o) => ({ workOrderId: o.id })) },
     },
