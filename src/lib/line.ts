@@ -12,9 +12,35 @@ function retryKeyFor(seed: string): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-async function callLine(endpoint: "push" | "reply", body: Record<string, unknown>, retryKey?: string): Promise<boolean> {
-  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-  if (!token) return false;
+// 送信に使うチャネルアクセストークンの種類。
+// - default: 勤怠・打刻漏れ・出勤5分前などの既存通知(LINE_CHANNEL_ACCESS_TOKEN)
+// - manager: シフト案内通知(毎朝の出勤予定者一覧)用(LINE_ACCESS_TOKEN_MANAGER)
+// 月200通の送信上限対策として、通知の種類ごとに公式アカウントを分ける。
+export type LineTokenKind = "default" | "manager";
+
+const TOKEN_ENV_NAMES: Record<LineTokenKind, string> = {
+  default: "LINE_CHANNEL_ACCESS_TOKEN",
+  manager: "LINE_ACCESS_TOKEN_MANAGER",
+};
+
+// 指定した種類のトークンを返す。未設定なら undefined。
+// 専用トークン未設定時に別のトークンへ自動で切り替えない(意図しない公式アカウントの通数を消費しないため)。
+export function getLineToken(kind: LineTokenKind = "default"): string | undefined {
+  return process.env[TOKEN_ENV_NAMES[kind]] || undefined;
+}
+
+async function callLine(
+  endpoint: "push" | "reply",
+  body: Record<string, unknown>,
+  retryKey?: string,
+  kind: LineTokenKind = "default",
+): Promise<boolean> {
+  const token = getLineToken(kind);
+  if (!token) {
+    // 既存(default)は従来どおり無言でスキップ。専用トークンの設定漏れだけログに残す。
+    if (kind !== "default") console.error(`LINE ${endpoint} skipped: ${TOKEN_ENV_NAMES[kind]} is not set`);
+    return false;
+  }
 
   try {
     const response = await fetch(`https://api.line.me/v2/bot/message/${endpoint}`, {
@@ -39,8 +65,13 @@ async function callLine(endpoint: "push" | "reply", body: Record<string, unknown
 
 // 通知はあくまで補助機能。LINE_CHANNEL_ACCESS_TOKEN未設定や送信失敗があっても、
 // 呼び出し元(未出勤チェックなど本来の業務処理)を絶対に失敗させない設計。
-export function sendLinePush(groupId: string, message: string, dedupeSeed: string) {
-  return callLine("push", { to: groupId, messages: [{ type: "text", text: message }] satisfies LineTextMessage[] }, retryKeyFor(dedupeSeed));
+export function sendLinePush(groupId: string, message: string, dedupeSeed: string, kind: LineTokenKind = "default") {
+  return callLine(
+    "push",
+    { to: groupId, messages: [{ type: "text", text: message }] satisfies LineTextMessage[] },
+    retryKeyFor(dedupeSeed),
+    kind,
+  );
 }
 
 export function sendLineReply(replyToken: string, message: string) {

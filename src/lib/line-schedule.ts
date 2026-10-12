@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { sendLinePush } from "@/lib/line";
+import { getLineToken, sendLinePush } from "@/lib/line";
 import { formatJstDate, jstDayRange, toJstDateValue, toJstTimeValue } from "@/lib/time";
 import { isDailySummaryWindow, isUpcomingShift } from "@/lib/line-notification-time";
 
@@ -73,7 +73,12 @@ function splitMessage(lines: string[], maxLength = 4500): string[] {
 }
 
 export async function sendDailyShiftSummary(now: Date): Promise<"skipped" | "sent" | "failed"> {
-  if (!isDailySummaryWindow(now) || !process.env.LINE_CHANNEL_ACCESS_TOKEN) return "skipped";
+  // シフト案内(毎朝の出勤予定者一覧)は LINE_ACCESS_TOKEN_MANAGER で送信する。未設定ならスキップ。
+  if (!isDailySummaryWindow(now)) return "skipped";
+  if (!getLineToken("manager")) {
+    console.error("daily shift summary skipped: LINE_ACCESS_TOKEN_MANAGER is not set");
+    return "skipped";
+  }
 
   const group = await prisma.lineDailySummaryGroup.findUnique({ where: { id: "main" } });
   if (!group?.groupId) return "skipped";
@@ -105,7 +110,7 @@ export async function sendDailyShiftSummary(now: Date): Promise<"skipped" | "sen
 
   const chunks = splitMessage(lines);
   for (let i = 0; i < chunks.length; i++) {
-    if (!await sendLinePush(group.groupId, chunks[i], `daily-summary:${dateKey}:${group.groupId}:${i}`)) {
+    if (!await sendLinePush(group.groupId, chunks[i], `daily-summary:${dateKey}:${group.groupId}:${i}`, "manager")) {
       await prisma.lineDailySummary.delete({ where: { dateKey } });
       return "failed";
     }
