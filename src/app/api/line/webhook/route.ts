@@ -1,7 +1,7 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendLineReply } from "@/lib/line";
+import { identifyChannel } from "@/lib/line-webhook-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -12,21 +12,12 @@ type LineEvent = {
   message?: { type?: string; text?: string };
 };
 
-function validSignature(body: string, signature: string | null, secret: string): boolean {
-  if (!signature) return false;
-  const expected = createHmac("sha256", secret).update(body).digest();
-  const received = Buffer.from(signature, "base64");
-  return received.length === expected.length && timingSafeEqual(received, expected);
-}
-
 export async function POST(req: NextRequest) {
-  const secret = process.env.LINE_CHANNEL_SECRET;
-  if (!secret) return NextResponse.json({ error: "not configured" }, { status: 503 });
-
   const body = await req.text();
-  if (!validSignature(body, req.headers.get("x-line-signature"), secret)) {
-    return NextResponse.json({ error: "invalid signature" }, { status: 401 });
-  }
+  // 署名から、どの公式アカウント(default=勤怠用 / manager=毎朝の一覧用)からの通知かを判定する。
+  const { configured, channel } = identifyChannel(body, req.headers.get("x-line-signature"));
+  if (!configured) return NextResponse.json({ error: "not configured" }, { status: 503 });
+  if (!channel) return NextResponse.json({ error: "invalid signature" }, { status: 401 });
 
   let events: LineEvent[];
   try {
@@ -41,7 +32,10 @@ export async function POST(req: NextRequest) {
     if (!groupId) continue;
 
     if (event.type === "leave") {
-      await prisma.staff.updateMany({ where: { lineGroupId: groupId }, data: { lineGroupId: null } });
+      // 従業員のグループは勤怠用(default)アカウントだけが管理する。manager の退出で従業員の連携は外さない。
+      if (channel === "default") {
+        await prisma.staff.updateMany({ where: { lineGroupId: groupId }, data: { lineGroupId: null } });
+      }
       await prisma.lineDailySummaryGroup.updateMany({ where: { groupId }, data: { groupId: null } });
       continue;
     }
@@ -58,10 +52,13 @@ export async function POST(req: NextRequest) {
         await prisma.lineDailySummaryGroup.update({ where: { id: dailyGroup.id }, data: { groupId, linkCode: null } });
         reply = "毎朝9時の出勤予定者一覧を、このグループに連携しました。";
       }
-      if (event.replyToken) await sendLineReply(event.replyToken, reply);
+      // 返信は、通知を受け取った公式アカウントのトークンで送る(replyTokenはそのアカウント専用)。
+      if (event.replyToken) await sendLineReply(event.replyToken, reply, channel);
       continue;
     }
 
+    // 従業員の連携(勤怠連携)は勤怠用(default)アカウントのグループだけ。manager のグループでは受け付けない。
+    if (channel !== "default") continue;
     const match = /^勤怠連携\s+([a-f0-9]{32})$/i.exec(event.message.text?.trim() ?? "");
     if (!match) continue;
 

@@ -80,7 +80,8 @@ async function callLine(
   // 専用トークン(manager)が未設定、またはLINEに拒否された場合だけ、既存トークンで送り直す。
   // 通信エラー・タイムアウトは届いたか不明で二重送信になり得るため、ここでは切り替えない
   // (呼び出し元が次回の実行で、同じ再試行キーで再送する)。
-  if (kind !== "default" && (first === "no-token" || first === "rejected")) {
+  // reply は対象外(replyToken は受信したアカウント専用で、別のトークンでは送れない)。
+  if (endpoint === "push" && kind !== "default" && (first === "no-token" || first === "rejected")) {
     console.error(`LINE ${endpoint}: ${TOKEN_ENV_NAMES[kind]} ${first === "no-token" ? "is not set" : "was rejected"}; falling back to ${TOKEN_ENV_NAMES.default}`);
     return (await callLineOnce(endpoint, body, retryKey, "default")) === "ok";
   }
@@ -98,6 +99,6 @@ export function sendLinePush(groupId: string, message: string, dedupeSeed: strin
   );
 }
 
-export function sendLineReply(replyToken: string, message: string) {
-  return callLine("reply", { replyToken, messages: [{ type: "text", text: message }] satisfies LineTextMessage[] });
+export function sendLineReply(replyToken: string, message: string, kind: LineTokenKind = "default") {
+  return callLine("reply", { replyToken, messages: [{ type: "text", text: message }] satisfies LineTextMessage[] }, undefined, kind);
 }
