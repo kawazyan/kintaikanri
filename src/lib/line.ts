@@ -24,23 +24,25 @@ const TOKEN_ENV_NAMES: Record<LineTokenKind, string> = {
 };
 
 // 指定した種類のトークンを返す。未設定なら undefined。
-// 専用トークン未設定時に別のトークンへ自動で切り替えない(意図しない公式アカウントの通数を消費しないため)。
 export function getLineToken(kind: LineTokenKind = "default"): string | undefined {
   return process.env[TOKEN_ENV_NAMES[kind]] || undefined;
 }
 
-async function callLine(
+// 1回の送信結果。
+// - ok: 送信成功(再試行キーが受理済みの409も成功扱い)
+// - no-token: 指定した種類のトークンが未設定
+// - rejected: LINEから応答があり、拒否された(401/403/400/429など)
+// - error: 通信エラー・タイムアウト(LINE側で届いたか不明)
+type LineCallResult = "ok" | "no-token" | "rejected" | "error";
+
+async function callLineOnce(
   endpoint: "push" | "reply",
   body: Record<string, unknown>,
-  retryKey?: string,
-  kind: LineTokenKind = "default",
-): Promise<boolean> {
+  retryKey: string | undefined,
+  kind: LineTokenKind,
+): Promise<LineCallResult> {
   const token = getLineToken(kind);
-  if (!token) {
-    // 既存(default)は従来どおり無言でスキップ。専用トークンの設定漏れだけログに残す。
-    if (kind !== "default") console.error(`LINE ${endpoint} skipped: ${TOKEN_ENV_NAMES[kind]} is not set`);
-    return false;
-  }
+  if (!token) return "no-token";
 
   try {
     const response = await fetch(`https://api.line.me/v2/bot/message/${endpoint}`, {
@@ -54,13 +56,35 @@ async function callLine(
       signal: AbortSignal.timeout(8000),
     });
     // LINEは同じ再試行キーを既に受理済みの場合409を返す(=成功扱いでよい)。
-    if (response.status === 409 && retryKey) return true;
-    if (!response.ok) console.error(`LINE ${endpoint} failed: ${response.status}`);
-    return response.ok;
+    if (response.status === 409 && retryKey) return "ok";
+    if (!response.ok) {
+      console.error(`LINE ${endpoint} failed (${TOKEN_ENV_NAMES[kind]}): ${response.status}`);
+      return "rejected";
+    }
+    return "ok";
   } catch (error) {
-    console.error(`LINE ${endpoint} failed`, error);
-    return false;
+    console.error(`LINE ${endpoint} failed (${TOKEN_ENV_NAMES[kind]})`, error);
+    return "error";
   }
+}
+
+async function callLine(
+  endpoint: "push" | "reply",
+  body: Record<string, unknown>,
+  retryKey?: string,
+  kind: LineTokenKind = "default",
+): Promise<boolean> {
+  const first = await callLineOnce(endpoint, body, retryKey, kind);
+  if (first === "ok") return true;
+
+  // 専用トークン(manager)が未設定、またはLINEに拒否された場合だけ、既存トークンで送り直す。
+  // 通信エラー・タイムアウトは届いたか不明で二重送信になり得るため、ここでは切り替えない
+  // (呼び出し元が次回の実行で、同じ再試行キーで再送する)。
+  if (kind !== "default" && (first === "no-token" || first === "rejected")) {
+    console.error(`LINE ${endpoint}: ${TOKEN_ENV_NAMES[kind]} ${first === "no-token" ? "is not set" : "was rejected"}; falling back to ${TOKEN_ENV_NAMES.default}`);
+    return (await callLineOnce(endpoint, body, retryKey, "default")) === "ok";
+  }
+  return false;
 }
 
 // 通知はあくまで補助機能。LINE_CHANNEL_ACCESS_TOKEN未設定や送信失敗があっても、

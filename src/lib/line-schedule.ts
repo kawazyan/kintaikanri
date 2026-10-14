@@ -73,12 +73,10 @@ function splitMessage(lines: string[], maxLength = 4500): string[] {
 }
 
 export async function sendDailyShiftSummary(now: Date): Promise<"skipped" | "sent" | "failed"> {
-  // シフト案内(毎朝の出勤予定者一覧)は LINE_ACCESS_TOKEN_MANAGER で送信する。未設定ならスキップ。
+  // シフト案内(毎朝の出勤予定者一覧)は LINE_ACCESS_TOKEN_MANAGER で送信する。
+  // MANAGERが未設定・拒否の場合は既存トークンで送るため、どちらも未設定のときだけスキップ。
   if (!isDailySummaryWindow(now)) return "skipped";
-  if (!getLineToken("manager")) {
-    console.error("daily shift summary skipped: LINE_ACCESS_TOKEN_MANAGER is not set");
-    return "skipped";
-  }
+  if (!getLineToken("manager") && !getLineToken("default")) return "skipped";
 
   const group = await prisma.lineDailySummaryGroup.findUnique({ where: { id: "main" } });
   if (!group?.groupId) return "skipped";
