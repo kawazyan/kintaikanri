@@ -13,15 +13,21 @@ export function CreateInvoiceButton({ clients }: { clients: { id: string; name: 
       action={(fd) =>
         start(async () => {
           setError(null);
+          // ブラウザ標準の「値を入力してください」の吹き出しは使わず、画面のメッセージで案内する。
+          if (!String(fd.get("clientId") || "") || !String(fd.get("yearMonth") || "")) {
+            setError("取引先と対象月を選んでください。");
+            return;
+          }
           const res = await createInvoiceDraft(fd);
           if (res.ok) router.push(`/admin/invoices/${res.id}`);
           else setError(res.error);
         })
       }
+      noValidate
       className="rounded-2xl border border-slate-700 bg-slate-900 p-5"
     >
       <div className="grid gap-3 md:grid-cols-[1fr_180px_auto]">
-        <select name="clientId" required className="rounded-xl bg-slate-800 px-3 py-2">
+        <select name="clientId" className="rounded-xl bg-slate-800 px-3 py-2">
           <option value="">取引先を選択</option>
           {clients.map((c) => (
             <option key={c.id} value={c.id}>
@@ -29,7 +35,7 @@ export function CreateInvoiceButton({ clients }: { clients: { id: string; name: 
             </option>
           ))}
         </select>
-        <input type="month" name="yearMonth" required className="rounded-xl bg-slate-800 px-3 py-2" />
+        <input type="month" name="yearMonth" className="rounded-xl bg-slate-800 px-3 py-2" />
         <button disabled={pending} className="rounded-xl bg-blue-600 px-5 py-2 font-black text-white disabled:opacity-50">
           {pending ? "作成中…" : "請求下書きを作成"}
         </button>
