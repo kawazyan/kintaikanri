@@ -105,20 +105,20 @@ export async function addStaffToDraft(
 
 // 下書きに、シフト・稼働依頼に紐付かないスタッフを手入力で追加する(稼働実績がなくてもよい)。金額は空(0)でもよい(承認・送付は金額が入るまで止まる)。
 // 稼働日・金額は、あとから「修正」画面で入力・変更する。契約には自動登録しない。
-export async function addManualStaffNoShift(id: string, input: { staffId: string; storeName: string; serviceExTax: number }): Promise<ActionResult> {
+export async function addManualStaffNoShift(id: string, input: { staffId: string; storeName: string; serviceExTax: number; dates?: string[] }): Promise<ActionResult> {
   await requireAdmin();
-  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true, statement: true, client: { select: { billingTerms: true } } } });
+  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true, yearMonth: true, statement: true, client: { select: { billingTerms: true } } } });
   if (!invoice) return { ok: false, error: "請求書が見つかりません。" };
   if (invoice.status !== "DRAFT") return { ok: false, error: "スタッフを追加できるのは下書きの請求だけです。" };
   const snapshot = invoice.statement as unknown as StatementSnapshot | null;
   if (!snapshot) return { ok: false, error: "稼働明細書のデータがありません。請求下書きを作り直してください。" };
-  const problem = validateManualStaffNoShift(input);
+  const problem = validateManualStaffNoShift(input, invoice.yearMonth);
   if (problem) return { ok: false, error: problem };
   const person = await prisma.staff.findUnique({ where: { id: input.staffId }, select: { name: true } });
   if (!person) return { ok: false, error: "スタッフが見つかりません。" };
   if (snapshot.staff.some((s) => normName(s.name) === normName(person.name))) return { ok: false, error: `${person.name}さんはすでにこの請求に入っています。` };
 
-  const staff = buildManualStaffNoShift({ name: person.name, storeName: input.storeName, serviceExTax: input.serviceExTax });
+  const staff = buildManualStaffNoShift({ name: person.name, storeName: input.storeName, serviceExTax: input.serviceExTax, dates: input.dates });
   const next: StatementSnapshot = {
     ...snapshot,
     staff: [...snapshot.staff, staff],
@@ -136,7 +136,7 @@ export async function addManualStaffNoShift(id: string, input: { staffId: string
   ]);
   revalidatePath(`/admin/invoices/${id}`);
   revalidatePath("/admin/invoices");
-  return { ok: true, message: `${person.name}さんを手入力で追加しました（${input.serviceExTax > 0 ? `業務委託費 ¥${input.serviceExTax.toLocaleString("ja-JP")}` : "金額は未入力"}）。稼働日・金額は「修正」画面で入力できます。` };
+  return { ok: true, message: `${person.name}さんを手入力で追加しました（稼働${staff.days}日・${input.serviceExTax > 0 ? `業務委託費 ¥${input.serviceExTax.toLocaleString("ja-JP")}` : "金額は未入力"}）。稼働日・金額は「修正」画面で入力できます。` };
 }
 
 // 「承認」: 下書き → 承認済み(メールは送らない)。
