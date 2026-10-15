@@ -5,7 +5,7 @@ import { invoiceRecipients } from "@/lib/invoice-defaults";
 import { planManualContracts } from "@/lib/manual-contracts";
 import { invoiceMismatch } from "@/lib/invoice-consistency";
 import { mergePdfs } from "@/lib/pdf-bundle";
-import type { BillingTerms } from "@/lib/billing-terms";
+import { confirmBccFor, type BillingTerms } from "@/lib/billing-terms";
 import type { StatementSnapshot } from "@/lib/invoice-draft";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -75,6 +75,8 @@ export async function sendApprovedInvoice(id: string) {
   const admins = await prisma.adminEmail.findMany({ select: { email: true } });
   const cc = [...new Set(admins.map((a) => a.email.trim()).filter((x) => EMAIL_RE.test(x) && !to.includes(x)))];
 
+  const bcc = confirmBccFor((invoice.client.billingTerms ?? {}) as BillingTerms, to, cc);
+
   const issuedAt = new Date(); // 送付した実際の日時(記録用)。請求書の発行日は稼働月の月末日。
   const inv = await renderInvoicePdf(id);
   const stmt = await renderStatementPdf(id);
@@ -110,6 +112,7 @@ export async function sendApprovedInvoice(id: string) {
   await sendMailStrict({
     to,
     cc,
+    bcc,
     subject,
     text,
     // 取引先の設定で、請求書→請求内訳書の順に1つのPDFにまとめるか、2つバラで添付するか(標準はバラ)。
@@ -129,7 +132,7 @@ export async function sendApprovedInvoice(id: string) {
       finalizedAt: issuedAt,
       finalizedBy: invoice.approvedBy,
       sentAt: new Date(),
-      sentTo: [...to, ...cc].join(", "),
+      sentTo: [...to, ...cc, ...bcc].join(", "),
     },
   });
 

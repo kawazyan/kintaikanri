@@ -32,7 +32,22 @@ export type BillingTerms = {
   splitInvoiceLines?: boolean;
   // 請求メールのPDFの付け方。COMBINED=請求書→請求内訳書の順に1つのPDF / 省略(SEPARATE)=2つのPDFをバラで添付。
   pdfBundle?: "COMBINED" | "SEPARATE";
+  // この取引先あての請求書メールだけ、確認用にBCC(先方には見えない)で自動追加する自社アドレス。
+  confirmBcc?: string[];
 };
+
+// 確認用BCCの宛先: 設定のアドレスから、メールの形式でないもの・すでに宛先(to/cc)にあるもの・重複を除く(大文字小文字は区別しない)。
+export function confirmBccFor(terms: BillingTerms | null | undefined, to: string[], cc: string[]) {
+  const used = new Set([...to, ...cc].map((x) => x.trim().toLowerCase()));
+  const out: string[] = [];
+  for (const raw of terms?.confirmBcc ?? []) {
+    const e = raw.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) || used.has(e.toLowerCase())) continue;
+    used.add(e.toLowerCase());
+    out.push(e);
+  }
+  return out;
+}
 
 export const normName = (s: string) => s.replace(/[\s　]/g, "");
 
