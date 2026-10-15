@@ -35,6 +35,7 @@ export async function approveDraftInvoice(id: string, approverName: string) {
   if (!invoice) throw new Error("請求書が見つかりません。");
   if (invoice.status !== "DRAFT") throw new Error("下書きの請求だけ承認できます。");
   if (!invoice.statement) throw new Error("稼働明細書のデータがありません。請求下書きを作り直してください。");
+  if (invoice.totalInclTax <= 0) throw new Error("請求金額が0円（未入力）のため、承認できません。「修正」画面で金額を入力してから、もう一度承認してください。");
   // 請求書と請求内訳書の金額が一致しているときだけ承認できる。
   const mismatch = invoiceMismatch(invoice, invoice.statement as unknown as StatementSnapshot);
   if (mismatch) throw new Error(mismatch);
@@ -59,6 +60,7 @@ export async function sendApprovedInvoice(id: string) {
     throw new Error("稼働明細書のデータがありません。請求下書きを作り直してください。");
   }
 
+  if (invoice.totalInclTax <= 0) throw new Error("請求金額が0円（未入力）のため、送信できません。金額を入力してください。");
   // 送信の直前にも確認する(承認後にデータが変わっていても、金額が食い違ったまま送らない)。
   const mismatch = invoiceMismatch(invoice, invoice.statement as unknown as StatementSnapshot);
   if (mismatch) throw new Error(mismatch);

@@ -9,6 +9,7 @@ import { InvoiceActions } from "./invoice-actions";
 import { DeleteSentInvoiceButton } from "./delete-sent-button";
 import { PdfPreview } from "./pdf-preview";
 import { AddStaffForm } from "./add-staff-form";
+import { AddManualStaffForm } from "./add-manual-staff-form";
 import { CorrectionButton } from "./correction-button";
 import { statementBillableExTax, type StatementSnapshot } from "@/lib/invoice-draft";
 import { invoiceMismatch } from "@/lib/invoice-consistency";
@@ -134,6 +135,7 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
       </div>
 
       {i.status === "DRAFT" && statement && <AddStaffForm invoiceId={i.id} staff={staffOptions} />}
+      {i.status === "DRAFT" && statement && <AddManualStaffForm invoiceId={i.id} staff={staffOptions} />}
 
       {i.status === "DRAFT" || i.status === "APPROVED" ? (
         <InvoiceActions invoiceId={i.id} status={i.status} recipients={recipients} total={i.totalInclTax} clientName={i.client.name} />

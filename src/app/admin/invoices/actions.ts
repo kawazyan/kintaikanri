@@ -10,6 +10,7 @@ import { buildInvoiceLines, manualUnitExTax } from "@/lib/invoice-lines";
 import { monthEndOf, nextMonthEnd } from "@/lib/invoice-defaults";
 import { createCorrectionDraft } from "@/lib/invoice-correction";
 import { approveDraftInvoice, sendApprovedInvoice } from "@/lib/invoice-send";
+import { buildManualStaffNoShift, validateManualStaffNoShift } from "@/lib/invoice-manual-staff";
 import { addTax, computeInvoiceTotals, splitInclusiveTax } from "@/lib/billing";
 
 export type CreateDraftResult = { ok: true; id: string } | { ok: false; error: string };
@@ -20,7 +21,7 @@ export async function createInvoiceDraft(formData: FormData): Promise<CreateDraf
   const clientId = String(formData.get("clientId") || "");
   const yearMonth = String(formData.get("yearMonth") || "");
   try {
-    const { id } = await buildInvoiceDraft(clientId, yearMonth, { carryOver: formData.get("carryOver") === "on" });
+    const { id } = await buildInvoiceDraft(clientId, yearMonth, { carryOver: formData.get("carryOver") === "on", allowEmpty: true });
     revalidatePath("/admin/invoices");
     return { ok: true, id };
   } catch (e) {
@@ -100,6 +101,42 @@ export async function addStaffToDraft(
   revalidatePath(`/admin/invoices/${id}`);
   revalidatePath("/admin/invoices");
   return { ok: true, message: `${staff.name}さんを追加しました（${staff.days}日・業務委託費 ¥${staff.serviceExTax.toLocaleString("ja-JP")}）。承認すると契約に自動登録されます。${others.length ? `他の取引先（${others.join("・")}）にも契約があるため、稼働日を確認してください。` : ""}` };
+}
+
+// 下書きに、シフト・稼働依頼に紐付かないスタッフを手入力で追加する(稼働実績がなくてもよい)。金額は空(0)でもよい(承認・送付は金額が入るまで止まる)。
+// 稼働日・金額は、あとから「修正」画面で入力・変更する。契約には自動登録しない。
+export async function addManualStaffNoShift(id: string, input: { staffId: string; storeName: string; serviceExTax: number }): Promise<ActionResult> {
+  await requireAdmin();
+  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true, statement: true, client: { select: { billingTerms: true } } } });
+  if (!invoice) return { ok: false, error: "請求書が見つかりません。" };
+  if (invoice.status !== "DRAFT") return { ok: false, error: "スタッフを追加できるのは下書きの請求だけです。" };
+  const snapshot = invoice.statement as unknown as StatementSnapshot | null;
+  if (!snapshot) return { ok: false, error: "稼働明細書のデータがありません。請求下書きを作り直してください。" };
+  const problem = validateManualStaffNoShift(input);
+  if (problem) return { ok: false, error: problem };
+  const person = await prisma.staff.findUnique({ where: { id: input.staffId }, select: { name: true } });
+  if (!person) return { ok: false, error: "スタッフが見つかりません。" };
+  if (snapshot.staff.some((s) => normName(s.name) === normName(person.name))) return { ok: false, error: `${person.name}さんはすでにこの請求に入っています。` };
+
+  const staff = buildManualStaffNoShift({ name: person.name, storeName: input.storeName, serviceExTax: input.serviceExTax });
+  const next: StatementSnapshot = {
+    ...snapshot,
+    staff: [...snapshot.staff, staff],
+    ...(snapshot.baseline
+      ? { baseline: { ...snapshot.baseline, staff: [...snapshot.baseline.staff, { name: staff.name, dates: staff.dates, dayPlaces: staff.dayPlaces, serviceExTax: staff.serviceExTax, serviceCalc: staff.serviceCalc, travel: staff.travel }] } }
+      : {}),
+  };
+  const split = !!((invoice.client.billingTerms ?? {}) as BillingTerms).splitInvoiceLines;
+  const lines = buildInvoiceLines(next, split);
+  const totals = computeInvoiceTotals(lines);
+  await prisma.$transaction([
+    prisma.invoice.update({ where: { id }, data: { subtotalExTax: totals.subtotalExTax, taxAmount: totals.taxAmount, totalInclTax: totals.totalInclTax, statement: next } }),
+    prisma.invoiceLine.deleteMany({ where: { invoiceId: id } }),
+    prisma.invoiceLine.createMany({ data: lines.map((l) => ({ ...l, invoiceId: id })) }),
+  ]);
+  revalidatePath(`/admin/invoices/${id}`);
+  revalidatePath("/admin/invoices");
+  return { ok: true, message: `${person.name}さんを手入力で追加しました（${input.serviceExTax > 0 ? `業務委託費 ¥${input.serviceExTax.toLocaleString("ja-JP")}` : "金額は未入力"}）。稼働日・金額は「修正」画面で入力できます。` };
 }
 
 // 「承認」: 下書き → 承認済み(メールは送らない)。
