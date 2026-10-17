@@ -49,3 +49,24 @@ export function nextFixedPaymentDate(
   }
   return best;
 }
+
+// 今日が固定支払の支払日なら、その支払いの対象の締め月(YYYY-MM)を返す。支払日でなければ null。
+// monthEndClosing=締日が月末(31 または 0)。月末以外の締日は、締め月=暦の月では金額を計算できないため、呼び出し側で金額を出さない。
+export function fixedPaymentDueToday(
+  staff: FixedScheduleInput,
+  now: Date = new Date()
+): { closingYearMonth: string; monthEndClosing: boolean } | null {
+  const { fixedClosingDay, fixedPaymentMonthOffset, fixedPaymentDay } = staff;
+  if (fixedClosingDay == null || fixedPaymentMonthOffset == null || fixedPaymentDay == null) return null;
+  const todayStart = jstDayRange(now).start.getTime();
+  const [baseY, baseM] = currentJstYearMonth(now).split("-").map(Number);
+  for (let offset = -3; offset <= 3; offset++) {
+    const closing = addMonths(baseY, baseM, offset);
+    const payment = addMonths(closing.year, closing.month1, fixedPaymentMonthOffset);
+    const paymentDay = resolveDay(payment.year, payment.month1, fixedPaymentDay);
+    if (makeJstDateOnly(payment.year, payment.month1, paymentDay).getTime() === todayStart) {
+      return { closingYearMonth: `${closing.year}-${String(closing.month1).padStart(2, "0")}`, monthEndClosing: fixedClosingDay === 0 || fixedClosingDay === 31 };
+    }
+  }
+  return null;
+}

@@ -5,6 +5,7 @@ import { formatJst } from "@/lib/time";
 import { WORK_TYPE_LABEL } from "@/lib/carriers";
 import { sendLinePush } from "@/lib/line";
 import { sendDailyShiftSummary, sendUpcomingShiftAlerts } from "@/lib/line-schedule";
+import { sendPaydayNotice } from "@/lib/payday-notify";
 
 export const dynamic = "force-dynamic";
 
@@ -30,8 +31,13 @@ export async function GET(req: NextRequest) {
   const now = new Date();
   const upcoming = await sendUpcomingShiftAlerts(now);
   const dailySummary = await sendDailyShiftSummary(now);
+  // 振込日(支払日)の朝に、その日に支払うスタッフを1通のLINEにまとめて知らせる。失敗しても他の処理は止めない。
+  const payday = await sendPaydayNotice(now).catch((e) => {
+    console.error("payday notice failed", e);
+    return "failed" as const;
+  });
   if (!NO_SHOW_ALERT_ENABLED) {
-    return NextResponse.json({ checked: 0, sent: 0, lineSent: 0, lineFailed: 0, noShowAlert: "disabled", preShiftLineSent: upcoming.sent, preShiftLineFailed: upcoming.failed, dailySummary });
+    return NextResponse.json({ checked: 0, sent: 0, lineSent: 0, lineFailed: 0, noShowAlert: "disabled", preShiftLineSent: upcoming.sent, preShiftLineFailed: upcoming.failed, dailySummary, payday });
   }
   const deadline = new Date(now.getTime() - GRACE_PERIOD_MS);
   const earliest = new Date(now.getTime() - LOOKBACK_MS);
@@ -90,5 +96,5 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ checked: overdueShifts.length, sent, lineSent, lineFailed, preShiftLineSent: upcoming.sent, preShiftLineFailed: upcoming.failed, dailySummary });
+  return NextResponse.json({ checked: overdueShifts.length, sent, lineSent, lineFailed, preShiftLineSent: upcoming.sent, preShiftLineFailed: upcoming.failed, dailySummary, payday });
 }
