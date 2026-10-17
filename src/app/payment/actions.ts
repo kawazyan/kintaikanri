@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getStaffId } from "@/lib/auth";
 import { computeTransferBalance } from "@/lib/earnings";
 import { fromJstInputValue } from "@/lib/time";
+import { notifyTransferRequest } from "@/lib/transfer-request-notify";
 
 export async function createTransferRequest(input: {
   amount: number;
@@ -33,7 +34,7 @@ export async function createTransferRequest(input: {
     return { error: "振込申請可能額を超えています" };
   }
 
-  await prisma.transferRequest.create({
+  const created = await prisma.transferRequest.create({
     data: {
       staffId,
       amount: input.amount,
@@ -41,6 +42,9 @@ export async function createTransferRequest(input: {
       status: "REQUESTING",
     },
   });
+
+  // 申請をLINEで知らせる(失敗しても申請は成功のまま)。
+  await notifyTransferRequest(created.id);
 
   revalidatePath("/clock");
   revalidatePath("/payment/history");
