@@ -72,14 +72,15 @@ test("固定支払の通知日: 前倒し後の日に通知される", () => {
   assert.equal(toJstDateValue(fixedPaymentDateForClosingMonth(S(0, 1, 0), "2026-12")!), "2027-01-29");
 });
 
-test("月次集計: 出勤日数・打刻漏れ・定時超過・欠勤・早退", () => {
+test("月次集計: 出勤日数・打刻漏れ・定時超過・欠勤(申請のみ)・早退(報告のみ)", () => {
   const now = jst("2026-10-23T14:00:00");
   const shifts = [
     { id: "a", startTime: jst("2026-10-01T10:00:00") }, // 10:00開始 → 10:05打刻=定時超過
-    { id: "b", startTime: jst("2026-10-02T10:00:00") }, // 10:00ちょうど=OK
-    { id: "c", startTime: jst("2026-10-05T10:00:00") }, // 打刻なし=欠勤
+    { id: "b", startTime: jst("2026-10-02T10:00:00") }, // 10:00前に打刻=OK
+    { id: "c", startTime: jst("2026-10-05T10:00:00") }, // シフトあり・打刻なし・申請なし=打刻漏れ
     { id: "d", startTime: jst("2026-10-06T10:00:00") }, // 出勤のみ=打刻漏れ
-    { id: "e", startTime: jst("2026-10-23T10:00:00") }, // 当日・打刻なしは欠勤にしない
+    { id: "e", startTime: jst("2026-10-23T10:00:00") }, // 当日・打刻なしは数えない
+    { id: "f", startTime: jst("2026-10-07T10:00:00") }, // 欠勤申請あり・打刻なし=欠勤(打刻漏れにしない)
   ];
   const clocks = [
     { type: "IN" as const, timestamp: jst("2026-10-01T10:05:30"), shiftId: "a" },
@@ -88,10 +89,10 @@ test("月次集計: 出勤日数・打刻漏れ・定時超過・欠勤・早退
     { type: "OUT" as const, timestamp: jst("2026-10-02T19:00:00"), shiftId: "b" },
     { type: "IN" as const, timestamp: jst("2026-10-06T10:00:00"), shiftId: "d" },
   ];
-  const r = summarizeAttendance({ shifts, clocks, earlyLeaveDates: ["2026-10-02", "2026-10-02"], now });
+  const r = summarizeAttendance({ shifts, clocks, earlyLeaveDates: ["2026-10-02", "2026-10-02"], absenceDates: ["2026-10-07"], now });
   assert.equal(r.workDays, 2);
-  assert.deepEqual(r.missedClockDates, ["2026-10-06"]);
+  assert.deepEqual(r.missedClockDates, ["2026-10-05", "2026-10-06"]);
   assert.deepEqual(r.lateClockInDates, ["2026-10-01"]);
-  assert.deepEqual(r.absenceDates, ["2026-10-05"]);
+  assert.deepEqual(r.absenceDates, ["2026-10-07"]);
   assert.deepEqual(r.earlyLeaveDates, ["2026-10-02"]);
 });

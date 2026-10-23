@@ -34,8 +34,8 @@ export async function loadStaffMonthSummaries(staffList: StaffInput[], yearMonth
   const [shifts, clocks, irregular, simple, expenses, requests] = await Promise.all([
     prisma.shift.findMany({ where: { staffId: { in: ids }, cancelledAt: null, startTime: { gte: start, lt: end } }, select: { id: true, staffId: true, startTime: true } }),
     prisma.clockRecord.findMany({ where: { staffId: { in: ids }, timestamp: { gte: start, lt: end } }, select: { staffId: true, type: true, timestamp: true, shiftId: true } }),
-    prisma.irregularReport.findMany({ where: { staffId: { in: ids }, reportType: "EARLY_LEAVE", targetDate: { gte: start, lt: end } }, select: { staffId: true, targetDate: true } }),
-    prisma.simpleAttendanceEntry.findMany({ where: { staffId: { in: ids }, kind: "EARLY_LEAVE", date: { startsWith: yearMonth } }, select: { staffId: true, date: true } }),
+    prisma.irregularReport.findMany({ where: { staffId: { in: ids }, reportType: { in: ["EARLY_LEAVE", "ABSENCE", "SAME_DAY_ABSENCE"] }, targetDate: { gte: start, lt: end } }, select: { staffId: true, targetDate: true, reportType: true } }),
+    prisma.simpleAttendanceEntry.findMany({ where: { staffId: { in: ids }, kind: { in: ["EARLY_LEAVE", "ABSENT"] }, date: { startsWith: yearMonth } }, select: { staffId: true, date: true, kind: true } }),
     prisma.expense.findMany({ where: { staffId: { in: ids }, yearMonth, status: { in: ["SUBMITTED", "APPROVED"] } }, select: { staffId: true, status: true, amountTaxInclusive: true } }),
     prisma.transferRequest.findMany({ where: { staffId: { in: ids }, status: "REQUESTING" }, select: { staffId: true, amount: true, desiredPaymentDate: true } }),
   ]);
@@ -52,7 +52,14 @@ export async function loadStaffMonthSummaries(staffList: StaffInput[], yearMonth
     const counts = summarizeAttendance({
       shifts: gShifts.get(s.id) ?? [],
       clocks: (gClocks.get(s.id) ?? []).map((c) => ({ type: c.type, timestamp: c.timestamp, shiftId: c.shiftId })),
-      earlyLeaveDates: [...(gIrr.get(s.id) ?? []).map((r) => toJstDateValue(r.targetDate)), ...(gSimple.get(s.id) ?? []).map((r) => r.date)],
+      earlyLeaveDates: [
+        ...(gIrr.get(s.id) ?? []).filter((r) => r.reportType === "EARLY_LEAVE").map((r) => toJstDateValue(r.targetDate)),
+        ...(gSimple.get(s.id) ?? []).filter((r) => r.kind === "EARLY_LEAVE").map((r) => r.date),
+      ],
+      absenceDates: [
+        ...(gIrr.get(s.id) ?? []).filter((r) => r.reportType !== "EARLY_LEAVE").map((r) => toJstDateValue(r.targetDate)),
+        ...(gSimple.get(s.id) ?? []).filter((r) => r.kind === "ABSENT").map((r) => r.date),
+      ],
       now,
     });
 
