@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatJst, jstDayRange, jstMonthRange } from "@/lib/time";
+import { currentJstYearMonth, formatJst, jstDayRange, jstMonthRange, yearMonthLabel } from "@/lib/time";
+import { loadStaffAttendanceDetail } from "@/lib/staff-month-summary";
+import { AttendancePanel } from "./attendance-panel";
 import { AdminNav } from "../admin-nav";
 import { deleteClockRecord } from "./actions";
 import type { Prisma } from "@prisma/client";
@@ -51,6 +53,12 @@ export default async function AdminRecordsPage({
     !r.shiftId || !!r.shift?.cancelledAt || (!!r.shift && r.shift.staffId !== r.staffId);
   const records = unlinkedOnly === "1" ? fetched.filter(isUncounted).slice(0, 200) : fetched;
 
+  // スタッフを選んだときは、そのスタッフの月の勤怠(出勤日数・打刻漏れ・定時超過打刻・欠勤・遅刻/早退の申請)を上に表示する。
+  // 対象の月は、日付を指定していればその日の月、月の指定があればその月、どちらもなければ今月。
+  const summaryMonth = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.slice(0, 7) : (month ?? currentJstYearMonth());
+  const selectedStaff = staffId ? staffList.find((s) => s.id === staffId) : undefined;
+  const attendance = selectedStaff ? await loadStaffAttendanceDetail(selectedStaff.id, summaryMonth) : null;
+
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
       <AdminNav />
@@ -99,6 +107,12 @@ export default async function AdminRecordsPage({
           </Link>
         </form>
       </div>
+
+      {selectedStaff && attendance ? (
+        <AttendancePanel staffName={selectedStaff.name} monthLabel={yearMonthLabel(summaryMonth)} detail={attendance} />
+      ) : (
+        <p className="mb-4 text-xs text-slate-500">スタッフを選んで絞り込むと、そのスタッフの月の勤怠(出勤日数・打刻漏れ・欠勤など)がここに表示されます。</p>
+      )}
 
       <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/40 backdrop-blur-sm">
         <table className="w-full min-w-[900px] text-left text-sm">

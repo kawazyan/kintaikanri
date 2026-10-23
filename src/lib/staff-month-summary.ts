@@ -111,3 +111,30 @@ export async function sumSubmittedExpenses(staffId: string, yearMonth: string): 
   const rows = await prisma.expense.findMany({ where: { staffId, yearMonth, status: { in: ["SUBMITTED", "APPROVED"] } }, select: { amountTaxInclusive: true } });
   return rows.reduce((sum, e) => sum + e.amountTaxInclusive, 0);
 }
+
+// 打刻記録一覧の「該当スタッフの月の勤怠」用。1人分の集計(判定基準は attendance-summary.ts)に、遅刻の申請日を加えたもの。
+export type StaffAttendanceDetail = AttendanceCounts & {
+  lateReportDates: string[]; // 遅刻の申請(イレギュラー報告の「遅刻」/簡易モードの「遅刻」)があった日
+};
+
+export async function loadStaffAttendanceDetail(staffId: string, yearMonth: string, now: Date = new Date()): Promise<StaffAttendanceDetail> {
+  const { start, end } = jstMonthRange(yearMonth);
+  const [shifts, clocks, irregular, simple] = await Promise.all([
+    prisma.shift.findMany({ where: { staffId, cancelledAt: null, startTime: { gte: start, lt: end } }, select: { id: true, startTime: true } }),
+    prisma.clockRecord.findMany({ where: { staffId, timestamp: { gte: start, lt: end } }, select: { type: true, timestamp: true, shiftId: true } }),
+    prisma.irregularReport.findMany({ where: { staffId, reportType: { in: ["LATE", "EARLY_LEAVE", "ABSENCE", "SAME_DAY_ABSENCE"] }, targetDate: { gte: start, lt: end } }, select: { targetDate: true, reportType: true } }),
+    prisma.simpleAttendanceEntry.findMany({ where: { staffId, kind: { in: ["LATE", "EARLY_LEAVE", "ABSENT"] }, date: { startsWith: yearMonth } }, select: { date: true, kind: true } }),
+  ]);
+
+  const irrDates = (types: string[]) => irregular.filter((r) => types.includes(r.reportType)).map((r) => toJstDateValue(r.targetDate));
+  const simpleDates = (kind: string) => simple.filter((r) => r.kind === kind).map((r) => r.date);
+
+  const counts = summarizeAttendance({
+    shifts,
+    clocks,
+    earlyLeaveDates: [...irrDates(["EARLY_LEAVE"]), ...simpleDates("EARLY_LEAVE")],
+    absenceDates: [...irrDates(["ABSENCE", "SAME_DAY_ABSENCE"]), ...simpleDates("ABSENT")],
+    now,
+  });
+  return { ...counts, lateReportDates: [...new Set([...irrDates(["LATE"]), ...simpleDates("LATE")])].sort() };
+}
