@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getLineToken, sendLinePush } from "@/lib/line";
 import { computeMonthlyEarnings } from "@/lib/earnings";
 import { fixedPaymentDueToday } from "@/lib/payment";
+import { sumSubmittedExpenses } from "@/lib/staff-month-summary";
 import { paydayMessage, type PaydayItem } from "@/lib/payday-message";
 import { TRANSFER_NOTIFY_EMPLOYEE_CODE } from "@/lib/transfer-request-notify";
 import { formatJstDate, jstDayRange, toJstDateValue, toJstTimeValue } from "@/lib/time";
@@ -38,7 +39,14 @@ export async function sendPaydayNotice(now: Date): Promise<"skipped" | "none" | 
       continue;
     }
     const { confirmedAmount } = await computeMonthlyEarnings(s.id, due.closingYearMonth, now);
-    items.push({ kind: "FIXED", name: s.name, amount: confirmedAmount, note: `${m}月分` });
+    // 振込金額 = 受取金額 + 申請のある経費(申請中・承認済)。
+    const expenses = await sumSubmittedExpenses(s.id, due.closingYearMonth);
+    items.push({
+      kind: "FIXED",
+      name: s.name,
+      amount: confirmedAmount === null ? null : confirmedAmount + expenses,
+      note: `${m}月分${expenses > 0 ? `・経費¥${expenses.toLocaleString("ja-JP")}込み` : ""}`,
+    });
   }
 
   const requests = await prisma.transferRequest.findMany({

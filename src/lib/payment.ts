@@ -1,4 +1,5 @@
 import { currentJstYearMonth, daysInJstMonth, makeJstDateOnly, jstDayRange } from "@/lib/time";
+import { toPreviousBankBusinessDay } from "@/lib/bank-day";
 
 export type FixedScheduleInput = {
   fixedClosingDay: number | null;
@@ -42,7 +43,8 @@ export function nextFixedPaymentDate(
     const closing = addMonths(baseY, baseM, offset);
     const payment = addMonths(closing.year, closing.month1, fixedPaymentMonthOffset);
     const paymentDay = resolveDay(payment.year, payment.month1, fixedPaymentDay);
-    const paymentDate = makeJstDateOnly(payment.year, payment.month1, paymentDay);
+    // 支払日が土日祝・12/29〜1/3なら、直前の銀行営業日に前倒しする。
+    const paymentDate = toPreviousBankBusinessDay(makeJstDateOnly(payment.year, payment.month1, paymentDay));
     if (paymentDate.getTime() >= todayStart.getTime()) {
       if (best === null || paymentDate.getTime() < best.getTime()) best = paymentDate;
     }
@@ -64,9 +66,20 @@ export function fixedPaymentDueToday(
     const closing = addMonths(baseY, baseM, offset);
     const payment = addMonths(closing.year, closing.month1, fixedPaymentMonthOffset);
     const paymentDay = resolveDay(payment.year, payment.month1, fixedPaymentDay);
-    if (makeJstDateOnly(payment.year, payment.month1, paymentDay).getTime() === todayStart) {
+    // 前倒し後の支払日が今日なら対象(土日祝・12/29〜1/3は直前の銀行営業日に動く)。
+    if (toPreviousBankBusinessDay(makeJstDateOnly(payment.year, payment.month1, paymentDay)).getTime() === todayStart) {
       return { closingYearMonth: `${closing.year}-${String(closing.month1).padStart(2, "0")}`, monthEndClosing: fixedClosingDay === 0 || fixedClosingDay === 31 };
     }
   }
   return null;
+}
+
+// 指定した締め月(YYYY-MM)の固定支払の支払日(土日祝・12/29〜1/3は直前の銀行営業日に前倒し済み)。設定が未入力なら null。
+export function fixedPaymentDateForClosingMonth(staff: FixedScheduleInput, closingYearMonth: string): Date | null {
+  const { fixedPaymentMonthOffset, fixedPaymentDay } = staff;
+  if (staff.fixedClosingDay == null || fixedPaymentMonthOffset == null || fixedPaymentDay == null) return null;
+  const [y, m] = closingYearMonth.split("-").map(Number);
+  const payment = addMonths(y, m, fixedPaymentMonthOffset);
+  const day = resolveDay(payment.year, payment.month1, fixedPaymentDay);
+  return toPreviousBankBusinessDay(makeJstDateOnly(payment.year, payment.month1, day));
 }
