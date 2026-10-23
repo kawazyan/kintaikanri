@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   AlertTriangle,
   Building2,
+  Siren,
   CalendarCheck2,
   CalendarDays,
   ChevronRight,
@@ -17,6 +18,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getTodayShiftStatusSummary } from "@/lib/attendance";
 import { jstDayRange } from "@/lib/time";
+import { loadUrgentItems } from "@/lib/urgent-items";
 import { AdminNav } from "./admin-nav";
 
 export default async function AdminDashboardPage() {
@@ -34,6 +36,13 @@ export default async function AdminDashboardPage() {
       getTodayShiftStatusSummary(),
       prisma.irregularReport.count({ where: { targetDate: { gte: todayStart, lt: todayEnd } } }),
     ]);
+
+  const urgent = await loadUrgentItems();
+  const urgentCount = urgent.paydayToday.length + urgent.amountMissing.length;
+  const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
+  const nameOf = (n: string) => n.replace(/[\s\u3000]+/g, " ");
+  const monthOf = (ym: string) => `${Number(ym.slice(5))}月分`;
+  const mdOf = (d: Date) => new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", weekday: "short" }).format(d);
 
   const todayTiles = [
     { label: "本日稼働予定", value: todaySummary.scheduledCount, unit: "名", icon: CalendarCheck2, filter: "scheduled" },
@@ -61,6 +70,50 @@ export default async function AdminDashboardPage() {
           <p className="mt-1 text-sm font-medium text-slate-500">勤怠・取引先・請求まで、ここからまとめて管理できます。</p>
         </div>
       </header>
+
+      {urgentCount > 0 ? (
+        <section className="mb-6 rounded-[24px] border-2 border-red-500 bg-red-50 p-4 shadow-[0_10px_26px_rgba(220,38,38,.18)] sm:p-5" aria-label="急ぎ案件">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-600 text-white"><Siren size={20} /></span>
+            <p className="text-lg font-black text-red-700">急ぎ案件 <span className="tabular-nums">{urgentCount}</span>件</p>
+          </div>
+          <ul className="space-y-2">
+            {urgent.paydayToday.map((i) => (
+              <li key={`pay-${i.kind}-${i.staffId ?? i.name}`}>
+                <Link
+                  href={i.kind === "REQUEST" ? "/admin/payments?status=REQUESTING" : `/admin/payments${i.closingYearMonth ? `?month=${i.closingYearMonth}` : ""}`}
+                  className="flex items-center gap-3 rounded-2xl border border-red-200 bg-white px-4 py-3 text-sm font-bold text-slate-900 active:translate-y-0.5"
+                >
+                  <span className="shrink-0 rounded-lg bg-red-600 px-2 py-1 text-xs font-black text-white">今日</span>
+                  <span className="min-w-0 flex-1">
+                    {nameOf(i.name)} への{i.kind === "REQUEST" ? "振込(申請の希望日)" : "支払日"}
+                    <span className="ml-2 font-black text-red-700">{i.amount === null ? "金額未確定" : yen(i.amount)}</span>
+                    {i.note && <span className="ml-2 text-xs font-medium text-slate-500">({i.note})</span>}
+                  </span>
+                  <ChevronRight size={18} className="shrink-0 text-red-300" />
+                </Link>
+              </li>
+            ))}
+            {urgent.amountMissing.map((i) => (
+              <li key={`missing-${i.staffId}-${i.closingYearMonth}`}>
+                <Link
+                  href={`/admin/staff/${i.staffId}`}
+                  className="flex items-center gap-3 rounded-2xl border border-red-200 bg-white px-4 py-3 text-sm font-bold text-slate-900 active:translate-y-0.5"
+                >
+                  <span className="shrink-0 rounded-lg bg-amber-500 px-2 py-1 text-xs font-black text-white">未入力</span>
+                  <span className="min-w-0 flex-1">
+                    {nameOf(i.name)} への支払い金額が未入力
+                    <span className="ml-2 text-xs font-medium text-slate-500">({monthOf(i.closingYearMonth)}・支払日 {mdOf(i.paymentDate)})</span>
+                  </span>
+                  <ChevronRight size={18} className="shrink-0 text-red-300" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : (
+        <p className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-700">急ぎ案件はありません</p>
+      )}
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map((item, index) => {

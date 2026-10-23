@@ -2,6 +2,8 @@
 
 export type PaydayItem = {
   kind: "FIXED" | "REQUEST";
+  staffId?: string;
+  closingYearMonth?: string; // 固定支払の対象の締め月(YYYY-MM)
   name: string;
   amount: number | null; // null=金額を出せない
   note?: string; // 例: 「9月分」「締日が月末以外のため金額は未計算」

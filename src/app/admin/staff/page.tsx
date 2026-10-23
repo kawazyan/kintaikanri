@@ -3,9 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { AdminNav } from "../admin-nav";
 import { createStaff } from "./actions";
 import { StaffList } from "./staff-list";
-import { MonthSummary } from "./month-summary";
-import { loadStaffMonthSummaries } from "@/lib/staff-month-summary";
-import { currentJstYearMonth, listMonthOptions, yearMonthLabel } from "@/lib/time";
 
 const FIELD_CLASS =
   "rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none";
@@ -13,17 +10,10 @@ const FIELD_CLASS =
 export default async function AdminStaffPage({
   searchParams,
 }: {
-  searchParams: Promise<{ showRetired?: string; saved?: string; month?: string }>;
+  searchParams: Promise<{ showRetired?: string; saved?: string }>;
 }) {
   await requireAdmin();
-  const { showRetired, saved, month } = await searchParams;
-  // 月のタブ(YYYY-MM)。指定がない・不正な値のときは今月。
-  const nowDate = new Date();
-  const thisMonth = currentJstYearMonth(nowDate);
-  const yearMonth = month && /^\d{4}-(0[1-9]|1[0-2])$/.test(month) ? month : thisMonth;
-  const monthTabs = listMonthOptions(5, 1, nowDate);
-  if (!monthTabs.some((t) => t.value === yearMonth)) monthTabs.unshift({ value: yearMonth, label: yearMonthLabel(yearMonth) });
-  const tabHref = (value: string) => `/admin/staff?month=${value}${showRetired ? "&showRetired=1" : ""}`;
+  const { showRetired, saved } = await searchParams;
 
   const [staffList, allStaffForDupeCheck] = await Promise.all([
     prisma.staff.findMany({
@@ -38,8 +28,6 @@ export default async function AdminStaffPage({
     // という事故につながるため。
     prisma.staff.findMany({ select: { id: true, name: true, employeeCode: true, status: true } }),
   ]);
-
-  const summaries = await loadStaffMonthSummaries(staffList, yearMonth, nowDate);
 
   const duplicateNameGroups = Object.values(
     allStaffForDupeCheck.reduce<Record<string, typeof allStaffForDupeCheck>>((acc, s) => {
@@ -78,24 +66,6 @@ export default async function AdminStaffPage({
         </div>
       )}
 
-      <nav className="mb-3 flex gap-1 overflow-x-auto" aria-label="月の切り替え">
-        {monthTabs.map((t) => (
-          <a
-            key={t.value}
-            href={tabHref(t.value)}
-            aria-current={t.value === yearMonth ? "page" : undefined}
-            className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-sm ${
-              t.value === yearMonth
-                ? "bg-gradient-to-r from-blue-600 to-cyan-500 font-semibold text-white"
-                : "border border-slate-700 text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            {t.label.replace(/^\d{4}年/, "")}
-          </a>
-        ))}
-      </nav>
-      <MonthSummary monthLabel={yearMonthLabel(yearMonth)} staff={staffList} summaries={summaries} />
-
       <section className="mb-8 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-lg shadow-black/40 backdrop-blur-sm">
         <h2 className="mb-3 text-sm font-semibold text-slate-300">新規スタッフ登録</h2>
         <form action={createStaff} className="grid grid-cols-1 gap-3 sm:grid-cols-4">
@@ -119,7 +89,7 @@ export default async function AdminStaffPage({
 
       <div className="mb-3 text-sm">
         <a
-          href={showRetired ? `/admin/staff?month=${yearMonth}` : `/admin/staff?month=${yearMonth}&showRetired=1`}
+          href={showRetired ? "/admin/staff" : "/admin/staff?showRetired=1"}
           className="text-blue-400 underline"
         >
           {showRetired ? "在籍中のみ表示" : "退職済みも表示"}

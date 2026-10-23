@@ -1,6 +1,8 @@
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatJst } from "@/lib/time";
+import { currentJstYearMonth, formatJst, listMonthOptions, yearMonthLabel } from "@/lib/time";
+import { loadStaffMonthSummaries } from "@/lib/staff-month-summary";
+import { MonthSummary } from "./month-summary";
 import { AdminNav } from "../admin-nav";
 import { markTransferRequestPaid } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
@@ -8,10 +10,22 @@ import { SubmitButton } from "@/components/submit-button";
 export default async function AdminPaymentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; month?: string }>;
 }) {
   await requireAdmin();
-  const { status } = await searchParams;
+  const { status, month } = await searchParams;
+
+  // 月のタブ(YYYY-MM)。指定がない・不正な値のときは今月。
+  const nowDate = new Date();
+  const yearMonth = month && /^\d{4}-(0[1-9]|1[0-2])$/.test(month) ? month : currentJstYearMonth(nowDate);
+  const monthTabs = listMonthOptions(5, 1, nowDate);
+  if (!monthTabs.some((t) => t.value === yearMonth)) monthTabs.unshift({ value: yearMonth, label: yearMonthLabel(yearMonth) });
+  const statusQuery = status === "REQUESTING" || status === "PAID" ? `&status=${status}` : "";
+  const tabHref = (value: string) => `/admin/payments?month=${value}${statusQuery}`;
+  const filterHref = (st?: string) => `/admin/payments?month=${yearMonth}${st ? `&status=${st}` : ""}`;
+
+  const activeStaff = await prisma.staff.findMany({ where: { status: "ACTIVE" }, orderBy: { employeeCode: "asc" } });
+  const summaries = await loadStaffMonthSummaries(activeStaff, yearMonth, nowDate);
 
   const requests = await prisma.transferRequest.findMany({
     where: status === "REQUESTING" || status === "PAID" ? { status } : undefined,
@@ -21,27 +35,47 @@ export default async function AdminPaymentsPage({
   });
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8">
+    <main className="mx-auto max-w-5xl px-4 py-8">
       <AdminNav />
       <h1 className="mb-6 bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
-        振込申請一覧
+        振込関係
       </h1>
+
+      <nav className="mb-3 flex gap-1 overflow-x-auto" aria-label="月の切り替え">
+        {monthTabs.map((t) => (
+          <a
+            key={t.value}
+            href={tabHref(t.value)}
+            aria-current={t.value === yearMonth ? "page" : undefined}
+            className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-sm ${
+              t.value === yearMonth
+                ? "bg-gradient-to-r from-blue-600 to-cyan-500 font-semibold text-white"
+                : "border border-slate-700 text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            {t.label.replace(/^\d{4}年/, "")}
+          </a>
+        ))}
+      </nav>
+      <MonthSummary monthLabel={yearMonthLabel(yearMonth)} staff={activeStaff} summaries={summaries} />
+
+      <h2 className="mb-3 text-sm font-semibold text-slate-300">振込申請一覧</h2>
 
       <div className="mb-4 flex gap-3 text-sm">
         <a
-          href="/admin/payments"
+          href={filterHref()}
           className={!status ? "font-semibold text-cyan-300" : "text-blue-400 underline"}
         >
           全て
         </a>
         <a
-          href="/admin/payments?status=REQUESTING"
+          href={filterHref("REQUESTING")}
           className={status === "REQUESTING" ? "font-semibold text-cyan-300" : "text-blue-400 underline"}
         >
           申請中のみ
         </a>
         <a
-          href="/admin/payments?status=PAID"
+          href={filterHref("PAID")}
           className={status === "PAID" ? "font-semibold text-cyan-300" : "text-blue-400 underline"}
         >
           振込済みのみ

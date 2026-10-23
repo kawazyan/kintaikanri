@@ -29,7 +29,7 @@ const links = [
   { href: "/admin/shifts", label: "シフト", icon: CalendarDays },
   { href: "/admin/records", label: "打刻記録", icon: Clock3 },
   { href: "/admin/simple-attendance", label: "簡易勤怠", icon: ListChecks },
-  { href: "/admin/payments", label: "振込申請", icon: Banknote },
+  { href: "/admin/payments", label: "振込関係", icon: Banknote },
   { href: "/admin/clients", label: "取引先窓口", icon: Building2 },
   { href: "/admin/requests", label: "稼働依頼", icon: ClipboardCheck },
   { href: "/admin/attendance-requests", label: "申請・報告管理", icon: Inbox },
