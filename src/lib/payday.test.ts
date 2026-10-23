@@ -96,3 +96,16 @@ test("月次集計: 出勤日数・打刻漏れ・定時超過・欠勤(申請�
   assert.deepEqual(r.absenceDates, ["2026-10-07"]);
   assert.deepEqual(r.earlyLeaveDates, ["2026-10-02"]);
 });
+
+import { fixedPaymentState } from "./fixed-payment-status";
+
+test("振込完了の状態: 支払日が今日以前で未押下は赤字(OVERDUE)、押下済みはDONE、先はPENDING、記録開始前はUNTRACKED", () => {
+  const d = (iso: string) => new Date(`${iso}T00:00:00+09:00`);
+  const now = jst("2026-10-30T15:00:00");
+  assert.equal(fixedPaymentState({ paymentDate: d("2026-10-30"), completed: false, now }), "OVERDUE"); // 今日が支払日
+  assert.equal(fixedPaymentState({ paymentDate: d("2026-10-26"), completed: false, now }), "OVERDUE"); // 過ぎている
+  assert.equal(fixedPaymentState({ paymentDate: d("2026-10-30"), completed: true, now }), "DONE");
+  assert.equal(fixedPaymentState({ paymentDate: d("2026-11-30"), completed: false, now }), "PENDING");
+  assert.equal(fixedPaymentState({ paymentDate: d("2026-09-30"), completed: false, now }), "UNTRACKED"); // 記録開始前
+  assert.equal(fixedPaymentState({ paymentDate: d("2026-10-23"), completed: false, now: jst("2026-10-23T09:00:00") }), "OVERDUE"); // 開始日当日から対象
+});

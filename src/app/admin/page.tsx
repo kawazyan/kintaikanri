@@ -38,7 +38,7 @@ export default async function AdminDashboardPage() {
     ]);
 
   const urgent = await loadUrgentItems();
-  const urgentCount = urgent.paydayToday.length + urgent.amountMissing.length;
+  const urgentCount = urgent.unpaid.length + urgent.amountMissing.length;
   const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
   const nameOf = (n: string) => n.replace(/[\s\u3000]+/g, " ");
   const monthOf = (ym: string) => `${Number(ym.slice(5))}月分`;
@@ -78,17 +78,20 @@ export default async function AdminDashboardPage() {
             <p className="text-lg font-black text-red-700">急ぎ案件 <span className="tabular-nums">{urgentCount}</span>件</p>
           </div>
           <ul className="space-y-2">
-            {urgent.paydayToday.map((i) => (
-              <li key={`pay-${i.kind}-${i.staffId ?? i.name}`}>
+            {urgent.unpaid.map((i) => (
+              <li key={`unpaid-${i.kind}-${i.staffId}-${i.closingYearMonth ?? i.paymentDate.getTime()}`}>
                 <Link
                   href={i.kind === "REQUEST" ? "/admin/payments?status=REQUESTING" : `/admin/payments${i.closingYearMonth ? `?month=${i.closingYearMonth}` : ""}`}
                   className="flex items-center gap-3 rounded-2xl border border-red-200 bg-white px-4 py-3 text-sm font-bold text-slate-900 active:translate-y-0.5"
                 >
-                  <span className="shrink-0 rounded-lg bg-red-600 px-2 py-1 text-xs font-black text-white">今日</span>
+                  <span className="shrink-0 rounded-lg bg-red-600 px-2 py-1 text-xs font-black text-white">{i.isToday ? "今日" : "未振込"}</span>
                   <span className="min-w-0 flex-1">
-                    {nameOf(i.name)} への{i.kind === "REQUEST" ? "振込(申請の希望日)" : "支払日"}
+                    {nameOf(i.name)} {i.isToday ? "への支払日" : "への振込が未完了"}
                     <span className="ml-2 font-black text-red-700">{i.amount === null ? "金額未確定" : yen(i.amount)}</span>
-                    {i.note && <span className="ml-2 text-xs font-medium text-slate-500">({i.note})</span>}
+                    <span className="ml-2 text-xs font-medium text-slate-500">
+                      ({i.closingYearMonth ? `${monthOf(i.closingYearMonth)}・` : "申請・"}
+                      {i.isToday ? "振込したら「振込完了」を押す" : `${i.kind === "REQUEST" ? "希望日" : "支払日"} ${mdOf(i.paymentDate)}`})
+                    </span>
                   </span>
                   <ChevronRight size={18} className="shrink-0 text-red-300" />
                 </Link>
@@ -111,9 +114,7 @@ export default async function AdminDashboardPage() {
             ))}
           </ul>
         </section>
-      ) : (
-        <p className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-700">急ぎ案件はありません</p>
-      )}
+      ) : null}
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map((item, index) => {

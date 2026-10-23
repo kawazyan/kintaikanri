@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { currentJstYearMonth, formatJst, listMonthOptions, yearMonthLabel } from "@/lib/time";
+import { currentJstYearMonth, formatJst, jstDayRange, listMonthOptions, yearMonthLabel } from "@/lib/time";
 import { loadStaffMonthSummaries } from "@/lib/staff-month-summary";
 import { MonthSummary } from "./month-summary";
 import { AdminNav } from "../admin-nav";
@@ -23,6 +23,10 @@ export default async function AdminPaymentsPage({
   const statusQuery = status === "REQUESTING" || status === "PAID" ? `&status=${status}` : "";
   const tabHref = (value: string) => `/admin/payments?month=${value}${statusQuery}`;
   const filterHref = (st?: string) => `/admin/payments?month=${yearMonth}${st ? `&status=${st}` : ""}`;
+
+  // 希望振込日が今日以前なのに、まだ振込完了を押していない申請は「未振込」として赤字にする。
+  const todayStart = jstDayRange(nowDate).start.getTime();
+  const isOverdue = (desired: Date) => desired.getTime() <= todayStart;
 
   const activeStaff = await prisma.staff.findMany({ where: { status: "ACTIVE" }, orderBy: { employeeCode: "asc" } });
   const summaries = await loadStaffMonthSummaries(activeStaff, yearMonth, nowDate);
@@ -57,7 +61,7 @@ export default async function AdminPaymentsPage({
           </a>
         ))}
       </nav>
-      <MonthSummary monthLabel={yearMonthLabel(yearMonth)} staff={activeStaff} summaries={summaries} />
+      <MonthSummary monthLabel={yearMonthLabel(yearMonth)} yearMonth={yearMonth} staff={activeStaff} summaries={summaries} />
 
       <h2 className="mb-3 text-sm font-semibold text-slate-300">振込申請一覧</h2>
 
@@ -102,7 +106,7 @@ export default async function AdminPaymentsPage({
                 </td>
                 <td className="py-2 pr-3">{formatJst(r.requestedAt)}</td>
                 <td className="py-2 pr-3">{r.amount.toLocaleString("ja-JP")}円</td>
-                <td className="py-2 pr-3">
+                <td className={`py-2 pr-3 ${r.status === "REQUESTING" && isOverdue(r.desiredPaymentDate) ? "font-bold text-red-400" : ""}`}>
                   {new Intl.DateTimeFormat("ja-JP", {
                     timeZone: "Asia/Tokyo",
                     year: "numeric",
@@ -116,9 +120,13 @@ export default async function AdminPaymentsPage({
                       振込済み
                     </span>
                   ) : (
-                    <span className="rounded bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400">
-                      申請中
-                    </span>
+                    isOverdue(r.desiredPaymentDate) ? (
+                      <span className="rounded bg-red-500/15 px-2 py-0.5 text-xs font-bold text-red-400">未振込</span>
+                    ) : (
+                      <span className="rounded bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400">
+                        申請中
+                      </span>
+                    )
                   )}
                   {r.status === "PAID" && (
                     <div className="mt-1 text-xs text-slate-500">
@@ -146,7 +154,7 @@ export default async function AdminPaymentsPage({
                       <SubmitButton
                         className="rounded-md bg-gradient-to-r from-blue-600 to-cyan-500 px-2 py-1 text-xs text-white shadow-md shadow-blue-950/50 active:scale-[0.98]"
                       >
-                        振込済みにする
+                        振込完了
                       </SubmitButton>
                     </form>
                   )}

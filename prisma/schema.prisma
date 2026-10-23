@@ -122,6 +122,7 @@ model Staff {
   shiftChangeRequests   ShiftChangeRequest[]
   coinBonuses           CoinBonus[]
   giftExchanges         GiftExchange[]
+  fixedPaymentCompletions FixedPaymentCompletion[]
 }
 
 model MonthlyEarningTarget {
@@ -880,4 +881,19 @@ model EstimateLine {
   unitPriceExTax Int // 税別単価(税込で入力したときは、税別に直した値)
   unitPriceInclTax Int? // 税込で入力したときの、入力した税込単価
   @@index([estimateId])
+}
+
+// 固定支払(月ごとの振込)の「振込完了」ボタンの記録。押していない月は「未振込」として扱う。
+// closingYearMonth = 支払いの対象の締め月(YYYY-MM)。スタッフ×締め月で1件。
+model FixedPaymentCompletion {
+  id               String   @id @default(cuid())
+  staffId          String
+  staff            Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  closingYearMonth String
+  paidAmount       Int
+  paidAt           DateTime @default(now())
+  createdAt        DateTime @default(now())
+
+  @@unique([staffId, closingYearMonth])
+  @@index([closingYearMonth])
 }
