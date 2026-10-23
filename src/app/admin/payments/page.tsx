@@ -4,7 +4,8 @@ import { currentJstYearMonth, formatJst, jstDayRange, listMonthOptions, yearMont
 import { loadStaffMonthSummaries } from "@/lib/staff-month-summary";
 import { MonthSummary } from "./month-summary";
 import { AdminNav } from "../admin-nav";
-import { markTransferRequestPaid } from "./actions";
+import { markTransferRequestPaid, rejectTransferRequest } from "./actions";
+import { RejectButton } from "./reject-button";
 import { SubmitButton } from "@/components/submit-button";
 
 export default async function AdminPaymentsPage({
@@ -20,7 +21,7 @@ export default async function AdminPaymentsPage({
   const yearMonth = month && /^\d{4}-(0[1-9]|1[0-2])$/.test(month) ? month : currentJstYearMonth(nowDate);
   const monthTabs = listMonthOptions(5, 1, nowDate);
   if (!monthTabs.some((t) => t.value === yearMonth)) monthTabs.unshift({ value: yearMonth, label: yearMonthLabel(yearMonth) });
-  const statusQuery = status === "REQUESTING" || status === "PAID" ? `&status=${status}` : "";
+  const statusQuery = status === "REQUESTING" || status === "PAID" || status === "REJECTED" ? `&status=${status}` : "";
   const tabHref = (value: string) => `/admin/payments?month=${value}${statusQuery}`;
   const filterHref = (st?: string) => `/admin/payments?month=${yearMonth}${st ? `&status=${st}` : ""}`;
 
@@ -32,7 +33,7 @@ export default async function AdminPaymentsPage({
   const summaries = await loadStaffMonthSummaries(activeStaff, yearMonth, nowDate);
 
   const requests = await prisma.transferRequest.findMany({
-    where: status === "REQUESTING" || status === "PAID" ? { status } : undefined,
+    where: status === "REQUESTING" || status === "PAID" || status === "REJECTED" ? { status } : undefined,
     include: { staff: true },
     orderBy: { requestedAt: "desc" },
     take: 200,
@@ -84,6 +85,12 @@ export default async function AdminPaymentsPage({
         >
           振込済みのみ
         </a>
+        <a
+          href={filterHref("REJECTED")}
+          className={status === "REJECTED" ? "font-semibold text-cyan-300" : "text-blue-400 underline"}
+        >
+          却下のみ
+        </a>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/40 backdrop-blur-sm">
@@ -119,6 +126,8 @@ export default async function AdminPaymentsPage({
                     <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
                       振込済み
                     </span>
+                  ) : r.status === "REJECTED" ? (
+                    <span className="rounded bg-slate-500/20 px-2 py-0.5 text-xs font-medium text-slate-400">却下</span>
                   ) : (
                     isOverdue(r.desiredPaymentDate) ? (
                       <span className="rounded bg-red-500/15 px-2 py-0.5 text-xs font-bold text-red-400">未振込</span>
@@ -127,6 +136,13 @@ export default async function AdminPaymentsPage({
                         申請中
                       </span>
                     )
+                  )}
+                  {r.status === "REJECTED" && (
+                    <div className="mt-1 text-xs text-slate-500">
+                      {r.rejectedAt && formatJst(r.rejectedAt)}
+                      {r.rejectionReason && ` / 理由: ${r.rejectionReason}`}
+                      {r.rejectedByOperatorName && ` / 処理者: ${r.rejectedByOperatorName}`}
+                    </div>
                   )}
                   {r.status === "PAID" && (
                     <div className="mt-1 text-xs text-slate-500">
@@ -156,6 +172,23 @@ export default async function AdminPaymentsPage({
                       >
                         振込完了
                       </SubmitButton>
+                    </form>
+                  )}
+                  {r.status === "REQUESTING" && (
+                    <form action={rejectTransferRequest.bind(null, r.id)} className="mt-3 flex flex-col gap-1 border-t border-slate-800 pt-2">
+                      <input
+                        type="text"
+                        name="reason"
+                        placeholder="却下の理由(任意)"
+                        className="w-28 rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-xs text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
+                      />
+                      <input
+                        type="text"
+                        name="operatorName"
+                        placeholder="処理者名"
+                        className="w-28 rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-xs text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
+                      />
+                      <RejectButton staffName={r.staff.name} amount={r.amount} />
                     </form>
                   )}
                 </td>

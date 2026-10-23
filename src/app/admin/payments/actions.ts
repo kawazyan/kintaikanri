@@ -32,6 +32,30 @@ export async function markTransferRequestPaid(requestId: string, formData: FormD
   revalidatePath("/admin");
 }
 
+// 振込申請の「却下」。申請中のものだけ却下できる(振込済みは対象外)。却下した申請は申請可能額に数えない(スタッフはまた申請できる)。
+export async function rejectTransferRequest(requestId: string, formData: FormData) {
+  await requireAdmin();
+
+  const reason = String(formData.get("reason") ?? "").trim();
+  const operatorName = String(formData.get("operatorName") ?? "").trim();
+
+  // 申請中のときだけ更新(同時に振込完了が押された場合などに上書きしない)。
+  await prisma.transferRequest.updateMany({
+    where: { id: requestId, status: "REQUESTING" },
+    data: {
+      status: "REJECTED",
+      rejectedAt: new Date(),
+      rejectionReason: reason || null,
+      rejectedByOperatorName: operatorName || null,
+    },
+  });
+
+  revalidatePath("/admin/payments");
+  revalidatePath("/admin");
+  revalidatePath("/payment/history");
+  revalidatePath("/clock");
+}
+
 const YEAR_MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 // 固定支払の「振込完了」ボタン。押した時点の支払い金額(受取金額+申請のある経費)を記録する。

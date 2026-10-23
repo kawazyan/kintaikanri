@@ -35,6 +35,7 @@ enum PaymentMethod {
 enum TransferRequestStatus {
   REQUESTING
   PAID
+  REJECTED // 却下(振込しない)
 }
 
 // 連続「早出出勤」(シフトの勤務開始時刻より前に出勤打刻した日)の閾値で
@@ -235,6 +236,10 @@ model TransferRequest {
   paidAmount        Int?
   // 操作した管理者(自由記述。個別管理者アカウントがないため)
   paidByOperatorName String?
+  // 却下(管理者が申請を取り下げさせる)。却下した申請は申請可能額に数えない
+  rejectedAt         DateTime?
+  rejectionReason    String?
+  rejectedByOperatorName String?
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
 

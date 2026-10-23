@@ -38,10 +38,12 @@ export default async function PaymentHistoryPage() {
                 className={`rounded px-2 py-0.5 text-xs font-semibold ${
                   r.status === "PAID"
                     ? "bg-emerald-500/10 text-emerald-600"
-                    : "bg-amber-500/15 text-amber-700"
+                    : r.status === "REJECTED"
+                      ? "bg-slate-500/15 text-slate-600"
+                      : "bg-amber-500/15 text-amber-700"
                 }`}
               >
-                {r.status === "PAID" ? "振込済み" : "申請中"}
+                {r.status === "PAID" ? "振込済み" : r.status === "REJECTED" ? "却下" : "申請中"}
               </span>
             </div>
             <div className="mt-1 text-slate-500">
@@ -53,6 +55,9 @@ export default async function PaymentHistoryPage() {
                 day: "2-digit",
               }).format(r.desiredPaymentDate)}
             </div>
+            {r.status === "REJECTED" && r.rejectionReason && (
+              <div className="mt-1 text-slate-500">却下の理由: {r.rejectionReason}</div>
+            )}
           </li>
         ))}
         {requests.length === 0 && (
