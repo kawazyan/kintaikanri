@@ -198,6 +198,7 @@ export default async function AdminStaffDetailPage({
                 <option value="">未設定</option>
                 <option value="DAILY">日当(稼働日数 × 日当)</option>
                 <option value="MONTHLY">月固定(稼働日数に関わらず定額)</option>
+                <option value="MANUAL">月ごとに手入力(振込関係ページで毎月の金額を入力)</option>
               </select>
             </label>
             <div className="grid grid-cols-2 gap-2">

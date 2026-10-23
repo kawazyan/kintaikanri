@@ -1,8 +1,8 @@
 import type { StaffMonthSummary } from "@/lib/staff-month-summary";
 import { SubmitButton } from "@/components/submit-button";
-import { markFixedPaymentDone, undoFixedPaymentDone } from "./actions";
+import { markFixedPaymentDone, setManualPayAmount, undoFixedPaymentDone } from "./actions";
 
-type Row = { id: string; employeeCode: string; name: string; paymentMethod: "FIXED" | "REQUEST" };
+type Row = { id: string; employeeCode: string; name: string; paymentMethod: "FIXED" | "REQUEST"; payType: "DAILY" | "MONTHLY" | "MANUAL" | null };
 
 const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
 const md = (key: string) => {
@@ -76,8 +76,28 @@ export function MonthSummary({
                     <div className={m.paymentState === "OVERDUE" ? "font-bold text-red-400" : "font-semibold text-slate-100"}>
                       {m.paymentState === "DONE" && m.paidAmount !== null ? yen(m.paidAmount) : m.total === null ? "金額未確定" : yen(m.total)}
                     </div>
+                    {s.payType === "MANUAL" && (
+                      <form action={setManualPayAmount.bind(null, s.id, yearMonth)} className="mt-1 flex items-center justify-end gap-1">
+                        <input
+                          key={m.earnings ?? "none"}
+                          type="text"
+                          name="amount"
+                          inputMode="numeric"
+                          placeholder="金額を入力"
+                          defaultValue={m.earnings ?? ""}
+                          disabled={m.paymentState === "DONE"}
+                          aria-label={`${s.name}の${monthLabel}の支払い金額`}
+                          className="w-24 rounded-md border border-slate-600 bg-slate-950 px-2 py-1 text-right text-[11px] text-slate-100 disabled:opacity-50"
+                        />
+                        {m.paymentState !== "DONE" && (
+                          <SubmitButton pendingText="保存中…" className="rounded-md bg-slate-700 px-2 py-1 text-[11px] font-bold text-white">
+                            保存
+                          </SubmitButton>
+                        )}
+                      </form>
+                    )}
                     <div className="mt-0.5 text-[10px] leading-tight text-slate-500">
-                      受取 {m.earnings === null ? "未確定" : yen(m.earnings)}
+                      {s.payType === "MANUAL" ? "手入力(その月の金額をそのまま)" : <>受取 {m.earnings === null ? "未確定" : yen(m.earnings)}</>}
                       {m.expenses > 0 && (
                         <>
                           <br />

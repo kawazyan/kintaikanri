@@ -25,6 +25,7 @@ enum WorkType {
 enum StaffPayType {
   DAILY // 日当(稼働日数分)
   MONTHLY // 月固定(稼働日数に関わらず定額)
+  MANUAL // 月ごとに金額を手入力(本人の申告額などをそのまま払う。日割り・交通費の自動加算なし)
 }
 
 enum PaymentMethod {
@@ -124,6 +125,7 @@ model Staff {
   coinBonuses           CoinBonus[]
   giftExchanges         GiftExchange[]
   fixedPaymentCompletions FixedPaymentCompletion[]
+  manualPayAmounts        ManualPayAmount[]
 }
 
 model MonthlyEarningTarget {
@@ -901,4 +903,18 @@ model FixedPaymentCompletion {
 
   @@unique([staffId, closingYearMonth])
   @@index([closingYearMonth])
+}
+
+// 報酬タイプ MANUAL のスタッフの、月ごとの支払い金額(管理者が振込関係ページで入力)。
+// スタッフが入力できる MonthlyEarningTarget(月の目標額)とは別にして、本人の操作で支払額が変わらないようにしている。
+model ManualPayAmount {
+  id        String   @id @default(cuid())
+  staffId   String
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  yearMonth String // 締め月 "YYYY-MM" (JST)
+  amount    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([staffId, yearMonth])
 }

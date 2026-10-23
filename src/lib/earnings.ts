@@ -42,6 +42,13 @@ export async function computeMonthlyEarnings(
     }),
   ]);
 
+  // 報酬タイプ「月ごとに手入力」: 管理者が入力したその月の金額をそのまま使う(日割り・交通費の自動加算はしない)。
+  // 未入力の月は金額未確定(null)。
+  if (staffPay?.payType === "MANUAL") {
+    const manual = await prisma.manualPayAmount.findUnique({ where: { staffId_yearMonth: { staffId, yearMonth } } });
+    return { confirmedAmount: manual?.amount ?? null };
+  }
+
   const isConfirmed = (s: (typeof shifts)[number]) => {
     const hasIn = s.clockRecords.some((r) => r.type === "IN");
     const hasOut = s.clockRecords.some((r) => r.type === "OUT");

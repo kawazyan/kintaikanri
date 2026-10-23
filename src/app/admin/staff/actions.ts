@@ -119,7 +119,7 @@ export async function updateStaffDetails(staffId: string, formData: FormData) {
 
   // 報酬設定(日当 / 月固定 / 交通費)。未選択なら null(従来どおりシフト単価を使う)
   const payTypeRaw = String(formData.get("payType") ?? "");
-  const payType = payTypeRaw === "DAILY" || payTypeRaw === "MONTHLY" ? payTypeRaw : null;
+  const payType = payTypeRaw === "DAILY" || payTypeRaw === "MONTHLY" || payTypeRaw === "MANUAL" ? payTypeRaw : null;
   const dailyRate = payType === "DAILY" ? nonNegIntOrNull(formData, "dailyRate") : null;
   const monthlyAmount = payType === "MONTHLY" ? nonNegIntOrNull(formData, "monthlyAmount") : null;
   const travelRaw = String(formData.get("travelExpenseIncluded") ?? "");
