@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { sendMailStrict } from "@/lib/mail";
 import { renderInvoicePdf, renderStatementPdf } from "@/lib/invoice-render";
-import { invoiceRecipients } from "@/lib/invoice-defaults";
+import { resolveInvoiceRecipients } from "@/lib/invoice-defaults";
 import { planManualContracts } from "@/lib/manual-contracts";
 import { invoiceMismatch } from "@/lib/invoice-consistency";
 import { mergePdfs } from "@/lib/pdf-bundle";
@@ -65,12 +65,12 @@ export async function sendApprovedInvoice(id: string) {
   const mismatch = invoiceMismatch(invoice, invoice.statement as unknown as StatementSnapshot);
   if (mismatch) throw new Error(mismatch);
 
-  const to = invoiceRecipients(invoice.client);
+  const to = resolveInvoiceRecipients(invoice.recipientEmails, invoice.client);
   if (!to.length) {
-    throw new Error(`取引先「${invoice.client.name}」にメールアドレスが登録されていません。取引先窓口の画面で登録してから、もう一度送信してください。`);
+    throw new Error(`取引先「${invoice.client.name}」にメールアドレスが登録されていません。請求書の「修正」画面で送信先を入力するか、取引先窓口の画面で登録してから、もう一度送信してください。`);
   }
   const badTo = to.find((x) => !EMAIL_RE.test(x));
-  if (badTo) throw new Error(`取引先のメールアドレスの形式が正しくありません: ${badTo}`);
+  if (badTo) throw new Error(`送信先のメールアドレスの形式が正しくありません: ${badTo}`);
 
   const admins = await prisma.adminEmail.findMany({ select: { email: true } });
   const cc = [...new Set(admins.map((a) => a.email.trim()).filter((x) => EMAIL_RE.test(x) && !to.includes(x)))];

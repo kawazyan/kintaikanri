@@ -8,6 +8,8 @@ import { monthEndOf, nextMonthEnd } from "@/lib/invoice-defaults";
 
 type Initial = {
   addressee: string;
+  recipientEmails: string[]; // この請求書に手入力した送信先(空なら取引先の登録を使う)
+  clientRecipients: string[]; // 取引先に登録されている送信先(手入力が空のときに使われる)
   dueDate: string;
   subject: string;
   note: string;
@@ -71,19 +73,21 @@ function NumInput({ value, onChange, className }: { value: number; onChange: (n:
 
 export function EditInvoiceForm({
   invoiceId,
-  recipients,
+  ccText,
   initial,
   yearMonth,
   status,
 }: {
   invoiceId: string;
-  recipients: string;
+  ccText: string; // 管理者CCの表示用(例「（CC: a@b.c）」)
   status: "DRAFT" | "APPROVED";
   initial: Initial;
   yearMonth: string;
 }) {
   const router = useRouter();
   const [addressee, setAddressee] = useState(initial.addressee);
+  // 送信先は1件ずつ別の枠。すべて空なら取引先の登録を使う。枠は最低1つ表示する。
+  const [emailBoxes, setEmailBoxes] = useState<string[]>(() => (initial.recipientEmails.length ? initial.recipientEmails : [""]));
   const [subject, setSubject] = useState(initial.subject);
   const [dueDate, setDueDate] = useState(initial.dueDate);
   const [note, setNote] = useState(initial.note);
@@ -125,9 +129,13 @@ export function EditInvoiceForm({
     if (mode === "MANUAL" && manual.length === 0) { setTaxMode("EX"); setManual(withKey(initial.suggestedLines)); }
   }
 
+  const typedRecipients = emailBoxes.map((x) => x.trim()).filter(Boolean);
+  const recipients = `${(typedRecipients.length ? typedRecipients : initial.clientRecipients).join(", ") || "（送信先が未設定。上の枠に入力してください）"}${ccText}`;
+
   function payload(): InvoiceEditPayload {
     return {
       addressee,
+      recipientEmails: typedRecipients,
       dueDate,
       subject,
       note,
@@ -205,6 +213,36 @@ export function EditInvoiceForm({
             <input value={addressee} onChange={(e) => setAddressee(e.target.value)} className={`${input} mt-1`} />
             <span className={hint}>「御中」は自動で付きます</span>
           </label>
+          <div className={field}>
+            送信先メールアドレス（1件ずつ別の枠に入力）
+            <div className="mt-1 space-y-2">
+              {emailBoxes.map((v, i) => (
+                <div key={i} className="flex gap-2">
+                  <input
+                    type="text"
+                    inputMode="email"
+                    value={v}
+                    onChange={(e) => setEmailBoxes(emailBoxes.map((x, xi) => (xi === i ? e.target.value : x)))}
+                    placeholder="例: example@example.com"
+                    className={input}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setEmailBoxes(emailBoxes.length <= 1 ? [""] : emailBoxes.filter((_, xi) => xi !== i))}
+                    className="shrink-0 rounded-lg border border-red-700 px-3 py-2 text-sm font-black text-red-300"
+                  >
+                    削除
+                  </button>
+                </div>
+              ))}
+              <button type="button" onClick={() => setEmailBoxes([...emailBoxes, ""])} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-black text-white">
+                ＋ 宛先を追加
+              </button>
+            </div>
+            <span className={hint}>
+              この請求書の送信先です。すべて空なら取引先に登録したアドレス{initial.clientRecipients.length ? `（${initial.clientRecipients.join(", ")}）` : "（未登録）"}に送ります。管理者のCCは自動で付きます。
+            </span>
+          </div>
           <label className={field}>
             件名
             <input value={subject} onChange={(e) => setSubject(e.target.value)} className={`${input} mt-1`} />

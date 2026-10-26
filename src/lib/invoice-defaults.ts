@@ -45,6 +45,15 @@ export function splitEmails(raw: string | null | undefined) {
     .filter(Boolean);
 }
 
+// この請求書の送信先: 請求書ごとに手入力した宛先があればそれを使い、なければ取引先に登録した請求用の宛先を使う。
+export function resolveInvoiceRecipients(
+  manual: string | null | undefined,
+  client: { invoiceEmails?: string | null; email?: string | null }
+) {
+  const typed = [...new Set(splitEmails(manual))];
+  return typed.length ? typed : invoiceRecipients(client);
+}
+
 // 請求書メールの宛先。請求用の宛先(invoiceEmails)があればそれを、なければ従来の email を使う。重複は除く。
 export function invoiceRecipients(client: { invoiceEmails?: string | null; email?: string | null }) {
   const list = splitEmails(client.invoiceEmails);

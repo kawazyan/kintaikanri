@@ -677,6 +677,7 @@ model Invoice {
   dueDate String? // お支払(振込)期限 YYYY-MM-DD(未設定なら、稼働月の翌月末)
   sentAt DateTime? // 取引先へメール送信した日時
   sentTo String? // 送信先(カンマ区切り。CC含む)
+  recipientEmails String? // 送信先メール(手入力。複数可・カンマ区切り)。あれば取引先の登録より優先(店舗ごとに宛先が違う取引先用)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   lines InvoiceLine[]

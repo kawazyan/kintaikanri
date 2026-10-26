@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatJst } from "@/lib/time";
-import { invoiceRecipients } from "@/lib/invoice-defaults";
+import { resolveInvoiceRecipients } from "@/lib/invoice-defaults";
 import { AdminNav } from "../../admin-nav";
 import { InvoiceActions } from "./invoice-actions";
 import { DeleteSentInvoiceButton } from "./delete-sent-button";
@@ -34,7 +34,7 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
       : [];
 
   const admins = await prisma.adminEmail.findMany({ select: { email: true } });
-  const to = invoiceRecipients(i.client).join(", ");
+  const to = resolveInvoiceRecipients(i.recipientEmails, i.client).join(", ");
   const recipients = to
     ? `${to}${admins.length ? `（CC: ${admins.map((a) => a.email).join(", ")}）` : ""}`
     : "（取引先のメールアドレス未登録）";

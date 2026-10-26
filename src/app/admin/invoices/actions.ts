@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { buildInvoiceDraft, computeManualStaff, statementBillableExTax, type StatementSnapshot } from "@/lib/invoice-draft";
 import { normName, otherClientContracts, type BillingTerms } from "@/lib/billing-terms";
 import { buildInvoiceLines, manualUnitExTax } from "@/lib/invoice-lines";
-import { monthEndOf, nextMonthEnd } from "@/lib/invoice-defaults";
+import { monthEndOf, nextMonthEnd, splitEmails } from "@/lib/invoice-defaults";
 import { createCorrectionDraft } from "@/lib/invoice-correction";
 import { approveDraftInvoice, sendApprovedInvoice } from "@/lib/invoice-send";
 import { buildManualStaffNoShift, validateManualStaffNoShift } from "@/lib/invoice-manual-staff";
@@ -183,6 +183,8 @@ export async function deleteInvoice(id: string, confirmInvoiceNumber?: string): 
 
 export type InvoiceEditPayload = {
   addressee: string;
+  // 送信先メールアドレス(1件ずつ。空なら取引先の登録を使う)。
+  recipientEmails?: string[];
   // お支払(振込)期限 YYYY-MM-DD。空なら自動(稼働月の翌月末)。
   dueDate?: string;
   subject: string;
@@ -231,6 +233,10 @@ export async function saveInvoiceEdit(
   const subject = payload.subject.trim();
   if (!addressee) return { ok: false, error: "宛名を入力してください。" };
   if (!subject) return { ok: false, error: "件名を入力してください。" };
+  // 送信先: 入力があれば形式を確認し、重複を除いて保存する(空なら取引先の登録を使う)。
+  const recipientList = [...new Set((payload.recipientEmails ?? []).flatMap((x) => splitEmails(x)))];
+  const badRecipient = recipientList.find((x) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x));
+  if (badRecipient) return { ok: false, error: `送信先のメールアドレスの形式が正しくありません: ${badRecipient}` };
   // お支払(振込)期限: 空=自動(翌月末)。日付は、発行日(稼働月の月末日)以降で、実在する日付だけ。自動と同じ日付なら「自動」として保存する。
   let dueDate: string | null = null;
   const dueRaw = payload.dueDate?.trim();
@@ -371,6 +377,7 @@ export async function saveInvoiceEdit(
       where: { id },
       data: {
         addressee,
+        recipientEmails: recipientList.length ? recipientList.join(", ") : null,
         dueDate,
         subject,
         note: payload.note,
