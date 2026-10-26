@@ -53,7 +53,7 @@ export function InvoiceActions({
   }
 
   return (
-    <div className="mt-5 rounded-2xl border border-red-900 bg-red-950/20 p-5">
+    <div className="mt-5 rounded-2xl border border-red-300 bg-red-50 p-5">
       {status === "DRAFT" ? (
         <>
           <p className="text-sm text-slate-300">内容を確認して、「承認」か「修正」を選んでください。承認してもメールはまだ送られません。</p>
@@ -61,13 +61,13 @@ export function InvoiceActions({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="承認者名"
-            className="mt-3 w-full rounded-xl bg-slate-900 px-3 py-2"
+            className="mt-3 w-full rounded-xl border border-slate-300 bg-slate-900 px-3 py-2 placeholder:!text-slate-500"
           />
         </>
       ) : (
         <>
           <p className="text-sm text-slate-300">承認済みです。「送信」を押すと取引先へメールで送付されます。</p>
-          <p className="mt-1 text-xs text-slate-500">送信先: {recipients}</p>
+          <p className="mt-1 text-xs text-slate-600">送信先: {recipients}</p>
         </>
       )}
       <div className="mt-3 flex flex-wrap gap-3">
@@ -83,11 +83,11 @@ export function InvoiceActions({
         <Link href={`/admin/invoices/${invoiceId}/edit`} className="rounded-xl border border-slate-500 px-6 py-3 font-black text-slate-100">
           修正
         </Link>
-        <button type="button" onClick={remove} disabled={pending} className="rounded-xl border border-red-700 px-6 py-3 font-black text-red-300 disabled:opacity-50">
+        <button type="button" onClick={remove} disabled={pending} className="rounded-xl border border-red-400 px-6 py-3 font-black text-red-700 disabled:opacity-50">
           削除
         </button>
       </div>
-      {message && <p className={`mt-3 text-sm font-bold ${message.ok ? "text-emerald-400" : "text-red-400"}`}>{message.text}</p>}
+      {message && <p className={`mt-3 text-sm font-bold ${message.ok ? "text-emerald-700" : "text-red-700"}`}>{message.text}</p>}
     </div>
   );
 }
