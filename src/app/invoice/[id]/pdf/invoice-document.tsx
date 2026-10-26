@@ -80,13 +80,28 @@ export function InvoiceDocument({ data }: { data: InvoiceDocData }) {
     withAttach.splice(at >= 0 ? at : kept.length, 0, "請求内訳書は別途添付いたします。");
   }
   const noteText = withAttach.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  // 品目が増えても、振込先情報まで1ページに収まるように、品目の数に応じて余白を詰める(0=ゆったり / 1=やや詰める / 2=詰める)。
+  const n = data.lines.length;
+  const d = n >= 7 ? 2 : n >= 4 ? 1 : 0;
+  const pick = <T,>(a: T, b: T, c: T) => (d === 0 ? a : d === 1 ? b : c);
+  const dense = {
+    page: { paddingTop: pick(42, 36, 28), paddingBottom: pick(36, 30, 24) },
+    top: { marginTop: pick(26, 18, 12) },
+    letterhead: { width: pick(170, 150, 128), height: pick(106, 93, 80) },
+    band: { marginTop: pick(24, 16, 10), paddingVertical: pick(12, 9, 7) },
+    tHead: { marginTop: pick(26, 16, 10) },
+    row: { paddingVertical: pick(10, 6, 4) },
+    sumWrap: { marginTop: pick(18, 12, 8) },
+    noteWrap: { marginTop: pick(34, 20, 12) },
+    noteBody: { marginTop: pick(12, 8, 6), lineHeight: pick(1.7, 1.55, 1.45) },
+  };
   return (
     <Document title={`請求書 ${data.addressee} ${data.subject}`}>
-      <Page size="A4" style={s.page}>
+      <Page size="A4" style={[s.page, dense.page]}>
         <Text style={s.title}>請求書</Text>
         <View style={s.titleRule} />
 
-        <View style={s.top}>
+        <View style={[s.top, dense.top]}>
           <View style={s.left}>
             <Text style={s.addressee}>{data.addressee}　御中</Text>
             <Text style={s.subjectLabel}>件名</Text>
@@ -94,10 +109,10 @@ export function InvoiceDocument({ data }: { data: InvoiceDocData }) {
             <Text style={s.intro}>下記の通りご請求申し上げます。</Text>
           </View>
           {/* eslint-disable-next-line jsx-a11y/alt-text */}
-          <Image src={LETTERHEAD_IMAGE_PATH} style={s.letterhead} />
+          <Image src={LETTERHEAD_IMAGE_PATH} style={[s.letterhead, dense.letterhead]} />
         </View>
 
-        <View style={s.band}>
+        <View style={[s.band, dense.band]}>
           <Text style={s.bandLabel}>ご請求金額（税込）</Text>
           <Text style={s.bandValue}>{yen(data.totalInclTax)}</Text>
         </View>
@@ -117,7 +132,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocData }) {
           </View>
         </View>
 
-        <View style={s.tHead}>
+        <View style={[s.tHead, dense.tHead]}>
           <Text style={[s.th, s.cName]}>品名</Text>
           <Text style={[s.th, s.cQty]}>数量</Text>
           <Text style={[s.th, s.cPrice]}>単価（税抜）</Text>
@@ -125,7 +140,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocData }) {
           <Text style={[s.th, s.cAmt]}>金額（税抜）</Text>
         </View>
         {data.lines.map((l, i) => (
-          <View key={i} style={s.row} wrap={false}>
+          <View key={i} style={[s.row, dense.row]} wrap={false}>
             <View style={s.cName}>
               <Text>{l.label}</Text>
               {l.description ? <Text style={s.sub}>{l.description}</Text> : null}
@@ -137,7 +152,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocData }) {
           </View>
         ))}
 
-        <View style={s.sumWrap} wrap={false}>
+        <View style={[s.sumWrap, dense.sumWrap]} wrap={false}>
           <Text style={s.taxNote}>
             税率内訳{"\n"}10%対象　{yen(data.subtotalExTax)}（消費税 {yen(data.taxAmount)}）
           </Text>
@@ -157,7 +172,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocData }) {
           </View>
         </View>
 
-        <View style={s.noteWrap} wrap={false}>
+        <View style={[s.noteWrap, dense.noteWrap]} wrap={false}>
           <Text style={s.noteHead}>振込先情報・備考</Text>
           <View style={s.bankBox}>
             <View style={s.bankRow}>
@@ -172,7 +187,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocData }) {
               <View style={[s.bankCell, { width: "100%" }]}><Text style={s.bankLabel}>口座名義</Text><Text style={s.bankValue}>{INVOICE_BANK.accountHolder}</Text></View>
             </View>
           </View>
-          <Text style={s.noteBody}>{noteText}</Text>
+          <Text style={[s.noteBody, dense.noteBody]}>{noteText}</Text>
         </View>
       </Page>
     </Document>

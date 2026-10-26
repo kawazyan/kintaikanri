@@ -49,7 +49,7 @@ let manualKeySeq = 0;
 const withKey = (xs: ManualLineIn[]): ManualLine[] => xs.map((x) => ({ ...x, key: ++manualKeySeq }));
 type TravelLine = { key: string; label: string; calc: string; amountExTax: number };
 
-const input = "w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-100";
+const input = "w-full rounded-lg border border-slate-300 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:!text-slate-500";
 
 // 数字の入力欄。消して打ち直すときに、先頭へ「0」が自動で付かない(空欄にできる)。
 // 空欄のまま確定(フォーカスを外す)したときだけ 0 に戻す。
@@ -191,15 +191,15 @@ export function EditInvoiceForm({
     setStaff(staff.map((s, idx) => (idx === i ? { ...s, dayPlaces: Object.fromEntries(s.dates.map((d) => [d, place])) } : s)));
 
   const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
-  const field = "block text-xs font-bold text-slate-300";
-  const hint = "mt-1 text-xs font-normal text-slate-500";
+  const field = "block text-sm font-bold text-slate-300";
+  const hint = "mt-1 text-xs font-normal text-slate-600";
   const patchStaff = (i: number, patch: Partial<Initial["staff"][number]>) =>
     setStaff(staff.map((x, xi) => (xi === i ? { ...x, ...patch } : x)));
 
   return (
     <div className="mt-6 space-y-6 pb-8">
       {initial.warnings.length > 0 && (
-        <section className="rounded-2xl border border-amber-700 bg-amber-950/30 p-4 text-sm text-amber-200">
+        <section className="rounded-2xl border border-amber-400 bg-amber-50 p-4 text-sm text-amber-900">
           {initial.warnings.map((w, i) => (<p key={i}>⚠ {w}</p>))}
         </section>
       )}
@@ -229,7 +229,7 @@ export function EditInvoiceForm({
                   <button
                     type="button"
                     onClick={() => setEmailBoxes(emailBoxes.length <= 1 ? [""] : emailBoxes.filter((_, xi) => xi !== i))}
-                    className="shrink-0 rounded-lg border border-red-700 px-3 py-2 text-sm font-black text-red-300"
+                    className="shrink-0 rounded-lg border border-red-400 px-3 py-2 text-sm font-black text-red-700"
                   >
                     削除
                   </button>
@@ -281,7 +281,7 @@ export function EditInvoiceForm({
                 </label>
               </div>
               {lineMode === "AUTO" ? (
-                <p className="mt-2 text-xs text-slate-500">金額は稼働明細書の合計から自動で計算します（取引先の設定によっては「稼働費用（スタッフ名）」「交通費相当額」の行に分かれます）。</p>
+                <p className="mt-2 text-xs text-slate-600">金額は稼働明細書の合計から自動で計算します（取引先の設定によっては「稼働費用（スタッフ名）」「交通費相当額」の行に分かれます）。</p>
               ) : (
                 <div className="mt-3 space-y-3">
                   <div className="flex flex-wrap items-center gap-4 text-sm">
@@ -289,8 +289,8 @@ export function EditInvoiceForm({
                     <label className="flex items-center gap-2"><input type="radio" name="taxMode" checked={taxMode === "EX"} onChange={() => setTaxMode("EX")} />税別で入力</label>
                     <label className="flex items-center gap-2"><input type="radio" name="taxMode" checked={taxMode === "INCL"} onChange={() => setTaxMode("INCL")} />税込で入力</label>
                   </div>
-                  <p className="text-xs text-slate-500">この表は、請求書の品目と請求内訳書の行を兼ねます。{taxMode === "INCL" ? "税込で入力した単価は、税別（円未満切り捨て）に直して請求します。" : ""}</p>
-                  <div className="hidden grid-cols-[1fr_1fr_64px_110px_100px_auto] gap-2 text-xs text-slate-400 md:grid">
+                  <p className="text-xs text-slate-600">この表は、請求書の品目と請求内訳書の行を兼ねます。{taxMode === "INCL" ? "税込で入力した単価は、税別（円未満切り捨て）に直して請求します。" : ""}</p>
+                  <div className="hidden grid-cols-[1fr_1fr_64px_110px_100px_auto] gap-2 text-xs text-slate-600 md:grid">
                     <span>品目</span><span>計算方法（内訳書に載る・任意）</span><span>数量</span><span>単価（{taxMode === "INCL" ? "税込" : "税別"}）</span><span className="text-right">金額（税別）</span><span />
                   </div>
                   {manual.map((m, i) => (
@@ -309,21 +309,21 @@ export function EditInvoiceForm({
                     <span>請求内訳書に、スタッフごとの稼働日・店舗の表も載せる（金額の表は、上の表に置き換わります）</span>
                   </label>
                   {taxMode === "INCL" && manualEnteredTotal > 0 && manualEnteredTotal !== manualSubtotal + Math.floor(manualSubtotal / 10) && (
-                    <p className="rounded-lg border border-amber-700 bg-amber-950/30 p-2 text-xs font-bold text-amber-200">
+                    <p className="rounded-lg border border-amber-400 bg-amber-50 p-2 text-xs font-bold text-amber-900">
                       ⚠ 入力した税込の合計（{yen(manualEnteredTotal)}）と、請求書の税込合計（{yen(manualSubtotal + Math.floor(manualSubtotal / 10))}）が、端数の処理で1円ずれます。請求書は、税別の合計の10%（切り捨て）で計算します。
                     </p>
                   )}
                   {manualSubtotal !== subtotal && (
-                    <p className="rounded-lg border border-amber-700 bg-amber-950/30 p-2 text-xs font-bold text-amber-200">
+                    <p className="rounded-lg border border-amber-400 bg-amber-50 p-2 text-xs font-bold text-amber-900">
                       ⚠ 品目の合計（税別 {yen(manualSubtotal)}）が、自動で計算した金額（税別 {yen(subtotal)}）と違います。意図した金額か、確認してから保存してください。
                     </p>
                   )}
                 </div>
               )}
-              <p className="mt-3 text-xs text-slate-500">税率10%／発行日は稼働月の月末日で固定です（変更できません）。</p>
+              <p className="mt-3 text-xs text-slate-600">税率10%／発行日は稼働月の月末日で固定です（変更できません）。</p>
             </div>
           ) : (
-            <div className="rounded-xl bg-slate-950 p-3 text-xs text-slate-400">
+            <div className="rounded-xl bg-slate-950 p-3 text-xs text-slate-600">
               品目は「業務委託費一式」の1行のみ／税率10%／発行日は稼働月の月末日で固定です（変更できません）。
             </div>
           )}
@@ -340,13 +340,13 @@ export function EditInvoiceForm({
       {staff.length > 0 && (
         <section className="rounded-2xl border border-slate-700 bg-slate-900 p-5">
           <h2 className="text-base font-black">② 稼働明細書の内訳（スタッフごと）</h2>
-          <p className="mt-1 text-xs text-slate-400">ここで直した金額は、請求書の「業務委託費一式」に自動で反映されます。稼働日を変えても金額は自動では変わらないので、必要なら業務委託費も直してください。</p>
+          <p className="mt-1 text-xs text-slate-600">ここで直した金額は、請求書の「業務委託費一式」に自動で反映されます。稼働日を変えても金額は自動では変わらないので、必要なら業務委託費も直してください。</p>
           <div className="mt-4 space-y-5">
             {staff.map((s, i) => (
               <div key={i} className="rounded-xl border border-slate-800 bg-slate-950 p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="text-base font-black">{s.name}</p>
-                  <p className="text-xs text-slate-500">{s.places || "―"} ／ {s.carriers || "―"}</p>
+                  <p className="text-xs text-slate-600">{s.places || "―"} ／ {s.carriers || "―"}</p>
                 </div>
 
                 <div className="mt-4">
@@ -362,7 +362,7 @@ export function EditInvoiceForm({
                           onChange={(e) => setStaffDates(i, s.dates.map((x, xi) => (xi === di ? e.target.value : x)), { from: d, to: e.target.value })}
                           className="bg-transparent text-sm"
                         />
-                        <button type="button" aria-label="この日を削除" onClick={() => setStaffDates(i, s.dates.filter((_, xi) => xi !== di))} className="px-1 text-xs text-red-300">✕</button>
+                        <button type="button" aria-label="この日を削除" onClick={() => setStaffDates(i, s.dates.filter((_, xi) => xi !== di))} className="px-1 text-xs text-red-700">✕</button>
                       </span>
                     ))}
                     <button type="button" onClick={() => setStaffDates(i, [...s.dates, `${yearMonth}-01`])} className="rounded-lg border border-slate-600 px-3 py-1 text-xs font-bold">＋ 日を追加</button>
@@ -468,7 +468,7 @@ export function EditInvoiceForm({
                               <button
                                 type="button"
                                 onClick={() => patchStaff(i, { travelLines: s.travelLines!.filter((_, xi) => xi !== li) })}
-                                className="self-end rounded-lg border border-red-900 px-3 py-2 text-xs font-bold text-red-300"
+                                className="self-end rounded-lg border border-red-400 px-3 py-2 text-xs font-bold text-red-700"
                               >
                                 削除
                               </button>
@@ -506,7 +506,7 @@ export function EditInvoiceForm({
                   業務委託費の計算方法（明細書に表示）
                   <input value={s.serviceCalc} onChange={(e) => patchStaff(i, { serviceCalc: e.target.value })} className={`${input} mt-1`} placeholder="例: 日額 ¥20,000 × 3日" />
                 </label>
-                {s.extrasExTax > 0 && <p className="mt-3 text-xs text-slate-500">その他の経費（変更不可）: {s.extrasLabel} 税抜{yen(s.extrasExTax)}</p>}
+                {s.extrasExTax > 0 && <p className="mt-3 text-xs text-slate-600">その他の経費（変更不可）: {s.extrasLabel} 税抜{yen(s.extrasExTax)}</p>}
               </div>
             ))}
           </div>
@@ -517,7 +517,7 @@ export function EditInvoiceForm({
       {initial.hasStatement && (
         <section className="rounded-2xl border border-slate-700 bg-slate-900 p-5">
           <h2 className="text-base font-black">③ 共通の項目（広告原価・商材仕入れ代原価など）</h2>
-          <p className="mt-1 text-xs text-slate-400">スタッフ別ではない項目です。金額は税抜で入力してください（消費税は合計に10%で計算されます）。ある月だけ追加し、ない月は載せません。</p>
+          <p className="mt-1 text-xs text-slate-600">スタッフ別ではない項目です。金額は税抜で入力してください（消費税は合計に10%で計算されます）。ある月だけ追加し、ない月は載せません。</p>
           <div className="mt-4 space-y-3">
             {extras.map((e, i) => (
               <div key={i} className="grid gap-2 rounded-xl border border-slate-800 bg-slate-950 p-3 md:grid-cols-[1fr_160px_auto]">
@@ -542,7 +542,7 @@ export function EditInvoiceForm({
                   金額（税抜・円）
                   <NumInput value={e.amountExTax} onChange={(n) => setExtras(extras.map((x, xi) => (xi === i ? { ...x, amountExTax: n } : x)))} className={`${input} mt-1`} />
                 </label>
-                <button type="button" onClick={() => setExtras(extras.filter((_, xi) => xi !== i))} className="self-end rounded-lg border border-red-900 px-3 py-2 text-xs font-bold text-red-300">削除</button>
+                <button type="button" onClick={() => setExtras(extras.filter((_, xi) => xi !== i))} className="self-end rounded-lg border border-red-400 px-3 py-2 text-xs font-bold text-red-700">削除</button>
                 <label className={`${field} md:col-span-3`}>
                   計算方法（明細書に表示。空なら「¥金額＋税で計算」）
                   <input value={e.calc} onChange={(ev) => setExtras(extras.map((x, xi) => (xi === i ? { ...x, calc: ev.target.value } : x)))} className={`${input} mt-1`} placeholder="例: イベントシステムの消化金額" />
@@ -559,21 +559,21 @@ export function EditInvoiceForm({
       )}
 
       {/* 請求金額 */}
-      <section className="rounded-2xl border border-blue-900 bg-blue-950/30 p-5">
+      <section className="rounded-2xl border border-blue-300 bg-blue-50 p-5">
         <h2 className="text-base font-black">請求金額（自動計算）</h2>
         <dl className="mt-3 space-y-1 text-sm text-slate-300">
           <div className="flex justify-between"><dt>{isManual ? "品目の合計（税抜）" : "業務委託費一式（税抜）"}</dt><dd>{yen(invoiceSubtotal)}</dd></div>
           <div className="flex justify-between"><dt>消費税（10%）</dt><dd>{yen(tax)}</dd></div>
-          <div className="flex justify-between border-t border-slate-700 pt-2 text-lg font-black text-white"><dt>合計（税込）</dt><dd>{yen(invoiceSubtotal + tax)}</dd></div>
+          <div className="flex justify-between border-t border-slate-700 pt-2 text-lg font-black text-slate-900"><dt>合計（税込）</dt><dd>{yen(invoiceSubtotal + tax)}</dd></div>
         </dl>
       </section>
 
       {/* 保存 */}
-      <section className="rounded-2xl border border-red-900 bg-red-950/20 p-5">
-        <p className="text-xs text-slate-400">
+      <section className="rounded-2xl border border-red-300 bg-red-50 p-5">
+        <p className="text-xs text-slate-600">
           {status === "APPROVED" ? "この請求は承認済みです。保存しても承認済みのままです。メールは送信されません。" : "保存しても下書きのままです。メールは送信されません。"}
         </p>
-        <p className="mt-1 text-xs text-slate-500">送信先（送信するとき）: {recipients}</p>
+        <p className="mt-1 text-xs text-slate-600">送信先（送信するとき）: {recipients}</p>
         {status === "DRAFT" && (
           <label className={`${field} mt-3`}>
             承認者名（「保存して承認」を使うときだけ入力）
@@ -581,7 +581,7 @@ export function EditInvoiceForm({
           </label>
         )}
         <div className="mt-4 flex flex-wrap gap-3">
-          <button type="button" disabled={pending} onClick={() => submit(false)} className="rounded-xl bg-slate-100 px-6 py-3 font-black text-slate-900 disabled:opacity-50">
+          <button type="button" disabled={pending} onClick={() => submit(false)} className="rounded-xl border-2 border-slate-400 bg-slate-100 px-6 py-3 font-black text-slate-900 disabled:opacity-50">
             {pending ? "処理中..." : "保存"}
           </button>
           {status === "DRAFT" && (
@@ -590,7 +590,7 @@ export function EditInvoiceForm({
             </button>
           )}
         </div>
-        {msg && <p className={`mt-3 text-sm font-bold ${msg.ok ? "text-emerald-400" : "text-red-400"}`}>{msg.text}</p>}
+        {msg && <p className={`mt-3 text-sm font-bold ${msg.ok ? "text-emerald-700" : "text-red-700"}`}>{msg.text}</p>}
       </section>
     </div>
   );
