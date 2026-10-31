@@ -4,7 +4,8 @@ import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatJst, listMonthOptions, yearMonthLabel } from "@/lib/time";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
-import { addCompensationRequest, deleteDraftCompensationRequest } from "./actions";
+import { deleteDraftCompensationRequest } from "./actions";
+import { CompensationForm } from "./compensation-form";
 import { SubmitButton } from "@/components/submit-button";
 
 const categoryLabel = (c: string) =>
@@ -20,6 +21,7 @@ export default async function CompensationRequestPage() {
 
   const items = await prisma.compensationRequest.findMany({
     where: { staffId },
+    include: { items: { orderBy: { sortOrder: "asc" } } },
     orderBy: { createdAt: "desc" },
   });
   const monthOptions = listMonthOptions(6, 0);
@@ -33,35 +35,7 @@ export default async function CompensationRequestPage() {
         <h1 className="mt-3 text-2xl font-black">別途報酬申請</h1>
         <p className="mt-1 text-sm text-slate-500">リファラル報酬・インセンティブなど、通常のシフト稼働以外の報酬を申請します。</p>
 
-        <form action={addCompensationRequest} className="mt-5 space-y-3 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5">
-          <label className="block text-xs font-black">
-            対象月
-            <select name="yearMonth" defaultValue={monthOptions.at(-1)?.value} className="mt-1 w-full min-w-0 rounded-xl border p-3 text-sm">
-              {monthOptions.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-xs font-black">
-            区分
-            <select name="category" className="mt-1 w-full min-w-0 rounded-xl border p-3 text-sm">
-              <option value="REFERRAL">リファラル報酬</option>
-              <option value="INCENTIVE">インセンティブ</option>
-              <option value="OTHER">その他</option>
-            </select>
-          </label>
-          <label className="block text-xs font-black">
-            税込金額
-            <input name="amountTaxInclusive" type="number" min="0" required className="mt-1 w-full rounded-xl border p-3 text-sm" />
-          </label>
-          <label className="block text-xs font-black">
-            内訳
-            <textarea name="description" rows={2} className="mt-1 w-full rounded-xl border p-3 text-sm" placeholder="対象や算定根拠など" />
-          </label>
-          <SubmitButton className="w-full rounded-2xl bg-[#b91c1c] py-3 font-black text-white shadow-[0_4px_0_#7f1d1d]">別途報酬を申請する</SubmitButton>
-        </form>
+        <CompensationForm monthOptions={monthOptions} defaultMonth={monthOptions.at(-1)?.value} />
 
         <section className="mt-5 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5">
           {items.length ? (
@@ -72,7 +46,17 @@ export default async function CompensationRequestPage() {
                     <p className="text-sm font-black">
                       {categoryLabel(x.category)} <span className="ml-1 text-xs font-bold text-slate-400">{yearMonthLabel(x.yearMonth)}</span>
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">{x.description || "—"}</p>
+                    {x.items.length > 0 && (
+                      <ul className="mt-1 space-y-0.5 text-xs text-slate-600">
+                        {x.items.map((it) => (
+                          <li key={it.id}>
+                            {it.label} ¥{it.amount.toLocaleString("ja-JP")}
+                            {it.memo ? <span className="text-slate-500">({it.memo})</span> : null}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <p className="mt-1 whitespace-pre-line text-xs text-slate-500">{x.description || (x.items.length > 0 ? "" : "—")}</p>
                     <p className="mt-1 text-[11px] text-slate-400">{formatJst(x.createdAt).slice(0, 16)} 申請</p>
                   </div>
                   <div className="text-right">

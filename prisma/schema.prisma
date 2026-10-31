@@ -649,10 +649,44 @@ model CompensationRequest {
   reviewedAt DateTime?
   reviewerName String?
   reviewNote String?
+  // 振込済みの記録(管理者が「振込済み」を押したとき)
+  paidAt DateTime?
+  paidAmount Int?
+  paidByOperatorName String?
+  items CompensationRequestItem[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([staffId, yearMonth])
   @@index([status])
+}
+
+// 別途報酬の内訳(スタッフが申請時に1行ずつ入力する。例: 紹介した人ごとの金額)。合計が申請金額になる。
+model CompensationRequestItem {
+  id String @id @default(cuid())
+  requestId String
+  request CompensationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  sortOrder Int @default(0)
+  label String
+  amount Int
+  memo String?
+  createdAt DateTime @default(now())
+  @@index([requestId])
+}
+
+// 会社の経費(家賃・カード・駐車場代・税理士顧問料など)。スタッフの経費(Expense)とは別。
+// 管理者専用のパスワード付きページ(/admin/company-expenses)だけで扱う。
+model CompanyExpense {
+  id String @id @default(cuid())
+  expenseDate String // JSTの日付(YYYY-MM-DD)
+  yearMonth String // expenseDateの月(YYYY-MM)
+  category String
+  item String
+  amount Int
+  recurring Boolean @default(false)
+  memo String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([yearMonth])
 }
 
 model Invoice {
