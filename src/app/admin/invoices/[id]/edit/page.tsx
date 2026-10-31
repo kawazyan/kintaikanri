@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { DEFAULT_INVOICE_NOTE, defaultSubject, invoiceRecipients, monthEndOf, nextMonthEnd, resolveInvoiceRecipients, splitEmails } from "@/lib/invoice-defaults";
 import type { StatementSnapshot } from "@/lib/invoice-draft";
 import { buildInvoiceLines } from "@/lib/invoice-lines";
+import { recipientPresetsOf, type BillingTerms } from "@/lib/billing-terms";
 import { AdminNav } from "../../../admin-nav";
 import { EditInvoiceForm } from "./edit-form";
 
@@ -37,6 +38,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
           addressee: i.addressee?.trim() || i.client.name,
           recipientEmails: splitEmails(i.recipientEmails),
           clientRecipients: invoiceRecipients(i.client),
+          recipientPresets: recipientPresetsOf(i.client.billingTerms as BillingTerms | null),
           dueDate: i.dueDate?.trim() || nextMonthEnd(monthEndOf(i.yearMonth)),
           subject: i.subject?.trim() || defaultSubject(i.yearMonth),
           note: i.note?.trim() ? i.note : DEFAULT_INVOICE_NOTE,

@@ -10,6 +10,7 @@ type Initial = {
   addressee: string;
   recipientEmails: string[]; // この請求書に手入力した送信先(空なら取引先の登録を使う)
   clientRecipients: string[]; // 取引先に登録されている送信先(手入力が空のときに使われる)
+  recipientPresets: { label: string; emails: string[] }[]; // 取引先に登録してある宛先(店舗ごとなど)。選ぶと送信先の枠に入る
   dueDate: string;
   subject: string;
   note: string;
@@ -215,6 +216,22 @@ export function EditInvoiceForm({
           </label>
           <div className={field}>
             送信先メールアドレス（1件ずつ別の枠に入力）
+            {initial.recipientPresets.length > 0 && (
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-slate-600">登録済みの宛先から選ぶ:</span>
+                {initial.recipientPresets.map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => setEmailBoxes(p.emails)}
+                    title={p.emails.join(", ")}
+                    className="rounded-lg border-2 border-blue-500 bg-blue-50 px-3 py-1.5 text-sm font-black text-blue-800"
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="mt-1 space-y-2">
               {emailBoxes.map((v, i) => (
                 <div key={i} className="flex gap-2">

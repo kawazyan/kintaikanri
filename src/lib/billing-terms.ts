@@ -34,7 +34,27 @@ export type BillingTerms = {
   pdfBundle?: "COMBINED" | "SEPARATE";
   // この取引先あての請求書メールだけ、確認用にBCC(先方には見えない)で自動追加する自社アドレス。
   confirmBcc?: string[];
+  // 店舗ごとなど、請求書の送信先として登録しておく宛先(請求書の「修正」画面で選ぶと送信先の枠に入る)。管理者のCCは自動なので入れない。
+  recipientPresets?: { label: string; emails: string[] }[];
 };
+
+// 登録済みの宛先(recipientPresets)から、名前があり、メール形式のアドレスが1件以上あるものだけを取り出す(重複は除く)。
+export function recipientPresetsOf(terms: BillingTerms | null | undefined): { label: string; emails: string[] }[] {
+  const out: { label: string; emails: string[] }[] = [];
+  for (const p of terms?.recipientPresets ?? []) {
+    const label = typeof p?.label === "string" ? p.label.trim() : "";
+    const seen = new Set<string>();
+    const emails: string[] = [];
+    for (const raw of Array.isArray(p?.emails) ? p.emails : []) {
+      const e = typeof raw === "string" ? raw.trim() : "";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) || seen.has(e.toLowerCase())) continue;
+      seen.add(e.toLowerCase());
+      emails.push(e);
+    }
+    if (label && emails.length) out.push({ label, emails });
+  }
+  return out;
+}
 
 // 確認用BCCの宛先: 設定のアドレスから、メールの形式でないもの・すでに宛先(to/cc)にあるもの・重複を除く(大文字小文字は区別しない)。
 export function confirmBccFor(terms: BillingTerms | null | undefined, to: string[], cc: string[]) {
