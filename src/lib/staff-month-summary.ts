@@ -10,6 +10,7 @@ import { fixedPaymentState, type FixedPaymentState } from "@/lib/fixed-payment-s
 export type StaffMonthSummary = AttendanceCounts & {
   staffId: string;
   earnings: number | null; // その月の受取金額(確定分)。null=計算できない
+  monthlyMax: number | null; // 管理者が入れた、その月の報酬の満額(MonthlyEarningTarget)。null=未入力(報酬設定の月額を使う)
   expenses: number; // 申請のある経費(申請中+承認済)
   expensesPending: number; // うち承認待ち
   total: number | null; // earnings + expenses。earnings が null なら null
@@ -35,7 +36,7 @@ export async function loadStaffMonthSummaries(staffList: StaffInput[], yearMonth
   const ids = staffList.map((s) => s.id);
   const { start, end } = jstMonthRange(yearMonth);
 
-  const [shifts, clocks, irregular, simple, expenses, requests, completions] = await Promise.all([
+  const [shifts, clocks, irregular, simple, expenses, requests, completions, targets] = await Promise.all([
     prisma.shift.findMany({ where: { staffId: { in: ids }, cancelledAt: null, startTime: { gte: start, lt: end } }, select: { id: true, staffId: true, startTime: true } }),
     prisma.clockRecord.findMany({ where: { staffId: { in: ids }, timestamp: { gte: start, lt: end } }, select: { staffId: true, type: true, timestamp: true, shiftId: true } }),
     prisma.irregularReport.findMany({ where: { staffId: { in: ids }, reportType: { in: ["EARLY_LEAVE", "ABSENCE", "SAME_DAY_ABSENCE"] }, targetDate: { gte: start, lt: end } }, select: { staffId: true, targetDate: true, reportType: true } }),
@@ -43,7 +44,9 @@ export async function loadStaffMonthSummaries(staffList: StaffInput[], yearMonth
     prisma.expense.findMany({ where: { staffId: { in: ids }, yearMonth, status: { in: ["SUBMITTED", "APPROVED"] } }, select: { staffId: true, status: true, amountTaxInclusive: true } }),
     prisma.transferRequest.findMany({ where: { staffId: { in: ids }, status: "REQUESTING" }, select: { staffId: true, amount: true, desiredPaymentDate: true } }),
     prisma.fixedPaymentCompletion.findMany({ where: { staffId: { in: ids }, closingYearMonth: yearMonth }, select: { staffId: true, paidAmount: true, paidAt: true } }),
+    prisma.monthlyEarningTarget.findMany({ where: { staffId: { in: ids }, yearMonth }, select: { staffId: true, targetAmount: true } }),
   ]);
+  const targetByStaff = new Map(targets.map((t) => [t.staffId, t.targetAmount]));
   const completionByStaff = new Map(completions.map((c) => [c.staffId, c]));
 
   const group = <T extends { staffId: string }>(rows: T[]) => {
@@ -91,6 +94,7 @@ export async function loadStaffMonthSummaries(staffList: StaffInput[], yearMonth
       ...counts,
       staffId: s.id,
       earnings: confirmedAmount,
+      monthlyMax: targetByStaff.get(s.id) ?? null,
       expenses: expenseTotal,
       expensesPending: expensePending,
       total: confirmedAmount === null ? null : confirmedAmount + expenseTotal,

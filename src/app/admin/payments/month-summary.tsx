@@ -1,6 +1,6 @@
 import type { StaffMonthSummary } from "@/lib/staff-month-summary";
 import { SubmitButton } from "@/components/submit-button";
-import { markFixedPaymentDone, setManualPayAmount, undoFixedPaymentDone } from "./actions";
+import { markFixedPaymentDone, setManualPayAmount, setMonthlyMaxAmount, undoFixedPaymentDone } from "./actions";
 
 type Row = { id: string; employeeCode: string; name: string; paymentMethod: "FIXED" | "REQUEST"; payType: "DAILY" | "MONTHLY" | "MANUAL" | null };
 
@@ -87,6 +87,27 @@ export function MonthSummary({
                           defaultValue={m.earnings ?? ""}
                           disabled={m.paymentState === "DONE"}
                           aria-label={`${s.name}の${monthLabel}の支払い金額`}
+                          className="w-24 rounded-md border border-slate-600 bg-slate-950 px-2 py-1 text-right text-[11px] text-slate-100 disabled:opacity-50"
+                        />
+                        {m.paymentState !== "DONE" && (
+                          <SubmitButton pendingText="保存中…" className="rounded-md bg-slate-700 px-2 py-1 text-[11px] font-bold text-white">
+                            保存
+                          </SubmitButton>
+                        )}
+                      </form>
+                    )}
+                    {s.payType !== "MANUAL" && s.payType !== "DAILY" && (
+                      <form action={setMonthlyMaxAmount.bind(null, s.id, yearMonth)} className="mt-1 flex items-center justify-end gap-1">
+                        <span className="text-[10px] text-slate-500">月の満額</span>
+                        <input
+                          key={m.monthlyMax ?? "none"}
+                          type="text"
+                          name="amount"
+                          inputMode="numeric"
+                          placeholder={s.payType === "MONTHLY" ? "設定の月額" : "未入力"}
+                          defaultValue={m.monthlyMax ?? ""}
+                          disabled={m.paymentState === "DONE"}
+                          aria-label={`${s.name}の${monthLabel}の報酬の満額`}
                           className="w-24 rounded-md border border-slate-600 bg-slate-950 px-2 py-1 text-right text-[11px] text-slate-100 disabled:opacity-50"
                         />
                         {m.paymentState !== "DONE" && (

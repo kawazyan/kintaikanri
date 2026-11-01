@@ -110,6 +110,36 @@ export async function setManualPayAmount(staffId: string, yearMonth: string, for
   revalidatePath("/admin");
 }
 
+// その月の報酬の満額(MAX額)を管理者が入力する。BAND/月固定の人の「受取金額」は、この額を出勤日数で按分(全日出勤なら満額)して計算する。
+// 空欄で保存すると未入力に戻す(報酬設定の月額を使う)。振込完了を押した後の月は、記録済みの金額を守るため変更しない。
+export async function setMonthlyMaxAmount(staffId: string, yearMonth: string, formData: FormData) {
+  await requireAdmin();
+  if (!YEAR_MONTH_RE.test(yearMonth)) return;
+
+  const staff = await prisma.staff.findUnique({ where: { id: staffId }, select: { payType: true } });
+  if (!staff || staff.payType === "MANUAL" || staff.payType === "DAILY") return;
+
+  const done = await prisma.fixedPaymentCompletion.findUnique({ where: { staffId_closingYearMonth: { staffId, closingYearMonth: yearMonth } } });
+  if (done) return;
+
+  const raw = String(formData.get("amount") ?? "").replace(/[,，\s円¥￥]/g, "").replace(/[０-９]/g, (c) => String(c.charCodeAt(0) - 0xff10));
+  if (raw === "") {
+    await prisma.monthlyEarningTarget.deleteMany({ where: { staffId, yearMonth } });
+  } else {
+    const amount = Number(raw);
+    if (!Number.isInteger(amount) || amount < 0 || amount > 100_000_000) return;
+    await prisma.monthlyEarningTarget.upsert({
+      where: { staffId_yearMonth: { staffId, yearMonth } },
+      update: { targetAmount: amount },
+      create: { staffId, yearMonth, targetAmount: amount },
+    });
+  }
+
+  revalidatePath("/admin/payments");
+  revalidatePath("/admin");
+  revalidatePath("/clock");
+}
+
 // 押し間違い用の取り消し(未振込に戻す)。
 export async function undoFixedPaymentDone(staffId: string, closingYearMonth: string) {
   await requireAdmin();
