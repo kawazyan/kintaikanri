@@ -14,6 +14,7 @@ export type MonthlyEarnings = {
 // 退勤打刻漏れは稼働したものとして扱う), rather than leaving the day stuck
 // unconfirmed forever until someone notices and fixes it manually.
 //
+// BAND shifts of staff whose pay type is DAILY: dailyRate × confirmed days (null if dailyRate is unset).
 // BAND (and SPOT shifts of staff whose pay type is MONTHLY): monthly target
 // (falls back to the staff's monthlyAmount) ÷ planned days this month (floored)
 // × confirmed days. For MONTHLY staff the planned days are all of the month's
@@ -84,6 +85,14 @@ export async function computeMonthlyEarnings(
   const confirmedDays = new Set(shifts.filter(isConfirmed).map((s) => toJstDateValue(s.startTime))).size;
   const travelAmount = (staffPay?.dailyTravelInclTax ?? 0) * confirmedDays;
   const spotConfirmedAmount = ownAmountTotal + settingAmount + travelAmount;
+
+  if (bandShifts.length > 0 && staffPay?.payType === "DAILY") {
+    // 報酬設定が「日当」の人は、BANDシフトも 日当 × 確定した日数 で計算する(スタッフが入力する目標額は使わない)。
+    // 日当が未設定なら金額は決められないので null。
+    if (staffPay.dailyRate === null) return { confirmedAmount: null };
+    const bandDays = new Set(bandShifts.filter(isConfirmed).map((s) => toJstDateValue(s.startTime))).size;
+    return { confirmedAmount: staffPay.dailyRate * bandDays + spotConfirmedAmount };
+  }
 
   if (bandShifts.length > 0) {
     // 基準額は、その月の目標額。月固定の人で目標額が未入力なら、報酬設定の月額を使う。

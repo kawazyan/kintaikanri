@@ -16,7 +16,6 @@ export type BulkShiftInput = {
   startTime: string; // "HH:mm"
   endTime: string; // "HH:mm"
   dates: string[]; // "YYYY-MM-DD"[]
-  targetAmount: number | null; // BAND only, optional
   spotAmounts?: Record<string, number | null>; // SPOT only: dateKey -> per-shift unit amount (未定なら null)
 };
 
@@ -47,7 +46,7 @@ function buildShiftTimes(dateStr: string, startTimeStr: string, endTimeStr: stri
 
 export async function getMonthPlanningData(
   yearMonth: string
-): Promise<{ existingDates: string[]; targetAmount: number | null }> {
+): Promise<{ existingDates: string[] }> {
   const staffId = await getStaffId();
   if (!staffId) redirect("/");
 
@@ -57,7 +56,7 @@ export async function getMonthPlanningData(
 export async function adminGetMonthPlanningData(
   staffId: string,
   yearMonth: string
-): Promise<{ existingDates: string[]; targetAmount: number | null }> {
+): Promise<{ existingDates: string[] }> {
   await requireAdmin();
   return runGetMonthPlanningData(staffId, yearMonth);
 }
@@ -65,21 +64,15 @@ export async function adminGetMonthPlanningData(
 async function runGetMonthPlanningData(
   staffId: string,
   yearMonth: string
-): Promise<{ existingDates: string[]; targetAmount: number | null }> {
+): Promise<{ existingDates: string[] }> {
   const { start, end } = jstMonthRange(yearMonth);
-  const [shifts, target] = await Promise.all([
-    prisma.shift.findMany({
-      where: { staffId, startTime: { gte: start, lt: end } },
-      select: { startTime: true },
-    }),
-    prisma.monthlyEarningTarget.findUnique({
-      where: { staffId_yearMonth: { staffId, yearMonth } },
-    }),
-  ]);
+  const shifts = await prisma.shift.findMany({
+    where: { staffId, startTime: { gte: start, lt: end } },
+    select: { startTime: true },
+  });
 
   return {
     existingDates: shifts.map((s) => toJstDateValue(s.startTime)),
-    targetAmount: target?.targetAmount ?? null,
   };
 }
 
@@ -122,14 +115,6 @@ async function runCreateShiftsBulk(
   if (fieldError) return { error: fieldError };
   if (!/^\d{4}-\d{2}$/.test(input.yearMonth)) return { error: "対象月が不正です" };
 
-  if (input.workType === "BAND") {
-    if (
-      input.targetAmount !== null &&
-      (!Number.isInteger(input.targetAmount) || input.targetAmount < 0)
-    ) {
-      return { error: "月間受取予定単価を正しく入力してください" };
-    }
-  }
 
   const { start, end } = jstMonthRange(input.yearMonth);
   const existing = await prisma.shift.findMany({
@@ -199,16 +184,6 @@ async function runCreateShiftsBulk(
         });
       })
     );
-  }
-
-  // Only BAND uses a monthly target; leave it untouched if left blank so an
-  // existing value isn't silently cleared.
-  if (input.workType === "BAND" && input.targetAmount !== null) {
-    await prisma.monthlyEarningTarget.upsert({
-      where: { staffId_yearMonth: { staffId, yearMonth: input.yearMonth } },
-      update: { targetAmount: input.targetAmount },
-      create: { staffId, yearMonth: input.yearMonth, targetAmount: input.targetAmount },
-    });
   }
 
   if (created.length > 0) {

@@ -10,7 +10,6 @@ import {
   TIME_OPTIONS,
 } from "@/lib/time";
 import { CARRIERS, CARRIER_OTHER, WORK_TYPE_LABEL, isPresetCarrier } from "@/lib/carriers";
-import { YenInput } from "@/components/yen-input";
 import {
   createShiftsBulk,
   getMonthPlanningData,
@@ -30,7 +29,7 @@ export type WizardInitialValues = {
   unitAmount?: number | null;
 };
 
-const STEP_LABELS = ["対象月", "稼働区分", "キャリア", "店舗名", "稼働時間", "稼働日", "受取単価", "確認"];
+const STEP_LABELS = ["対象月", "稼働区分", "キャリア", "店舗名", "稼働時間", "稼働日", "確認"];
 
 const INPUT_CLASS =
   "rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:outline-none";
@@ -77,9 +76,6 @@ export function ShiftWizard({
   // 例：選択した "10:00" は JST の 10:00 を意味し、UTC の 01:00 として保存されます
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set(presetDate ? [presetDate] : []));
   const [lockedDates, setLockedDates] = useState<Set<string>>(new Set());
-  const [targetAmount, setTargetAmount] = useState<number | null>(null);
-  const [amountMode, setAmountMode] = useState<"MONTHLY" | "DAILY">("MONTHLY");
-  const [dailyRate, setDailyRate] = useState<number | null>(null);
   const [spotAmounts, setSpotAmounts] = useState<Record<string, number | null>>({});
   const [error, setError] = useState<string | null>(null);
   const [loadingMonth, setLoadingMonth] = useState(true);
@@ -89,14 +85,13 @@ export function ShiftWizard({
   const monthDays = useMemo(() => listDaysInJstYearMonth(yearMonth), [yearMonth]);
   const carrier = carrierSelection === CARRIER_OTHER ? carrierOtherText.trim() : carrierSelection;
 
-  function applyMonthData(data: { existingDates: string[]; targetAmount: number | null }) {
+  function applyMonthData(data: { existingDates: string[] }) {
     setLockedDates(new Set(data.existingDates));
     setSelectedDates((prev) => {
       const next = new Set(prev);
       for (const d of data.existingDates) next.delete(d);
       return next;
     });
-    if (data.targetAmount !== null) setTargetAmount(data.targetAmount);
     setLoadingMonth(false);
   }
 
@@ -131,12 +126,6 @@ export function ShiftWizard({
     [selectedDates, lockedDates]
   );
   const totalDayCount = sortedSelectedDates.length + lockedDates.size;
-  const effectiveTargetAmount =
-    amountMode === "DAILY"
-      ? dailyRate !== null
-        ? dailyRate * totalDayCount
-        : null
-      : targetAmount;
 
   function toggleDate(key: string) {
     if (lockedDates.has(key)) return;
@@ -169,17 +158,11 @@ export function ShiftWizard({
 
   function goNext() {
     setError(null);
-    setStep((s) => {
-      if (s === 6 && workType === "SPOT") return 8; // BAND-only monthly amount step
-      return Math.min(s + 1, 8);
-    });
+    setStep((s) => Math.min(s + 1, 7));
   }
   function goBack() {
     setError(null);
-    setStep((s) => {
-      if (s === 8 && workType === "SPOT") return 6;
-      return Math.max(s - 1, 1);
-    });
+    setStep((s) => Math.max(s - 1, 1));
   }
 
   function submit() {
@@ -196,7 +179,6 @@ export function ShiftWizard({
         startTime,
         endTime,
         dates: sortedSelectedDates,
-        targetAmount: workType === "BAND" ? effectiveTargetAmount : null,
         spotAmounts:
           workType === "SPOT"
             ? Object.fromEntries(sortedSelectedDates.map((d) => [d, spotAmounts[d] ?? null]))
@@ -239,7 +221,6 @@ export function ShiftWizard({
               setYearMonth(ym);
               setSelectedDates(new Set());
               setSpotAmounts({});
-              setTargetAmount(null);
               loadMonthData(ym);
             }}
             className={`${SELECT_CLASS} py-3 text-base`}
@@ -440,62 +421,7 @@ export function ShiftWizard({
         </div>
       )}
 
-      {step === 7 && (
-        <div className="flex flex-col gap-3">
-          <h2 className="text-base font-semibold text-slate-900">
-            {yearMonthLabel(yearMonth)}の受取予定単価
-          </h2>
-          <p className="text-xs text-slate-500">
-            未定の場合は空欄のままで構いません。あとから登録・更新できます。
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setAmountMode("MONTHLY")}
-              className={`rounded-xl border-2 py-3 text-sm font-bold transition ${
-                amountMode === "MONTHLY"
-                  ? "border-red-500 bg-red-500/10 text-red-600 shadow-md shadow-red-900/10"
-                  : "border-slate-300 text-slate-600"
-              }`}
-            >
-              月額で入力
-            </button>
-            <button
-              type="button"
-              onClick={() => setAmountMode("DAILY")}
-              className={`rounded-xl border-2 py-3 text-sm font-bold transition ${
-                amountMode === "DAILY"
-                  ? "border-red-500 bg-red-500/10 text-red-600 shadow-md shadow-red-900/10"
-                  : "border-slate-300 text-slate-600"
-              }`}
-            >
-              日当たりで入力
-            </button>
-          </div>
-          {amountMode === "MONTHLY" ? (
-            <YenInput value={targetAmount} onChange={setTargetAmount} autoFocus />
-          ) : (
-            <div className="flex flex-col gap-2">
-              <YenInput value={dailyRate} onChange={setDailyRate} autoFocus />
-              <p className="text-xs text-slate-500">
-                {dailyRate !== null
-                  ? `${dailyRate.toLocaleString("ja-JP")}円 × ${totalDayCount}日 = ${effectiveTargetAmount?.toLocaleString("ja-JP")}円(月間合計)`
-                  : `稼働予定 ${totalDayCount}日 分の日当たり金額を入力してください`}
-              </p>
-            </div>
-          )}
-          <div className="flex gap-3">
-            <button type="button" onClick={goBack} className={OUTLINE_BUTTON}>
-              戻る
-            </button>
-            <button type="button" onClick={goNext} className={PRIMARY_BUTTON}>
-              次へ
-            </button>
-          </div>
-        </div>
-      )}
-
-      {step === 8 && workType && (
+      {step === 7 && workType && (
         <div className="flex flex-col gap-3">
           <h2 className="text-base font-semibold text-slate-900">登録内容の確認</h2>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 rounded-xl bg-slate-50 p-4 text-sm text-slate-900">
@@ -525,17 +451,6 @@ export function ShiftWizard({
                 </dd>
                 <dt className="text-slate-500">稼働合計日数</dt>
                 <dd>{totalDayCount}日</dd>
-                <dt className="text-slate-500">月間受取予定単価</dt>
-                <dd>
-                  {effectiveTargetAmount !== null
-                    ? `${effectiveTargetAmount.toLocaleString("ja-JP")}円`
-                    : "未定"}
-                  {amountMode === "DAILY" && dailyRate !== null && (
-                    <span className="ml-1 text-xs text-slate-400">
-                      (日当たり{dailyRate.toLocaleString("ja-JP")}円 × {totalDayCount}日)
-                    </span>
-                  )}
-                </dd>
               </>
             ) : (
               <>
