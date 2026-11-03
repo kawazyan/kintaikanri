@@ -5,7 +5,7 @@ import { currentJstYearMonth, formatJst, jstDayRange, jstMonthRange, yearMonthLa
 import { loadStaffAttendanceDetail } from "@/lib/staff-month-summary";
 import { AttendancePanel } from "./attendance-panel";
 import { AdminNav } from "../admin-nav";
-import { deleteClockRecord } from "./actions";
+import { bulkApproveMissedClockOut, deleteClockRecord } from "./actions";
 import type { Prisma } from "@prisma/client";
 
 const FIELD_CLASS =
@@ -14,10 +14,10 @@ const FIELD_CLASS =
 export default async function AdminRecordsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ staffId?: string; month?: string; date?: string; unlinkedOnly?: string }>;
+  searchParams: Promise<{ staffId?: string; month?: string; date?: string; unlinkedOnly?: string; approved?: string; skipped?: string; reasons?: string }>;
 }) {
   await requireAdmin();
-  const { staffId, month: monthRaw, date, unlinkedOnly } = await searchParams;
+  const { staffId, month: monthRaw, date, unlinkedOnly, approved, skipped, reasons } = await searchParams;
   const month = monthRaw && /^\d{4}-\d{2}$/.test(monthRaw) ? monthRaw : undefined;
 
   const where: Prisma.ClockRecordWhereInput = {};
@@ -58,6 +58,27 @@ export default async function AdminRecordsPage({
   const summaryMonth = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.slice(0, 7) : (month ?? currentJstYearMonth());
   const selectedStaff = staffId ? staffList.find((s) => s.id === staffId) : undefined;
   const attendance = selectedStaff ? await loadStaffAttendanceDetail(selectedStaff.id, summaryMonth) : null;
+
+  // 退勤打刻漏れ: シフトに紐づく出勤打刻があり、同じシフトに退勤打刻がなく、シフトがすでに終わっているもの。
+  // 絞り込み条件(スタッフ・月・日付)に合わせて表示する。承認時にサーバー側でも再判定する。
+  const nowForMissed = new Date();
+  const inCandidates = await prisma.clockRecord.findMany({
+    where: { ...where, type: "IN", shiftId: { not: null }, shift: { cancelledAt: null, endTime: { lte: nowForMissed } } },
+    include: { staff: true, shift: true },
+    orderBy: { timestamp: "desc" },
+    take: 500,
+  });
+  const outShiftIds = new Set(
+    (
+      await prisma.clockRecord.findMany({
+        where: { type: "OUT", shiftId: { in: inCandidates.map((r) => r.shiftId as string) } },
+        select: { shiftId: true },
+      })
+    ).map((r) => r.shiftId),
+  );
+  const missedOut = inCandidates.filter(
+    (r) => r.shift && r.shift.staffId === r.staffId && r.timestamp < r.shift.endTime && !outShiftIds.has(r.shiftId),
+  );
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
@@ -107,6 +128,59 @@ export default async function AdminRecordsPage({
           </Link>
         </form>
       </div>
+
+      {approved !== undefined && (
+        <p className="mb-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+          {approved}件を定時で承認しました。
+          {Number(skipped ?? 0) > 0 && ` ${skipped}件は対象外のため飛ばしました(${reasons ?? ""})。`}
+        </p>
+      )}
+
+      <section className="mb-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+        <h2 className="mb-1 text-sm font-bold text-slate-200">退勤打刻漏れ({missedOut.length}件)</h2>
+        <p className="mb-3 text-xs text-slate-500">
+          出勤打刻だけで退勤がないシフトです(絞り込み条件に連動)。承認すると、シフトの終了時刻(定時)で退勤を自動登録します。チェックを外した分は承認されません。
+        </p>
+        {missedOut.length === 0 ? (
+          <p className="text-sm text-slate-500">退勤打刻漏れはありません。</p>
+        ) : (
+          <form action={bulkApproveMissedClockOut}>
+            <input type="hidden" name="staffId" value={staffId ?? ""} />
+            <input type="hidden" name="month" value={month ?? ""} />
+            <input type="hidden" name="date" value={date ?? ""} />
+            <input type="hidden" name="unlinkedOnly" value={unlinkedOnly ?? ""} />
+            <ul className="mb-3 divide-y divide-slate-800/60 text-sm text-slate-200">
+              {missedOut.map((r) => (
+                <li key={r.id}>
+                  <label className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5">
+                    <input type="checkbox" name="ids" value={r.id} defaultChecked />
+                    <span>
+                      {r.staff.name}({r.staff.employeeCode})
+                    </span>
+                    <span>出勤 {formatJst(r.timestamp)}</span>
+                    <span className="text-slate-400">→ 定時退勤 {formatJst(r.shift!.endTime)}</span>
+                    <span className="text-slate-500">{r.shift!.storeName}</span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                name="operatorName"
+                placeholder="処理者名"
+                className="w-28 rounded border border-slate-700 bg-slate-900/60 px-2 py-1 text-sm text-slate-100 placeholder:text-slate-500"
+              />
+              <button
+                type="submit"
+                className="rounded-lg bg-gradient-to-r from-blue-600 to-cyan-500 px-3 py-1.5 text-sm text-white shadow-md shadow-blue-950/50 active:scale-[0.98]"
+              >
+                チェックした分を定時で一括承認
+              </button>
+            </div>
+          </form>
+        )}
+      </section>
 
       {selectedStaff && attendance ? (
         <AttendancePanel staffName={selectedStaff.name} monthLabel={yearMonthLabel(summaryMonth)} detail={attendance} />
