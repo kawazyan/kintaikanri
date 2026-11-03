@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buildInvoiceDraft } from "@/lib/invoice-draft";
 import { currentJstYearMonth } from "@/lib/time";
+import { INVOICE_KIND_WORK } from "@/lib/invoice-kind";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest) {
   const failed: { clientId: string; error: string }[] = [];
 
   for (const { clientId } of orders) {
-    const exists = await prisma.invoice.findFirst({ where: { clientId, yearMonth }, select: { id: true } });
+    const exists = await prisma.invoice.findFirst({ where: { clientId, yearMonth, kind: INVOICE_KIND_WORK }, select: { id: true } }); // 別途請求だけがある月でも、稼働分の下書きは作る
     if (exists) {
       skipped.push(clientId);
       continue;

@@ -24,6 +24,7 @@ export type InvoiceDocData = {
   taxAmount: number;
   totalInclTax: number;
   note: string;
+  noStatement?: boolean; // 別途請求(請求内訳書がない請求)。true なら「請求内訳書は別途添付」の1文を入れない
 };
 
 const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
@@ -72,10 +73,10 @@ const s = StyleSheet.create({
 
 export function InvoiceDocument({ data }: { data: InvoiceDocData }) {
   // 以前の請求の備考には「振込先：…」「お支払い期限：…」の行が入っている。振込先は表で出し、お支払い期限は
-  // 上の欄に出るので、この2行は取り除く。代わりに「請求内訳書は別途添付」の1文を入れる(すでにあれば入れない)。
+  // 上の欄に出るので、この2行は取り除く。代わりに「請求内訳書は別途添付」の1文を入れる(すでにあれば入れない。別途請求は内訳書がないので入れない)。
   const kept = data.note.split(/\r?\n/).filter((l) => !/^\s*(振込先|お支払い期限)[：:]/.test(l));
   const withAttach = [...kept];
-  if (!kept.some((l) => l.includes("請求内訳書"))) {
+  if (!data.noStatement && !kept.some((l) => l.includes("請求内訳書"))) {
     const at = kept.findIndex((l) => l.trim().startsWith("※"));
     withAttach.splice(at >= 0 ? at : kept.length, 0, "請求内訳書は別途添付いたします。");
   }

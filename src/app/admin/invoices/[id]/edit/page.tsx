@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { DEFAULT_EXTRA_INVOICE_NOTE, isExtraInvoice } from "@/lib/invoice-kind";
 import { DEFAULT_INVOICE_NOTE, defaultSubject, invoiceRecipients, monthEndOf, nextMonthEnd, resolveInvoiceRecipients, splitEmails } from "@/lib/invoice-defaults";
 import type { StatementSnapshot } from "@/lib/invoice-draft";
 import { buildInvoiceLines } from "@/lib/invoice-lines";
@@ -22,26 +23,28 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   const admins = await prisma.adminEmail.findMany({ select: { email: true } });
   const ccText = admins.length ? `（CC: ${admins.map((a) => a.email).join(", ")}）` : "";
   const statement = i.statement as unknown as StatementSnapshot | null;
+  const extra = isExtraInvoice(i.kind); // 別途請求(営業協力費など)
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8 text-slate-100">
       <AdminNav />
       <Link href={`/admin/invoices/${id}`} className="text-sm text-blue-400 underline">← プレビューへ戻る</Link>
       <h1 className="mt-3 text-2xl font-black">
-        請求書・稼働明細書の修正　{i.client.name} / {i.yearMonth}
+        {extra ? "別途請求書の修正" : "請求書・稼働明細書の修正"}　{i.client.name} / {i.yearMonth}
       </h1>
       <p className="mt-1 text-sm text-slate-400">税率（10%）と発行日（稼働月の月末日が自動で入ります）は変更できません。</p>
       <EditInvoiceForm
         invoiceId={id}
         ccText={ccText}
         initial={{
+          extra,
           addressee: i.addressee?.trim() || i.client.name,
           recipientEmails: splitEmails(i.recipientEmails),
           clientRecipients: invoiceRecipients(i.client),
           recipientPresets: recipientPresetsOf(i.client.billingTerms as BillingTerms | null),
           dueDate: i.dueDate?.trim() || nextMonthEnd(monthEndOf(i.yearMonth)),
           subject: i.subject?.trim() || defaultSubject(i.yearMonth),
-          note: i.note?.trim() ? i.note : DEFAULT_INVOICE_NOTE,
+          note: i.note?.trim() ? i.note : extra ? DEFAULT_EXTRA_INVOICE_NOTE : DEFAULT_INVOICE_NOTE,
           amountExTax: i.subtotalExTax,
           hasStatement: !!statement,
           lineMode: statement?.manualLines?.length ? "MANUAL" : "AUTO",
@@ -63,6 +66,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
             dayPlaces: s.dayPlaces ?? {},
             serviceExTax: s.serviceExTax ?? 0,
             serviceCalc: s.serviceCalc ?? "",
+            dailyRateExTax: s.dailyRateExTax,
             travelInclTax: s.travel.amountInclTax,
             travelCalc: s.travel.calc ?? "",
             travelLines: s.travel.lines?.length ? s.travel.lines.map((l, li) => ({ key: `l${li}`, label: l.label, calc: l.calc, amountExTax: l.amountExTax })) : null,

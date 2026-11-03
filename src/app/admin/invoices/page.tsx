@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { formatJst } from "@/lib/time";
 import { AdminNav } from "../admin-nav";
 import { CreateInvoiceButton } from "./create-button";
+import { CreateExtraInvoiceButton } from "./create-extra-button";
+import { isExtraInvoice } from "@/lib/invoice-kind";
 import { RowDeleteButton } from "./row-delete-button";
 
 type Row = {
@@ -15,6 +17,7 @@ type Row = {
   note: string;
   needsNumber: boolean; // 確定済み・送付済み(削除に請求番号の入力が必要)
   sent: boolean; // メールを送付した記録がある
+  extra: boolean; // 別途請求(営業協力費など)
 };
 
 function Section({ title, hint, rows, empty }: { title: string; hint: string; rows: Row[]; empty: string }) {
@@ -31,7 +34,10 @@ function Section({ title, hint, rows, empty }: { title: string; hint: string; ro
           <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-700 bg-slate-900 p-5">
             <Link href={`/admin/invoices/${r.id}`} className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="font-black">{r.clientName} ・ {r.yearMonth}</p>
+                <p className="font-black">
+                  {r.clientName} ・ {r.yearMonth}
+                  {r.extra && <span className="ml-2 rounded-full bg-amber-500 px-2 py-0.5 text-xs font-black text-slate-900">別途請求</span>}
+                </p>
                 <p className="text-xs text-slate-400">{r.invoiceNumber} ・ {r.note}</p>
               </div>
               <p className="text-lg font-black">¥{r.total.toLocaleString()}</p>
@@ -60,6 +66,7 @@ export default async function InvoicesPage() {
     note,
     needsNumber: i.status !== "DRAFT" && i.status !== "APPROVED",
     sent: !!i.sentAt,
+    extra: isExtraInvoice(i.kind),
   });
 
   const drafts = invoices.filter((i) => i.status === "DRAFT").map((i) => toRow(i, `作成 ${formatJst(i.createdAt)}`));
@@ -82,6 +89,9 @@ export default async function InvoicesPage() {
       </div>
       <div className="mt-5">
         <CreateInvoiceButton clients={clients.map((c) => ({ id: c.id, name: c.name }))} />
+      </div>
+      <div className="mt-4">
+        <CreateExtraInvoiceButton clients={clients.map((c) => ({ id: c.id, name: c.name }))} />
       </div>
       <Section title="下書き" hint="内容を確認して「承認」" rows={drafts} empty="下書きはありません。" />
       <Section title="承認済み" hint="「送信」でメール送付" rows={approved} empty="承認済みで未送信の請求はありません。" />

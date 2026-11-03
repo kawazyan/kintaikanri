@@ -7,6 +7,7 @@ import { invoiceMismatch } from "@/lib/invoice-consistency";
 import { mergePdfs } from "@/lib/pdf-bundle";
 import { confirmBccFor, type BillingTerms } from "@/lib/billing-terms";
 import type { StatementSnapshot } from "@/lib/invoice-draft";
+import { extraTitleOf, invoiceFamilyBase, isExtraInvoice } from "@/lib/invoice-kind";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -22,8 +23,9 @@ const MAIL_SIGNATURE = [
 ];
 
 // 添付PDFのファイル名: 「請求書_2026年9月分_株式会社K.J.pdf」。ファイル名に使えない文字は _ にする。
-export function pdfFileName(kind: "請求書" | "請求内訳書" | "請求書・請求内訳書", y: number, m: number) {
-  return `${kind}_${y}年${m}月分_株式会社K.J.pdf`.replace(/[\\/:*?"<>|]/g, "_");
+// title は別途請求の品目名(例: 営業協力費)。あれば「請求書_2026年9月分（営業協力費）_株式会社K.J.pdf」のようにする。
+export function pdfFileName(kind: "請求書" | "請求内訳書" | "請求書・請求内訳書", y: number, m: number, title?: string) {
+  return `${kind}_${y}年${m}月分${title ? `（${title}）` : ""}_株式会社K.J.pdf`.replace(/[\\/:*?"<>|]/g, "_");
 }
 
 // 承認: 下書き → 承認済み。メールはまだ送らない(承認済みの一覧から「送信」する)。
@@ -78,28 +80,44 @@ export async function sendApprovedInvoice(id: string) {
   const bcc = confirmBccFor((invoice.client.billingTerms ?? {}) as BillingTerms, to, cc);
 
   const issuedAt = new Date(); // 送付した実際の日時(記録用)。請求書の発行日は稼働月の月末日。
+  // 別途請求(営業協力費など)は稼働明細書(請求内訳書)がないので、請求書だけを送る。
+  const isExtra = isExtraInvoice(invoice.kind);
   const inv = await renderInvoicePdf(id);
-  const stmt = await renderStatementPdf(id);
-  if (!inv || !stmt) throw new Error("PDFの作成に失敗しました。");
+  const stmt = isExtra ? null : await renderStatementPdf(id);
+  if (!inv || (!isExtra && !stmt)) throw new Error("PDFの作成に失敗しました。");
+  const extraTitle = isExtra ? extraTitleOf(invoice.lines) : "";
 
   const [y, m] = invoice.yearMonth.split("-").map(Number);
   const addressee = inv.data.addressee;
   // 同じ取引先・同じ月に、すでに送付済みの前の版があれば「訂正版」として送る。
+  // (別途請求は、同じ請求番号の系列の前の版だけを見る。稼働分と別途請求は互いに訂正版にならない。)
   const sentBefore = await prisma.invoice.findFirst({
-    where: { clientId: invoice.clientId, yearMonth: invoice.yearMonth, revision: { lt: invoice.revision }, sentAt: { not: null } },
+    where: {
+      clientId: invoice.clientId,
+      yearMonth: invoice.yearMonth,
+      kind: invoice.kind,
+      revision: { lt: invoice.revision },
+      sentAt: { not: null },
+      ...(isExtra ? { invoiceNumber: { startsWith: invoiceFamilyBase(invoice.invoiceNumber) } } : {}),
+    },
     select: { id: true },
   });
   const isCorrection = !!sentBefore;
-  const subject = isCorrection ? `【請求書（訂正）】${y}年${m}月分のご請求（株式会社K.J）` : `【請求書】${y}年${m}月分のご請求（株式会社K.J）`;
+  const monthLabel = `${y}年${m}月分${extraTitle ? `（${extraTitle}）` : ""}`;
+  const subject = isCorrection ? `【請求書（訂正）】${monthLabel}のご請求（株式会社K.J）` : `【請求書】${monthLabel}のご請求（株式会社K.J）`;
   const text = [
     `${addressee} 御中`,
     "",
     "いつも大変お世話になっております。",
     "株式会社K.Jです。",
     "",
-    ...(isCorrection
-      ? [`先日お送りした${y}年${m}月分の請求書に訂正がございましたため、訂正版の請求書と請求内訳書をお送りいたします。`, "お手数をおかけいたしますが、前回の請求書は破棄のうえ、添付ファイルをご確認くださいますようお願い申し上げます。"]
-      : [`${y}年${m}月の請求書と請求内訳書をお送りいたします。`, "添付ファイルをご確認くださいますようお願い申し上げます。"]),
+    ...(isExtra
+      ? isCorrection
+        ? [`先日お送りした${monthLabel}の請求書に訂正がございましたため、訂正版の請求書をお送りいたします。`, "お手数をおかけいたしますが、前回の請求書は破棄のうえ、添付ファイルをご確認くださいますようお願い申し上げます。"]
+        : [`${monthLabel}の請求書をお送りいたします。`, "添付ファイルをご確認くださいますようお願い申し上げます。"]
+      : isCorrection
+        ? [`先日お送りした${y}年${m}月分の請求書に訂正がございましたため、訂正版の請求書と請求内訳書をお送りいたします。`, "お手数をおかけいたしますが、前回の請求書は破棄のうえ、添付ファイルをご確認くださいますようお願い申し上げます。"]
+        : [`${y}年${m}月の請求書と請求内訳書をお送りいたします。`, "添付ファイルをご確認くださいますようお願い申し上げます。"]),
     "",
     `ご請求金額（税込）：¥${invoice.totalInclTax.toLocaleString("ja-JP")}`,
     "",
@@ -117,12 +135,14 @@ export async function sendApprovedInvoice(id: string) {
     text,
     // 取引先の設定で、請求書→請求内訳書の順に1つのPDFにまとめるか、2つバラで添付するか(標準はバラ)。
     attachments:
-      ((invoice.client.billingTerms ?? {}) as BillingTerms).pdfBundle === "COMBINED"
-        ? [{ filename: pdfFileName("請求書・請求内訳書", y, m), content: await mergePdfs([inv.buffer, stmt.buffer]) }]
-        : [
-            { filename: pdfFileName("請求書", y, m), content: inv.buffer },
-            { filename: pdfFileName("請求内訳書", y, m), content: stmt.buffer },
-          ],
+      isExtra || !stmt
+        ? [{ filename: pdfFileName("請求書", y, m, extraTitle), content: inv.buffer }]
+        : ((invoice.client.billingTerms ?? {}) as BillingTerms).pdfBundle === "COMBINED"
+          ? [{ filename: pdfFileName("請求書・請求内訳書", y, m), content: await mergePdfs([inv.buffer, stmt.buffer]) }]
+          : [
+              { filename: pdfFileName("請求書", y, m), content: inv.buffer },
+              { filename: pdfFileName("請求内訳書", y, m), content: stmt.buffer },
+            ],
   });
 
   await prisma.invoice.update({

@@ -5,8 +5,11 @@ import { useRouter } from "next/navigation";
 import { saveInvoiceEdit, type InvoiceEditPayload } from "../../actions";
 import { manualUnitExTax } from "@/lib/invoice-lines";
 import { monthEndOf, nextMonthEnd } from "@/lib/invoice-defaults";
+import { countDays, dailyRateOf, nextFreeDate, orderDatesForEdit, recalcDailyService } from "@/lib/invoice-daily";
 
 type Initial = {
+  // 別途請求(営業協力費など)。スタッフの稼働表・共通の項目・内訳書はなく、品目の手入力だけで作る。
+  extra: boolean;
   addressee: string;
   recipientEmails: string[]; // この請求書に手入力した送信先(空なら取引先の登録を使う)
   clientRecipients: string[]; // 取引先に登録されている送信先(手入力が空のときに使われる)
@@ -31,6 +34,8 @@ type Initial = {
     dayPlaces: Record<string, string>;
     serviceExTax: number;
     serviceCalc: string;
+    // 日額×日数の契約の日額(税抜)。あれば、稼働日を足し引きしたときに業務委託費と計算方法を自動で変える。
+    dailyRateExTax?: number;
     travelInclTax: number;
     // 交通費相当額を税別・税込のどちらで入力するか(省略=税込)と、入力した金額(省略=travelInclTax)。
     travelMode?: "INCL" | "EX";
@@ -56,6 +61,12 @@ const input = "w-full rounded-lg border border-slate-300 bg-slate-800 px-3 py-2 
 // 空欄のまま確定(フォーカスを外す)したときだけ 0 に戻す。
 function NumInput({ value, onChange, className }: { value: number; onChange: (n: number) => void; className?: string }) {
   const [text, setText] = useState(String(value));
+  // 外から値が変わったとき(稼働日の増減で金額が自動で変わったときなど)は、入力欄の表示も合わせる。入力中の値と同じなら触らない。
+  const [seen, setSeen] = useState(value);
+  if (value !== seen) {
+    setSeen(value);
+    if ((text === "" ? 0 : Number(text)) !== value) setText(String(value));
+  }
   return (
     <input
       type="text"
@@ -93,7 +104,7 @@ export function EditInvoiceForm({
   const [dueDate, setDueDate] = useState(initial.dueDate);
   const [note, setNote] = useState(initial.note);
   const [amount, setAmount] = useState(initial.amountExTax);
-  const [lineMode, setLineMode] = useState<"AUTO" | "MANUAL">(initial.lineMode);
+  const [lineMode, setLineMode] = useState<"AUTO" | "MANUAL">(initial.extra ? "MANUAL" : initial.lineMode);
   const [manual, setManual] = useState<ManualLine[]>(() => withKey(initial.manualLines));
   const [taxMode, setTaxMode] = useState<"EX" | "INCL">(initial.manualTaxMode);
   const [showAttendance, setShowAttendance] = useState(initial.manualShowAttendance);
@@ -176,16 +187,26 @@ export function EditInvoiceForm({
   }
 
   // 稼働日を変えたときは、残る日の稼働場所を引き継ぐ(日付を直した場合は、その日の場所も一緒に移す)。
+  // 日額×日数の契約の人は、稼働日数に合わせて業務委託費と計算方法も更新する(月額の契約は変えない)。
   function setStaffDates(i: number, dates: string[], renamed?: { from: string; to: string }) {
     setStaff(
       staff.map((s, idx) => {
         if (idx !== i) return s;
         const dayPlaces: Record<string, string> = {};
         for (const d of dates) dayPlaces[d] = s.dayPlaces[d] ?? (renamed && d === renamed.to ? (s.dayPlaces[renamed.from] ?? "") : "");
-        return { ...s, dates, dayPlaces };
+        return { ...s, dates, dayPlaces, ...(recalcDailyService(s, countDays(dates)) ?? {}) };
       })
     );
   }
+  // 日付の入力を終えたら(欄から離れたら)、稼働日を日付順に並べ直す。入力の途中で並べ替えると、打っている欄がずれるため。
+  const orderStaffDates = (i: number) =>
+    setStaff(
+      staff.map((s, idx) => {
+        if (idx !== i) return s;
+        const ordered = orderDatesForEdit(s.dates);
+        return ordered.every((d, k) => d === s.dates[k]) ? s : { ...s, dates: ordered };
+      })
+    );
   const setDayPlace = (i: number, d: string, place: string) =>
     setStaff(staff.map((s, idx) => (idx === i ? { ...s, dayPlaces: { ...s.dayPlaces, [d]: place } } : s)));
   const setAllPlaces = (i: number, place: string) =>
@@ -286,17 +307,19 @@ export function EditInvoiceForm({
           </label>
           {initial.hasStatement ? (
             <div className="rounded-xl bg-slate-950 p-4">
-              <p className="text-xs font-bold text-slate-300">請求書の品目・請求内訳書の金額</p>
-              <div className="mt-2 flex flex-wrap gap-4 text-sm">
-                <label className="flex items-center gap-2">
-                  <input type="radio" name="lineMode" checked={lineMode === "AUTO"} onChange={() => chooseMode("AUTO")} />
-                  業務委託費一式（自動）
-                </label>
-                <label className="flex items-center gap-2">
-                  <input type="radio" name="lineMode" checked={lineMode === "MANUAL"} onChange={() => chooseMode("MANUAL")} />
-                  手入力
-                </label>
-              </div>
+              <p className="text-xs font-bold text-slate-300">{initial.extra ? "請求書の品目" : "請求書の品目・請求内訳書の金額"}</p>
+              {!initial.extra && (
+                <div className="mt-2 flex flex-wrap gap-4 text-sm">
+                  <label className="flex items-center gap-2">
+                    <input type="radio" name="lineMode" checked={lineMode === "AUTO"} onChange={() => chooseMode("AUTO")} />
+                    業務委託費一式（自動）
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input type="radio" name="lineMode" checked={lineMode === "MANUAL"} onChange={() => chooseMode("MANUAL")} />
+                    手入力
+                  </label>
+                </div>
+              )}
               {lineMode === "AUTO" ? (
                 <p className="mt-2 text-xs text-slate-600">金額は稼働明細書の合計から自動で計算します（取引先の設定によっては「稼働費用（スタッフ名）」「交通費相当額」の行に分かれます）。</p>
               ) : (
@@ -306,14 +329,14 @@ export function EditInvoiceForm({
                     <label className="flex items-center gap-2"><input type="radio" name="taxMode" checked={taxMode === "EX"} onChange={() => setTaxMode("EX")} />税別で入力</label>
                     <label className="flex items-center gap-2"><input type="radio" name="taxMode" checked={taxMode === "INCL"} onChange={() => setTaxMode("INCL")} />税込で入力</label>
                   </div>
-                  <p className="text-xs text-slate-600">この表は、請求書の品目と請求内訳書の行を兼ねます。{taxMode === "INCL" ? "税込で入力した単価は、税別（円未満切り捨て）に直して請求します。" : ""}</p>
-                  <div className="hidden grid-cols-[1fr_1fr_64px_110px_100px_auto] gap-2 text-xs text-slate-600 md:grid">
-                    <span>品目</span><span>計算方法（内訳書に載る・任意）</span><span>数量</span><span>単価（{taxMode === "INCL" ? "税込" : "税別"}）</span><span className="text-right">金額（税別）</span><span />
+                  <p className="text-xs text-slate-600">{initial.extra ? "この表が、請求書の品目になります（請求内訳書は付きません）。" : "この表は、請求書の品目と請求内訳書の行を兼ねます。"}{taxMode === "INCL" ? "税込で入力した単価は、税別（円未満切り捨て）に直して請求します。" : ""}</p>
+                  <div className={`hidden gap-2 text-xs text-slate-600 md:grid ${initial.extra ? "grid-cols-[1fr_64px_110px_100px_auto]" : "grid-cols-[1fr_1fr_64px_110px_100px_auto]"}`}>
+                    <span>品目</span>{!initial.extra && <span>計算方法（内訳書に載る・任意）</span>}<span>数量</span><span>単価（{taxMode === "INCL" ? "税込" : "税別"}）</span><span className="text-right">金額（税別）</span><span />
                   </div>
                   {manual.map((m, i) => (
-                    <div key={m.key} className="grid grid-cols-2 items-center gap-2 rounded-lg border border-slate-800 p-2 md:grid-cols-[1fr_1fr_64px_110px_100px_auto] md:border-0 md:p-0">
+                    <div key={m.key} className={`grid grid-cols-2 items-center gap-2 rounded-lg border border-slate-800 p-2 md:border-0 md:p-0 ${initial.extra ? "md:grid-cols-[1fr_64px_110px_100px_auto]" : "md:grid-cols-[1fr_1fr_64px_110px_100px_auto]"}`}>
                       <input value={m.label} onChange={(e) => patchManual(i, { label: e.target.value })} placeholder="品目名" className={`${input} col-span-2 md:col-span-1`} />
-                      <input value={m.calc} onChange={(e) => patchManual(i, { calc: e.target.value })} placeholder="例: ¥15,437＋税で計算" className={`${input} col-span-2 md:col-span-1`} />
+                      {!initial.extra && <input value={m.calc} onChange={(e) => patchManual(i, { calc: e.target.value })} placeholder="例: ¥15,437＋税で計算" className={`${input} col-span-2 md:col-span-1`} />}
                       <NumInput value={m.quantity} onChange={(n) => patchManual(i, { quantity: n })} className={input} />
                       <NumInput value={m.unitPrice} onChange={(n) => patchManual(i, { unitPrice: n })} className={input} />
                       <p className="text-right text-sm text-slate-300">{yen(exOf(m))}</p>
@@ -321,16 +344,16 @@ export function EditInvoiceForm({
                     </div>
                   ))}
                   <button type="button" onClick={() => setManual([...manual, ...withKey([{ label: "", calc: "", quantity: 1, unitPrice: 0 }])])} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-black text-white">＋ 行を追加</button>
-                  <label className="flex items-start gap-2 text-xs text-slate-300">
+                  {!initial.extra && <label className="flex items-start gap-2 text-xs text-slate-300">
                     <input type="checkbox" checked={showAttendance} onChange={(e) => setShowAttendance(e.target.checked)} className="mt-0.5" />
                     <span>請求内訳書に、スタッフごとの稼働日・店舗の表も載せる（金額の表は、上の表に置き換わります）</span>
-                  </label>
+                  </label>}
                   {taxMode === "INCL" && manualEnteredTotal > 0 && manualEnteredTotal !== manualSubtotal + Math.floor(manualSubtotal / 10) && (
                     <p className="rounded-lg border border-amber-400 bg-amber-50 p-2 text-xs font-bold text-amber-900">
                       ⚠ 入力した税込の合計（{yen(manualEnteredTotal)}）と、請求書の税込合計（{yen(manualSubtotal + Math.floor(manualSubtotal / 10))}）が、端数の処理で1円ずれます。請求書は、税別の合計の10%（切り捨て）で計算します。
                     </p>
                   )}
-                  {manualSubtotal !== subtotal && (
+                  {!initial.extra && manualSubtotal !== subtotal && (
                     <p className="rounded-lg border border-amber-400 bg-amber-50 p-2 text-xs font-bold text-amber-900">
                       ⚠ 品目の合計（税別 {yen(manualSubtotal)}）が、自動で計算した金額（税別 {yen(subtotal)}）と違います。意図した金額か、確認してから保存してください。
                     </p>
@@ -357,7 +380,7 @@ export function EditInvoiceForm({
       {staff.length > 0 && (
         <section className="rounded-2xl border border-slate-700 bg-slate-900 p-5">
           <h2 className="text-base font-black">② 稼働明細書の内訳（スタッフごと）</h2>
-          <p className="mt-1 text-xs text-slate-600">ここで直した金額は、請求書の「業務委託費一式」に自動で反映されます。稼働日を変えても金額は自動では変わらないので、必要なら業務委託費も直してください。</p>
+          <p className="mt-1 text-xs text-slate-600">ここで直した金額は、請求書の「業務委託費一式」に自動で反映されます。日額×日数の契約の人は、稼働日を足す・消すと業務委託費と計算方法も自動で変わります。月額の契約の人は自動では変わらないので、必要なら業務委託費を直してください。交通費は、どちらの契約でも自動では変わりません。</p>
           <div className="mt-4 space-y-5">
             {staff.map((s, i) => (
               <div key={i} className="rounded-xl border border-slate-800 bg-slate-950 p-4">
@@ -377,12 +400,13 @@ export function EditInvoiceForm({
                           min={`${yearMonth}-01`}
                           max={`${yearMonth}-31`}
                           onChange={(e) => setStaffDates(i, s.dates.map((x, xi) => (xi === di ? e.target.value : x)), { from: d, to: e.target.value })}
+                          onBlur={() => orderStaffDates(i)}
                           className="bg-transparent text-sm"
                         />
                         <button type="button" aria-label="この日を削除" onClick={() => setStaffDates(i, s.dates.filter((_, xi) => xi !== di))} className="px-1 text-xs text-red-700">✕</button>
                       </span>
                     ))}
-                    <button type="button" onClick={() => setStaffDates(i, [...s.dates, `${yearMonth}-01`])} className="rounded-lg border border-slate-600 px-3 py-1 text-xs font-bold">＋ 日を追加</button>
+                    <button type="button" onClick={() => setStaffDates(i, orderDatesForEdit([...s.dates, nextFreeDate(yearMonth, s.dates)]))} className="rounded-lg border border-slate-600 px-3 py-1 text-xs font-bold">＋ 日を追加</button>
                   </div>
                 </div>
 
@@ -432,6 +456,9 @@ export function EditInvoiceForm({
                   <label className={field}>
                     業務委託費（税抜・円）
                     <NumInput value={s.serviceExTax} onChange={(n) => patchStaff(i, { serviceExTax: n })} className={`${input} mt-1`} />
+                    {dailyRateOf(s) && (
+                      <span className={hint}>日額 ¥{dailyRateOf(s)!.rate.toLocaleString("ja-JP")} × 稼働日数で自動計算します（稼働日を足す・消すと変わります）。手で直すこともできます。</span>
+                    )}
                   </label>
                   {s.travelLines ? (
                     <div className={field}>
@@ -530,8 +557,8 @@ export function EditInvoiceForm({
         </section>
       )}
 
-      {/* 取引先全体の項目 */}
-      {initial.hasStatement && (
+      {/* 取引先全体の項目(別途請求にはない) */}
+      {initial.hasStatement && !initial.extra && (
         <section className="rounded-2xl border border-slate-700 bg-slate-900 p-5">
           <h2 className="text-base font-black">③ 共通の項目（広告原価・商材仕入れ代原価など）</h2>
           <p className="mt-1 text-xs text-slate-600">スタッフ別ではない項目です。金額は税抜で入力してください（消費税は合計に10%で計算されます）。ある月だけ追加し、ない月は載せません。</p>

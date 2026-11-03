@@ -8,6 +8,7 @@ import { buildInvoiceDraft, computeManualStaff, statementBillableExTax, type Sta
 import { normName, otherClientContracts, type BillingTerms } from "@/lib/billing-terms";
 import { buildInvoiceLines, manualUnitExTax } from "@/lib/invoice-lines";
 import { monthEndOf, nextMonthEnd, splitEmails } from "@/lib/invoice-defaults";
+import { DEFAULT_EXTRA_INVOICE_NOTE, INVOICE_KIND_EXTRA, extraInvoiceNumber, extraSubject, isExtraInvoice } from "@/lib/invoice-kind";
 import { createCorrectionDraft } from "@/lib/invoice-correction";
 import { approveDraftInvoice, sendApprovedInvoice } from "@/lib/invoice-send";
 import { buildManualStaffNoShift, validateManualStaffNoShift } from "@/lib/invoice-manual-staff";
@@ -29,6 +30,52 @@ export async function createInvoiceDraft(formData: FormData): Promise<CreateDraf
   }
 }
 
+// 別途請求(営業協力費など、スタッフの稼働とは別の請求)の下書きを、既存の取引先に新しく作る。
+// 稼働分の請求とは別の請求として扱う(版管理・月初の自動作成・修正の引き継ぎに影響しない)。金額・品目の詳細は、作成後に「修正」画面で入力する。
+export async function createExtraInvoice(formData: FormData): Promise<CreateDraftResult> {
+  await requireAdmin();
+  const clientId = String(formData.get("clientId") || "");
+  const yearMonth = String(formData.get("yearMonth") || "");
+  const label = String(formData.get("label") || "").trim();
+  if (!clientId) return { ok: false, error: "取引先を選んでください。" };
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(yearMonth)) return { ok: false, error: "対象月を選んでください。" };
+  if (!label) return { ok: false, error: "品目名を入力してください（例: 営業協力費）。" };
+  if (label.length > 40) return { ok: false, error: "品目名は40文字以内で入力してください。" };
+  try {
+    const client = await prisma.client.findUnique({ where: { id: clientId }, select: { name: true } });
+    if (!client) return { ok: false, error: "取引先が見つかりません。" };
+    // 品目は手入力の1行(金額0円)で始める。0円のままでは承認・送付できない。内訳書(スタッフの稼働表)は付けない。
+    const statement: StatementSnapshot = {
+      clientName: client.name,
+      yearMonth,
+      staff: [],
+      clientExtras: [],
+      manualLines: [{ label, quantity: 1, unitPriceExTax: 0 }],
+      manualTaxMode: "EX",
+      manualShowAttendance: false,
+    };
+    const lines = buildInvoiceLines(statement, false);
+    const created = await prisma.invoice.create({
+      data: {
+        clientId,
+        yearMonth,
+        invoiceNumber: extraInvoiceNumber(yearMonth),
+        revision: 1,
+        kind: INVOICE_KIND_EXTRA,
+        ...computeInvoiceTotals(lines),
+        statement: statement as object,
+        subject: extraSubject(yearMonth, label),
+        note: DEFAULT_EXTRA_INVOICE_NOTE,
+        lines: { create: lines },
+      },
+    });
+    revalidatePath("/admin/invoices");
+    return { ok: true, id: created.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "別途請求の下書きを作成できませんでした。" };
+  }
+}
+
 export type ActionResult = { ok: true; message: string } | { ok: false; error: string };
 
 // 請求書(下書き)の画面から、契約にいないスタッフを追加する。承認すると、この内容が取引先の契約に自動登録される。
@@ -38,8 +85,9 @@ export async function addStaffToDraft(
   input: { staffId: string; storeName: string; rateExTax: number; absenceDeduction: "YES" | "NO" }
 ): Promise<ActionResult> {
   await requireAdmin();
-  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true, clientId: true, yearMonth: true, statement: true } });
+  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true, kind: true, clientId: true, yearMonth: true, statement: true } });
   if (!invoice) return { ok: false, error: "請求書が見つかりません。" };
+  if (isExtraInvoice(invoice.kind)) return { ok: false, error: "別途請求にはスタッフを追加できません。" };
   if (invoice.status !== "DRAFT") return { ok: false, error: "スタッフを追加できるのは下書きの請求だけです。" };
   const snapshot = invoice.statement as unknown as StatementSnapshot | null;
   if (!snapshot) return { ok: false, error: "稼働明細書のデータがありません。請求下書きを作り直してください。" };
@@ -107,8 +155,9 @@ export async function addStaffToDraft(
 // 稼働日・金額は、あとから「修正」画面で入力・変更する。契約には自動登録しない。
 export async function addManualStaffNoShift(id: string, input: { staffId: string; storeName: string; serviceExTax: number; dates?: string[] }): Promise<ActionResult> {
   await requireAdmin();
-  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true, yearMonth: true, statement: true, client: { select: { billingTerms: true } } } });
+  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true, kind: true, yearMonth: true, statement: true, client: { select: { billingTerms: true } } } });
   if (!invoice) return { ok: false, error: "請求書が見つかりません。" };
+  if (isExtraInvoice(invoice.kind)) return { ok: false, error: "別途請求にはスタッフを追加できません。" };
   if (invoice.status !== "DRAFT") return { ok: false, error: "スタッフを追加できるのは下書きの請求だけです。" };
   const snapshot = invoice.statement as unknown as StatementSnapshot | null;
   if (!snapshot) return { ok: false, error: "稼働明細書のデータがありません。請求下書きを作り直してください。" };
@@ -225,9 +274,11 @@ export async function saveInvoiceEdit(
   approverName: string
 ): Promise<ActionResult> {
   await requireAdmin();
-  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true, yearMonth: true, statement: true, client: { select: { billingTerms: true } } } });
+  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true, kind: true, yearMonth: true, statement: true, client: { select: { billingTerms: true } } } });
   if (!invoice) return { ok: false, error: "請求書が見つかりません。" };
   if (invoice.status !== "DRAFT" && invoice.status !== "APPROVED") return { ok: false, error: "送付済みの請求は修正できません。" };
+  // 別途請求は、品目の手入力だけ(スタッフの稼働表・共通の項目・稼働表の内訳はない)。
+  const isExtra = isExtraInvoice(invoice.kind);
 
   const addressee = payload.addressee.trim();
   const subject = payload.subject.trim();
@@ -248,6 +299,7 @@ export async function saveInvoiceEdit(
   }
 
   const snapshot = invoice.statement as unknown as StatementSnapshot | null;
+  if (isExtra && !snapshot) return { ok: false, error: "別途請求のデータがありません。削除して、作り直してください。" };
   let nextStatement: StatementSnapshot | undefined;
   let unitPrice: number;
   // 稼働場所を変更した日のシフト・打刻履歴の更新(請求書の保存と同じトランザクションで実行する)
@@ -271,7 +323,7 @@ export async function saveInvoiceEdit(
       datesByStaff.push(dates);
     }
     const clientExtras: StatementSnapshot["clientExtras"] = [];
-    for (const e of payload.clientExtras ?? []) {
+    for (const e of isExtra ? [] : (payload.clientExtras ?? [])) {
       const label = e.label.trim();
       if (!label && !e.amountExTax) continue; // 空行は無視
       if (!label) return { ok: false, error: "共通の項目に、名前のない行があります。名前を入力するか、行を削除してください。" };
@@ -300,7 +352,7 @@ export async function saveInvoiceEdit(
     // 品目の手入力: 空の行は無視する。MANUALなのに行がない、数量・単価が不正なときは保存しない。
     let manualLines: StatementSnapshot["manualLines"];
     const taxMode: "EX" | "INCL" = payload.manualTaxMode === "INCL" ? "INCL" : "EX";
-    if (payload.lineMode === "MANUAL") {
+    if (isExtra || payload.lineMode === "MANUAL") {
       manualLines = [];
       for (const m of payload.manualLines ?? []) {
         const label = m.label.trim();
@@ -317,7 +369,7 @@ export async function saveInvoiceEdit(
     void _dropManual; void _dropMode; void _dropAtt;
     nextStatement = {
       ...snapshotBase,
-      ...(manualLines ? { manualLines, manualTaxMode: taxMode, manualShowAttendance: payload.manualShowAttendance !== false } : {}),
+      ...(manualLines ? { manualLines, manualTaxMode: taxMode, manualShowAttendance: !isExtra && payload.manualShowAttendance !== false } : {}),
       clientExtras,
       staff: snapshot.staff.map((st, i) => {
         const dates = datesByStaff[i];

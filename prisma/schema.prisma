@@ -696,6 +696,8 @@ model Invoice {
   yearMonth String
   invoiceNumber String @unique
   revision Int @default(1)
+  // 請求の種類。WORK=稼働分の請求(従来どおり。月ごと・取引先ごとの版管理の対象) / EXTRA=別途請求(営業協力費など、スタッフの稼働とは別の請求)
+  kind String @default("WORK")
   status InvoiceStatus @default(DRAFT)
   subtotalExTax Int @default(0)
   taxAmount Int @default(0)

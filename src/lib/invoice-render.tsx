@@ -1,6 +1,7 @@
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_INVOICE_NOTE, defaultSubject, monthEndOf, nextMonthEnd } from "@/lib/invoice-defaults";
+import { DEFAULT_EXTRA_INVOICE_NOTE, isExtraInvoice } from "@/lib/invoice-kind";
 import type { StatementSnapshot } from "@/lib/invoice-draft";
 import { InvoiceDocument, type InvoiceDocData } from "@/app/invoice/[id]/pdf/invoice-document";
 import { StatementDocument } from "@/app/invoice/[id]/statement/statement-document";
@@ -27,7 +28,9 @@ export async function loadInvoiceDoc(id: string) {
     subtotalExTax: invoice.subtotalExTax,
     taxAmount: invoice.taxAmount,
     totalInclTax: invoice.totalInclTax,
-    note: invoice.note?.trim() ? invoice.note : DEFAULT_INVOICE_NOTE,
+    // 備考が空のときの既定文。別途請求には請求内訳書がないので、「請求内訳書は別途添付」の一文を入れない。
+    noStatement: isExtraInvoice(invoice.kind),
+    note: invoice.note?.trim() ? invoice.note : isExtraInvoice(invoice.kind) ? DEFAULT_EXTRA_INVOICE_NOTE : DEFAULT_INVOICE_NOTE,
   };
   return { invoice, data };
 }

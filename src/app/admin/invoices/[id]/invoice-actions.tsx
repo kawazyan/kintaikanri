@@ -12,12 +12,14 @@ export function InvoiceActions({
   recipients,
   total,
   clientName,
+  extra = false,
 }: {
   invoiceId: string;
   status: "DRAFT" | "APPROVED";
   recipients: string;
   total: number;
   clientName: string;
+  extra?: boolean; // 別途請求(請求内訳書は付かない)
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -44,7 +46,7 @@ export function InvoiceActions({
     run(() => approveInvoice(invoiceId, name));
   }
   function send() {
-    if (!window.confirm(`請求書と稼働明細書（税込 ¥${total.toLocaleString("ja-JP")}）を\n${recipients}\nへメール送信します。よろしいですか？`)) return;
+    if (!window.confirm(`${extra ? "請求書" : "請求書と稼働明細書"}（税込 ¥${total.toLocaleString("ja-JP")}）を\n${recipients}\nへメール送信します。よろしいですか？`)) return;
     run(() => sendInvoice(invoiceId));
   }
   function remove() {

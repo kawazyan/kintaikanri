@@ -3,6 +3,7 @@ import { computeInvoiceTotals } from "@/lib/billing";
 import type { BillingTerms } from "@/lib/billing-terms";
 import { buildInvoiceLines } from "@/lib/invoice-lines";
 import type { StatementSnapshot } from "@/lib/invoice-draft";
+import { invoiceFamilyBase, isExtraInvoice } from "@/lib/invoice-kind";
 
 // 送付済み(確定・再発行)の請求から、訂正版(次の版・下書き)を作る。
 // - 送付済みの請求は変更しない。
@@ -17,8 +18,17 @@ export async function createCorrectionDraft(id: string) {
   if (!src) throw new Error("請求書が見つかりません。");
   if (src.status !== "FINALIZED" && src.status !== "REISSUED") throw new Error("送付済みの請求だけ、訂正版を作れます。");
 
+  // 版は、同じ種類の請求の中で数える。別途請求は、同じ請求番号の系列(-R2 など)だけを見る(同じ月に別の別途請求があっても影響しない)。
+  const extra = isExtraInvoice(src.kind);
+  const base = invoiceFamilyBase(src.invoiceNumber);
   const newer = await prisma.invoice.findFirst({
-    where: { clientId: src.clientId, yearMonth: src.yearMonth, revision: { gt: src.revision } },
+    where: {
+      clientId: src.clientId,
+      yearMonth: src.yearMonth,
+      kind: src.kind,
+      revision: { gt: src.revision },
+      ...(extra ? { invoiceNumber: { startsWith: base } } : {}),
+    },
     orderBy: { revision: "desc" },
     select: { invoiceNumber: true },
   });
@@ -33,13 +43,14 @@ export async function createCorrectionDraft(id: string) {
   const totals = computeInvoiceTotals(lines);
 
   const revision = src.revision + 1;
-  const invoiceNumber = `KJ-${src.yearMonth.replace("-", "")}-${Date.now().toString().slice(-6)}-R${revision}`;
+  const invoiceNumber = extra ? `${base}-R${revision}` : `KJ-${src.yearMonth.replace("-", "")}-${Date.now().toString().slice(-6)}-R${revision}`;
   const created = await prisma.invoice.create({
     data: {
       clientId: src.clientId,
       yearMonth: src.yearMonth,
       invoiceNumber,
       revision,
+      kind: src.kind,
       ...totals,
       ...(statement ? { statement: statement as object } : {}),
       addressee: src.addressee,

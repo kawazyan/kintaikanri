@@ -8,6 +8,7 @@ import { syncWorkOrderShiftLinks } from "@/lib/work-order-linking";
 import { fetchEventAds } from "@/lib/event-ads";
 import { loadRuleIndex, type RuleIndex } from "@/lib/client-shifts";
 import { mergeCarryOver } from "@/lib/invoice-carryover";
+import { INVOICE_KIND_WORK } from "@/lib/invoice-kind";
 
 // 稼働明細書に載せるスナップショット(請求下書き作成時点の内容を Invoice.statement に保存する)。
 // 請求書は「業務委託費一式」の1行だけ。計算方法と内訳はすべてこの明細書に書く。
@@ -24,6 +25,8 @@ export type StatementStaff = {
   days: number; // 合計稼働日数
   serviceExTax: number; // 業務委託費(税抜)
   serviceCalc: string; // 業務委託費の計算方法(例: 日額 ¥20,000 × 3日)
+  // 日額×日数の契約の日額(税抜)。あれば、修正画面で稼働日を足し引きしたときに業務委託費と計算方法を自動で変える。月額の契約・当日単価変更ありの契約は持たない。
+  dailyRateExTax?: number;
   // 交通費: NONE=請求しない(単価に込み等) / ACTUAL=スタッフ申請額で請求 / FLAT=クライアントへ一律請求
   // PER_DAY=取引先との取り決めで稼働日×店舗ごとに計算
   travel: { mode: "NONE" | "ACTUAL" | "FLAT" | "PER_DAY"; amountExTax: number; amountInclTax: number; calc?: string; lines?: { label: string; calc: string; amountExTax: number }[] };
@@ -237,6 +240,7 @@ async function staffFromRule(ctx: RuleCtx, rule: ShiftBillingRule, manual?: Manu
     days: dates.length,
     serviceExTax: service,
     serviceCalc,
+    ...(rule.contract === "DAILY" ? { dailyRateExTax: rule.rateExTax } : {}),
     travel,
     extras: [],
     ...(manual ? { manual: { storeName: manual.storeName, rateExTax: manual.rateExTax, absenceDeduction: manual.absenceDeduction, plannedDays } } : {}),
@@ -280,7 +284,7 @@ async function uncontractedWorkWarning(ctx: RuleCtx): Promise<string | null> {
 // 修正を引き継ぐ元: その取引先・月の最新の請求が、未送信(下書き・承認済み)で明細書を持つ場合だけ。
 async function loadCarryOverSource(clientId: string, yearMonth: string) {
   const latest = await prisma.invoice.findFirst({
-    where: { clientId, yearMonth },
+    where: { clientId, yearMonth, kind: INVOICE_KIND_WORK }, // 別途請求は引き継ぎ元にしない
     orderBy: { revision: "desc" },
     select: { status: true, statement: true, addressee: true, subject: true, note: true, dueDate: true, recipientEmails: true },
   });
@@ -437,6 +441,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string, opt
         days,
         serviceExTax: amountExTax,
         serviceCalc: calc,
+        ...(assignment.contractType === "DAILY" && !hasRateOverride ? { dailyRateExTax: assignment.rateAmountExTax } : {}),
         travel,
         extras,
       });
@@ -523,7 +528,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string, opt
   // 請求書テンプレートと同じ方式: 消費税 = 税抜合計 × 10% を切り捨て。
   const { subtotalExTax, taxAmount, totalInclTax } = computeInvoiceTotals(lines);
   const previous = await prisma.invoice.findFirst({
-    where: { clientId, yearMonth },
+    where: { clientId, yearMonth, kind: INVOICE_KIND_WORK }, // 別途請求は版の数に入れない
     orderBy: { revision: "desc" },
     select: { revision: true },
   });

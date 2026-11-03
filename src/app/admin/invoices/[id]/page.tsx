@@ -14,6 +14,7 @@ import { CorrectionButton } from "./correction-button";
 import { statementBillableExTax, type StatementSnapshot } from "@/lib/invoice-draft";
 import { invoiceMismatch } from "@/lib/invoice-consistency";
 import type { BillingTerms } from "@/lib/billing-terms";
+import { isExtraInvoice } from "@/lib/invoice-kind";
 
 const STATUS_LABEL: Record<string, string> = { DRAFT: "下書き", APPROVED: "承認済み（未送信）", FINALIZED: "送付済み", REISSUED: "送付済み（再発行）" };
 
@@ -27,6 +28,7 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
   if (!i) notFound();
 
   const statement = i.statement as unknown as StatementSnapshot | null;
+  const extra = isExtraInvoice(i.kind); // 別途請求(営業協力費など): 稼働明細書(請求内訳書)・スタッフ追加はない
   const warnings = statement?.warnings ?? [];
   const staffOptions =
     i.status === "DRAFT" && statement
@@ -49,7 +51,10 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
             {i.client.name} / {i.yearMonth}
           </h1>
         </div>
-        <span className="h-fit rounded-full bg-slate-800 px-3 py-1 text-xs font-black">{STATUS_LABEL[i.status] ?? i.status}</span>
+        <div className="flex h-fit gap-2">
+          {extra && <span className="rounded-full bg-amber-500 px-3 py-1 text-xs font-black text-slate-900">別途請求</span>}
+          <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-black">{STATUS_LABEL[i.status] ?? i.status}</span>
+        </div>
       </div>
 
       {i.approvedAt && (
@@ -76,7 +81,7 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
         <p className="mt-4 rounded-xl border border-red-400 bg-red-50 p-3 text-sm font-bold text-red-800">⚠ {invoiceMismatch(i, statement)}</p>
       )}
 
-      {!!statement?.manualLines?.length && statementBillableExTax(statement) !== i.subtotalExTax && (
+      {!extra && !!statement?.manualLines?.length && statementBillableExTax(statement) !== i.subtotalExTax && (
         <p className="mt-4 rounded-xl border border-amber-400 bg-amber-50 p-3 text-sm font-bold text-amber-900">
           ℹ 品目は手入力です（請求書と請求内訳書は同じ表なので金額は一致しています）。手入力の合計（税抜 ¥{i.subtotalExTax.toLocaleString()}）は、自動で計算した金額（税抜 ¥{statementBillableExTax(statement).toLocaleString()}）と違います。</p>
       )}
@@ -117,7 +122,7 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
         </table>
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
+      <div className={`mt-6 grid gap-4 ${extra ? "" : "md:grid-cols-2"}`}>
         <section>
           <div className="mb-2 flex items-center justify-between">
             <h2 className="font-black">請求書</h2>
@@ -125,30 +130,32 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
           </div>
           <PdfPreview url={`/invoice/${i.id}/pdf?t=${i.updatedAt.getTime()}`} title="請求書" />
         </section>
-        <section>
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="font-black">稼働明細書</h2>
-            <Link href={`/invoice/${i.id}/statement`} target="_blank" className="text-sm text-blue-400 underline">別タブで開く</Link>
-          </div>
-          <PdfPreview url={`/invoice/${i.id}/statement?t=${i.updatedAt.getTime()}`} title="稼働明細書" />
-        </section>
+        {!extra && (
+          <section>
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="font-black">稼働明細書</h2>
+              <Link href={`/invoice/${i.id}/statement`} target="_blank" className="text-sm text-blue-400 underline">別タブで開く</Link>
+            </div>
+            <PdfPreview url={`/invoice/${i.id}/statement?t=${i.updatedAt.getTime()}`} title="稼働明細書" />
+          </section>
+        )}
       </div>
 
-      {i.status === "DRAFT" && statement && <AddStaffForm invoiceId={i.id} staff={staffOptions} />}
-      {i.status === "DRAFT" && statement && <AddManualStaffForm invoiceId={i.id} yearMonth={i.yearMonth} staff={staffOptions} />}
+      {i.status === "DRAFT" && statement && !extra && <AddStaffForm invoiceId={i.id} staff={staffOptions} />}
+      {i.status === "DRAFT" && statement && !extra && <AddManualStaffForm invoiceId={i.id} yearMonth={i.yearMonth} staff={staffOptions} />}
 
       {i.status === "DRAFT" || i.status === "APPROVED" ? (
-        <InvoiceActions invoiceId={i.id} status={i.status} recipients={recipients} total={i.totalInclTax} clientName={i.client.name} />
+        <InvoiceActions invoiceId={i.id} status={i.status} recipients={recipients} total={i.totalInclTax} clientName={i.client.name} extra={extra} />
       ) : (
         <>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link href={`/invoice/${i.id}/print`} className="rounded-xl bg-white px-4 py-3 font-black text-slate-900">請求書を開く</Link>
             <Link href={`/invoice/${i.id}/pdf`} className="rounded-xl bg-emerald-600 px-4 py-3 font-black">請求書PDF</Link>
-            <Link href={`/invoice/${i.id}/statement`} className="rounded-xl bg-blue-600 px-4 py-3 font-black">稼働明細書PDF</Link>
-            {((i.client.billingTerms ?? {}) as BillingTerms).pdfBundle === "COMBINED" && (
+            {!extra && <Link href={`/invoice/${i.id}/statement`} className="rounded-xl bg-blue-600 px-4 py-3 font-black">稼働明細書PDF</Link>}
+            {!extra && ((i.client.billingTerms ?? {}) as BillingTerms).pdfBundle === "COMBINED" && (
               <Link href={`/invoice/${i.id}/bundle`} className="rounded-xl bg-emerald-700 px-4 py-3 font-black">請求書＋内訳書PDF（1つ）</Link>
             )}
-            <Link href={`/invoice/${i.id}/detail`} className="rounded-xl border border-slate-600 px-4 py-3 font-black">勤務・請求明細書</Link>
+            {!extra && <Link href={`/invoice/${i.id}/detail`} className="rounded-xl border border-slate-600 px-4 py-3 font-black">勤務・請求明細書</Link>}
           </div>
           <CorrectionButton invoiceId={i.id} invoiceNumber={i.invoiceNumber} />
           <DeleteSentInvoiceButton invoiceId={i.id} invoiceNumber={i.invoiceNumber} clientName={i.client.name} total={i.totalInclTax} sent={!!i.sentAt} />
