@@ -157,7 +157,7 @@ export function ClientsList({ clients }: { clients: ClientRow[] }) {
         ))}
         {!clients.length && (
           <div className="rounded-[24px] bg-white p-8 text-center text-sm font-bold text-slate-400 ring-1 ring-black/5 md:col-span-2">
-            取引先から依頼が届くと、ここへ自動的に表示されます。
+            取引先が登録されていません。
           </div>
         )}
       </div>

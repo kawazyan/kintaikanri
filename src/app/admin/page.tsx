@@ -6,7 +6,6 @@ import {
   CalendarCheck2,
   CalendarDays,
   ChevronRight,
-  ClipboardCheck,
   Clock3,
   DoorOpen,
   ReceiptText,
@@ -25,13 +24,12 @@ export default async function AdminDashboardPage() {
   await requireAdmin();
 
   const { start: todayStart, end: todayEnd } = jstDayRange();
-  const [staffCount, shiftCount, recordCount, clientCount, pendingRequests, pendingExpenses, todaySummary, todayIrregularCount] =
+  const [staffCount, shiftCount, recordCount, clientCount, pendingExpenses, todaySummary, todayIrregularCount] =
     await Promise.all([
       prisma.staff.count({ where: { status: "ACTIVE" } }),
       prisma.shift.count(),
       prisma.clockRecord.count(),
       prisma.client.count(),
-      prisma.workOrder.count({ where: { status: "PENDING_APPROVAL" } }),
       prisma.expense.count({ where: { status: "SUBMITTED" } }),
       getTodayShiftStatusSummary(),
       prisma.irregularReport.count({ where: { targetDate: { gte: todayStart, lt: todayEnd } } }),
@@ -141,16 +139,7 @@ export default async function AdminDashboardPage() {
         })}
       </section>
 
-      <section className="mt-4 grid gap-3 md:grid-cols-2">
-        <Link href="/admin/requests" className="flex items-center gap-4 rounded-[24px] bg-gradient-to-r from-[#14283b] to-[#20394f] p-5 text-white shadow-[0_10px_26px_rgba(15,23,42,.14)] active:translate-y-0.5">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10"><ClipboardCheck size={25} /></span>
-          <div>
-            <p className="text-xs font-bold text-slate-300">確認が必要な稼働依頼</p>
-            <p className="mt-1 text-2xl font-black">{pendingRequests}件</p>
-          </div>
-          <ChevronRight className="ml-auto text-slate-300" />
-        </Link>
-
+      <section className="mt-4 grid gap-3">
         <Link href="/admin/expenses" className="flex items-center gap-4 rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_10px_24px_rgba(15,23,42,.08)] active:translate-y-0.5">
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600"><ReceiptText size={25} /></span>
           <div>
