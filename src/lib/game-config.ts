@@ -24,7 +24,7 @@ export type TitleDefinition = {
   minStreak: number;
 };
 
-// 連続「無遅刻無欠席」(シフトの勤務開始予定時刻を超過せずに出勤打刻した日)の
+// 連続「無遅刻無欠席・出退勤漏れなし」(開始予定時刻を超過せずに出勤打刻し、本人の退勤打刻もある日)の
 // 閾値で獲得する通常称号。一度獲得したら永久保持。判定は src/lib/game.ts の
 // classifyDayForAttendanceStreak/loadAttendanceStreakStatusMap 参照。
 export const TITLE_DEFINITIONS: TitleDefinition[] = [

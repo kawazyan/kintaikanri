@@ -178,3 +178,89 @@ export async function updateClockRecord(id: string, formData: FormData) {
   revalidatePath("/titles");
   redirect("/admin/records");
 }
+
+// 退勤打刻漏れを、シフトの終了時刻(定時)で一括承認する。
+// チェックされた「出勤打刻」のIDを受け取り、サーバー側で毎回条件を再判定してから退勤を作る
+// (画面の表示を信用しない)。作った退勤は editedByAdmin=true + 履歴(CREATE)で通常の打刻と区別できる。
+export async function bulkApproveMissedClockOut(formData: FormData) {
+  await requireAdmin();
+  const ids = formData.getAll("ids").map(String).filter(Boolean);
+  const operatorName = String(formData.get("operatorName") ?? "").trim() || null;
+
+  // 承認後に元の絞り込み条件へ戻す(既知のパラメータだけ引き継ぐ)
+  const back = new URLSearchParams();
+  for (const k of ["staffId", "month", "date", "unlinkedOnly"]) {
+    const v = String(formData.get(k) ?? "");
+    if (v) back.set(k, v);
+  }
+
+  const now = new Date();
+  let approved = 0;
+  const reasons = new Set<string>();
+  let skipped = 0;
+  const skip = (reason: string) => {
+    skipped++;
+    reasons.add(reason);
+  };
+
+  for (const id of ids) {
+    const inRec = await prisma.clockRecord.findUnique({ where: { id }, include: { shift: true } });
+    if (!inRec || inRec.type !== "IN") {
+      skip("出勤打刻が見つからない");
+      continue;
+    }
+    const shift = inRec.shift;
+    if (!shift || shift.cancelledAt || shift.staffId !== inRec.staffId) {
+      skip("シフト外・キャンセル済み・スタッフ不一致");
+      continue;
+    }
+    if (now < shift.endTime) {
+      skip("シフトがまだ終わっていない");
+      continue;
+    }
+    if (inRec.timestamp >= shift.endTime) {
+      skip("出勤打刻がシフト終了時刻より後");
+      continue;
+    }
+    const duplicateError = await findClockDuplicateError({
+      staffId: inRec.staffId,
+      type: "OUT",
+      shiftId: shift.id,
+      timestamp: shift.endTime,
+    });
+    if (duplicateError) {
+      skip("すでに退勤打刻がある");
+      continue;
+    }
+
+    const created = await prisma.clockRecord.create({
+      data: {
+        staffId: inRec.staffId,
+        type: "OUT",
+        timestamp: shift.endTime,
+        storeName: inRec.storeName ?? shift.storeName,
+        shiftId: shift.id,
+        editedByAdmin: true,
+      },
+    });
+    await prisma.clockRecordHistory.create({
+      data: {
+        clockRecordId: created.id,
+        staffId: inRec.staffId,
+        changeType: "CREATE",
+        after: { ...JSON.parse(JSON.stringify(created)), bulkApprovedAtScheduledEnd: true },
+        operatorName,
+      },
+    });
+    approved++;
+  }
+
+  revalidatePath("/admin/records");
+  revalidatePath("/clock");
+  revalidatePath("/titles");
+
+  back.set("approved", String(approved));
+  back.set("skipped", String(skipped));
+  if (reasons.size > 0) back.set("reasons", [...reasons].join("、"));
+  redirect(`/admin/records?${back.toString()}`);
+}

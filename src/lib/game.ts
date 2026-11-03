@@ -130,17 +130,26 @@ async function loadDailyStatusMap(staffId: string, now: Date): Promise<Map<strin
 
 // 称号ランクアップ(CHALLENGER〜LEGEND)専用の判定。報酬・スタンプ・皆勤賞の
 // 「1勤務達成」(出勤+退勤)とは別物で、「シフトの勤務開始予定時刻を超過せずに
-// 出勤打刻したか」だけを見る(出勤時のみ判定。退勤の有無・時刻は問わない)。
+// 出勤打刻し、かつ本人の退勤打刻もあるか」(出退勤漏れなし)を見る。退勤漏れの日は
+// 加算せず、連続記録は途切れさせない。
 // 管理者が打刻時刻を修正した場合も、修正後の時刻が開始予定時刻を超えていな
 // ければ対象になる(常に最新のClockRecordの時刻で判定するため)。開始時刻を
 // 過ぎてもまだ超過なしの出勤打刻がなければ、その時点で不成立(遅刻/欠勤)が
 // 確定する(退勤や稼働日終了を待つ必要はない)。
 function classifyDayForAttendanceStreak(
-  shiftsThatDay: { startTime: Date; onTime: boolean }[],
+  shiftsThatDay: { startTime: Date; onTime: boolean; hasOwnOut: boolean; dayEnded: boolean }[],
   now: Date
 ): DayStatus {
   if (shiftsThatDay.length === 0) return "OFF"; // 公休
-  if (shiftsThatDay.some((s) => s.onTime)) return "COMPLETED";
+  // 無遅刻で出勤し、かつ本人の退勤打刻もある日だけ加算する。
+  if (shiftsThatDay.some((s) => s.onTime && s.hasOwnOut)) return "COMPLETED";
+  // 退勤漏れ(出勤は時間内だが、本人の退勤打刻がない。管理者が定時で補った退勤も
+  // 「漏れのまま」扱い)。称号の連続記録は加算しないが途切れさせない(OFFと同じくスキップ)。
+  // 稼働日がまだ終わっていない間は、退勤される可能性があるので判定待ち。
+  // 勤務日数・XP・スタンプは classifyDay 側で従来どおり稼働扱いで加算される。
+  if (shiftsThatDay.some((s) => s.onTime && !s.hasOwnOut)) {
+    return shiftsThatDay.some((s) => !s.dayEnded) ? "PENDING" : "OFF";
+  }
   if (shiftsThatDay.some((s) => s.startTime > now)) return "PENDING"; // まだ開始前(判定待ち)
   return "ABSENT"; // 開始時刻を過ぎても遅刻なしの出勤打刻なし(遅刻または欠勤)
 }
@@ -162,15 +171,18 @@ async function loadAttendanceStreakStatusMap(staffId: string, now: Date): Promis
 
   const shifts = await prisma.shift.findMany({
     where: { staffId, cancelledAt: null, startTime: { gte: rangeStart, lt: rangeEnd } },
-    select: { startTime: true, clockRecords: { select: { type: true, timestamp: true } } },
+    select: { startTime: true, clockRecords: { select: { type: true, timestamp: true, editedByAdmin: true } } },
   });
 
-  const byDate = new Map<string, { startTime: Date; onTime: boolean }[]>();
+  const byDate = new Map<string, { startTime: Date; onTime: boolean; hasOwnOut: boolean; dayEnded: boolean }[]>();
   for (const s of shifts) {
     const key = toJstDateValue(s.startTime);
     const entry = {
       startTime: s.startTime,
       onTime: s.clockRecords.some((r) => r.type === "IN" && floorToMinute(r.timestamp) <= floorToMinute(s.startTime)),
+      // 本人が押した退勤打刻があるか(管理者が作成・修正した退勤は含めない)
+      hasOwnOut: s.clockRecords.some((r) => r.type === "OUT" && !r.editedByAdmin),
+      dayEnded: key < todayKey,
     };
     const list = byDate.get(key);
     if (list) list.push(entry);
