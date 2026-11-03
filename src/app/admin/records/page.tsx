@@ -189,7 +189,7 @@ export default async function AdminRecordsPage({
       )}
 
       <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/40 backdrop-blur-sm">
-        <table className="w-full min-w-[900px] text-left text-sm">
+        <table className="kj-mobile-records w-full min-w-[900px] text-left text-sm">
           <thead>
             <tr className="border-b border-slate-800 text-slate-500">
               <th className="py-2 pr-3 pl-4">スタッフ</th>
