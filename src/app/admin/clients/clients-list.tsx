@@ -117,7 +117,7 @@ export function ClientsList({ clients }: { clients: ClientRow[] }) {
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         {clients.map((c) => (
-          <article key={c.id} className="rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-black/5">
+          <article key={c.id} className="kj-data-row rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-black/5">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
                 <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggleOne(c.id)} aria-label="選択" className="mt-1 shrink-0" />
