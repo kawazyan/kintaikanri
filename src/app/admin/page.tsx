@@ -64,8 +64,8 @@ export default async function AdminDashboardPage() {
       <header className="admin-dashboard-hero mb-6 flex flex-wrap items-end justify-between gap-3 rounded-[28px] border border-[#294565] bg-gradient-to-br from-[#0c182b] via-[#203b5d] to-[#101d32] px-6 py-7 text-white shadow-[0_18px_40px_rgba(10,27,49,.24)] sm:px-9 sm:py-9">
         <div>
           <p className="text-xs font-black tracking-[0.18em] text-[#b9cee7]">ADMIN DASHBOARD</p>
-          <h1 className="mt-1 text-[28px] font-black tracking-[-0.035em] text-white">管理ダッシュボード</h1>
-          <p className="mt-1 text-sm font-medium text-slate-200">勤怠・取引先・請求まで、ここからまとめて管理できます。</p>
+          <h1 className="kj-admin-light-title mt-1 text-[28px] font-black tracking-[-0.035em] text-white">管理ダッシュボード</h1>
+          <p className="kj-admin-light-copy mt-1 text-sm font-medium text-slate-200">勤怠・取引先・請求まで、ここからまとめて管理できます。</p>
         </div>
       </header>
 
@@ -133,7 +133,7 @@ export default async function AdminDashboardPage() {
                 <ChevronRight size={18} className={dark ? "text-slate-400" : "text-slate-300"} />
               </div>
               <p className="mt-5 text-[30px] font-black tabular-nums">{item.value.toLocaleString("ja-JP")}</p>
-              <p className={`mt-1 text-sm font-bold ${dark ? "text-slate-300" : "text-slate-500"}`}>{item.label}</p>
+              <p className={`mt-1 text-sm font-bold ${dark ? "kj-admin-light-copy text-slate-300" : "text-slate-500"}`}>{item.label}</p>
             </Link>
           );
         })}

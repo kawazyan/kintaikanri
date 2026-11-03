@@ -15,8 +15,6 @@ import {
   LayoutDashboard,
   ListChecks,
   LogOut,
-  ChevronDown,
-  Bell,
   Mail,
   MessageCircle,
   ReceiptText,
@@ -75,9 +73,8 @@ export function AdminNav() {
             <div><div className="kj-brand-name">K.J SYSTEM</div><div className="kj-brand-sub">勤怠管理システム</div></div>
           </div>
           <div className="kj-topbar-right">
-            <span className="kj-topbar-icon" aria-hidden="true"><Bell size={22} /></span>
             <span className="kj-avatar" aria-hidden="true">KJ</span>
-            <span className="kj-admin-label">管理者</span><ChevronDown size={17} />
+            <span className="kj-admin-label">管理者</span>
           </div>
         </div>
       </div>

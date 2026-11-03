@@ -35,7 +35,7 @@ export default async function AdminSimpleAttendancePage({ searchParams }: { sear
   return (
     <main className="mx-auto max-w-4xl px-4 py-8">
       <AdminNav />
-      <h1 className="mb-2 text-xl font-bold text-slate-100">簡易勤怠(出勤・退勤・欠勤・遅刻・早退)</h1>
+      <h1 className="kj-admin-light-title mb-2 text-xl font-bold text-slate-100">簡易勤怠(出勤・退勤・欠勤・遅刻・早退)</h1>
       <p className="mb-4 text-xs text-slate-400">
         スタッフ詳細で「簡易モード」にした人の記録です。打刻の修正・削除は「打刻記録」の画面でできます。
       </p>

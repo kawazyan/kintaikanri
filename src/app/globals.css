@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Only the approved dark-background headings and labels override admin text colors. */
+.admin-theme main .kj-admin-light-title { color: #fff !important; }
+.admin-theme main .kj-admin-light-copy { color: #e2e8f0 !important; }
+
 :root {
   --background: #05070f;
   --foreground: #f1f5f9;
