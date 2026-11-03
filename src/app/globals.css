@@ -582,3 +582,37 @@ body {
 .admin-theme th{color:#253b59;font-weight:800}
 .admin-theme td,.admin-theme th{border-bottom-color:#d9e2ee}
 @media(max-width:640px){.admin-theme .admin-nav{padding:0 10px 12px}.admin-theme .admin-nav-heading{margin:0 -10px 12px;padding:15px 14px}.admin-theme .admin-nav-grid{gap:7px}.admin-theme .admin-nav-link{min-height:43px;padding:9px 11px}}
+
+
+/* Reference-matched K.J administrator interface — isolated from staff pages */
+.admin-theme{background:radial-gradient(ellipse at 75% 12%,#d8e4f3 0%,transparent 55%),linear-gradient(120deg,#f9fbff,#dce6f3 60%,#edf3fa);color:#0e1c33;min-height:100dvh}
+.admin-theme .kj-admin-shell{margin-bottom:34px}
+.admin-theme .kj-topbar{background:linear-gradient(137deg,#0b172b 0%,#1d3353 35%,#0c1729 76%,#091324);color:white;box-shadow:0 7px 22px #0b203d45;border-bottom:2px solid #aabed7;position:relative;overflow:hidden}
+.admin-theme .kj-topbar:after{content:"";position:absolute;inset:-80px 28% auto 27%;height:155px;transform:skewX(-40deg);background:repeating-linear-gradient(105deg,transparent 0 8px,#b4d5fb17 9px 11px,transparent 12px 17px);pointer-events:none}
+.admin-theme .kj-topbar-inner{max-width:1440px;margin:auto;display:flex;justify-content:space-between;align-items:center;min-height:80px;padding:12px 25px;position:relative;z-index:1}
+.admin-theme .kj-brand{display:flex;align-items:center;gap:19px}
+.admin-theme .kj-brand-mark{font-size:34px;font-weight:1000;font-style:italic;letter-spacing:-.16em;padding-right:7px;color:#f8fbff;text-shadow:0 2px 3px #0007}
+.admin-theme .kj-brand-name{font-size:22px;letter-spacing:.11em;line-height:1.1;font-weight:800}
+.admin-theme .kj-brand-sub{font-size:15px;letter-spacing:.1em;color:#e2e9f4;margin-top:3px}
+.admin-theme .kj-topbar-right{display:flex;align-items:center;gap:16px;font-weight:800;font-size:17px}
+.admin-theme .kj-topbar-icon{display:flex;position:relative}
+.admin-theme .kj-topbar-icon:after{content:"";position:absolute;right:-3px;top:-2px;background:#3a9aff;border:1px solid #d5edff;width:10px;height:10px;border-radius:50%}
+.admin-theme .kj-avatar{display:grid;place-items:center;width:48px;height:48px;border-radius:50%;border:2px solid #8ca6c7;background:linear-gradient(135deg,#6689b2,#172b48 68%);box-shadow:inset 0 2px 4px #fff8,0 3px 9px #0008;font-size:14px}
+.admin-theme .kj-menu-title-row{max-width:1440px;margin:35px auto 20px;padding:0 26px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.admin-theme .kj-menu-title{display:flex;align-items:center;gap:17px;flex-wrap:wrap}
+.admin-theme .kj-title-bar{display:block;width:8px;height:40px;background:linear-gradient(90deg,#4b79b0,#0d2448);box-shadow:2px 0 4px #6c8bb1}
+.admin-theme .kj-menu-title strong{font-size:31px;letter-spacing:.02em;color:#0c1b33}
+.admin-theme .kj-menu-english{font-size:17px;color:#536074;letter-spacing:.05em;font-weight:400}
+.admin-theme .kj-logout{display:flex;align-items:center;gap:12px;padding:13px 25px;border-radius:15px!important;border:1px solid #aabbd0!important;color:#14243e!important;font-weight:850;font-size:17px;background:linear-gradient(155deg,#fff,#e0e7f2)!important;box-shadow:inset 0 2px 1px #fff,0 6px 0 #aab8cc,0 10px 15px #10233e45}
+.admin-theme .kj-menu-panel{max-width:1390px;margin:0 auto;padding:24px 17px;display:flex;flex-wrap:wrap;justify-content:center;gap:13px;border-radius:27px;border:1px solid #fff;background:linear-gradient(140deg,#ffffffc9,#dbe5f2bb 62%,#f3f7fcdb);box-shadow:inset 0 2px 2px #fff,0 15px 25px #10284a35,0 0 0 1px #c1d0e1}
+.admin-theme .kj-menu-button{display:flex;align-items:center;justify-content:center;gap:13px;min-height:77px;flex:1 1 190px;max-width:270px;padding:12px 16px;border-radius:18px;border:1px solid #b9c7d9;color:#10203b;background:linear-gradient(155deg,#fff 5%,#eef2f8 53%,#dce4ef);font-weight:900;font-size:16px;white-space:nowrap;box-shadow:inset 0 2px 2px #fff,0 5px 0 #b8c5d5,0 9px 12px #102b4b45;transition:transform .15s,box-shadow .15s}
+.admin-theme .kj-menu-button:hover{transform:translateY(-2px);box-shadow:inset 0 2px 2px #fff,0 7px 0 #b8c5d5,0 12px 15px #102b4b40}
+.admin-theme .kj-menu-button.is-active{color:white;background:linear-gradient(150deg,#496c98 0%,#172c4b 40%,#07152b 95%);border-color:#a5bbd8;box-shadow:inset 0 2px 3px #a9c4e88c,0 5px 0 #09172d,0 10px 16px #081a3d7a}
+.admin-theme .kj-pending-count{padding:1px 6px;border-radius:20px;background:#c9d7e9;color:#152e4f;font-size:11px}
+.admin-theme main{max-width:1440px}
+.admin-theme main>h1{position:relative;padding:17px 24px;margin:16px 0 16px;background:linear-gradient(110deg,#0d1c34,#233f65 55%,#e5edf8 56%,transparent 85%);border-left:5px solid #6e91bb;color:#fff!important;font-size:30px;box-shadow:0 7px 15px #10284a25}
+.admin-theme main>h1 + p{color:#33435c!important;font-size:15px;line-height:1.8}
+.admin-theme main a[href="/admin/estimates/new"]{background:linear-gradient(145deg,#325783,#0b1c36)!important;color:#fff!important;border:1px solid #7294bc;box-shadow:0 5px 0 #07172d,0 9px 13px #0c24444a;padding:14px 24px;border-radius:15px}
+.admin-theme main a[href="/admin/estimates"]{background:linear-gradient(145deg,#fff,#dce6f3)!important;color:#122641!important;border:1px solid #b8c8db;box-shadow:0 5px 0 #b3c2d4,0 9px 13px #0c24442d;padding:14px 24px;border-radius:15px}
+.admin-theme main section{scroll-margin-top:20px}
+@media(max-width:680px){.admin-theme .kj-topbar-inner{min-height:65px;padding:9px 14px}.admin-theme .kj-brand-mark{font-size:26px}.admin-theme .kj-brand-name{font-size:15px}.admin-theme .kj-brand-sub{font-size:11px}.admin-theme .kj-topbar-right{gap:9px}.admin-theme .kj-avatar{width:35px;height:35px;font-size:11px}.admin-theme .kj-admin-label{font-size:12px}.admin-theme .kj-menu-title-row{margin:23px auto 16px;padding:0 15px}.admin-theme .kj-menu-title{gap:8px}.admin-theme .kj-menu-title strong{font-size:23px}.admin-theme .kj-menu-english{font-size:12px}.admin-theme .kj-title-bar{height:30px;width:6px}.admin-theme .kj-logout{font-size:12px;padding:10px!important}.admin-theme .kj-menu-panel{margin:0 10px;padding:13px 9px;gap:10px;border-radius:20px}.admin-theme .kj-menu-button{flex:1 1 calc(50% - 10px);max-width:none;min-height:59px;font-size:12px;gap:7px;padding:9px 7px}.admin-theme .kj-menu-button svg{width:19px;height:19px;flex-shrink:0}.admin-theme main>h1{font-size:23px;padding:13px}}
