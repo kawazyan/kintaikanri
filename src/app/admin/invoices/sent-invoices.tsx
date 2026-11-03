@@ -1,0 +1,38 @@
+"use client";
+
+import { useState } from "react";
+import { InvoiceRowCard, type InvoiceRow } from "./invoice-row-card";
+
+// 送付済みの請求を、請求の対象月ごとにまとめて表示する。プルダウンで月を選ぶ(最初は一番新しい月)。
+export function SentInvoices({ rows }: { rows: InvoiceRow[] }) {
+  const months = [...new Set(rows.map((r) => r.yearMonth))].sort().reverse();
+  const [month, setMonth] = useState(months[0] ?? "");
+  // 選んでいた月の請求が削除などでなくなったときは、一番新しい月に戻す。
+  const current = month === "ALL" || months.includes(month) ? month : (months[0] ?? "");
+  const shown = current === "ALL" ? rows : rows.filter((r) => r.yearMonth === current);
+  const label = (ym: string) => `${ym.slice(0, 4)}年${Number(ym.slice(5))}月（${rows.filter((r) => r.yearMonth === ym).length}件）`;
+
+  return (
+    <section className="mt-8">
+      <div className="flex flex-wrap items-baseline gap-2">
+        <h2 className="text-lg font-black">送付済み</h2>
+        <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs font-black text-slate-300">{shown.length}</span>
+        <span className="text-xs text-slate-500">月を選んで表示（請求の対象月ごと）</span>
+      </div>
+      {months.length > 0 && (
+        <select value={current} onChange={(e) => setMonth(e.target.value)} className="mt-3 rounded-xl bg-slate-800 px-3 py-2 font-bold">
+          {months.map((ym) => (
+            <option key={ym} value={ym}>{label(ym)}</option>
+          ))}
+          <option value="ALL">すべての月（{rows.length}件）</option>
+        </select>
+      )}
+      <div className="mt-3 space-y-3">
+        {shown.length === 0 && <p className="rounded-2xl border border-dashed border-slate-700 p-4 text-sm text-slate-500">送付済みの請求はまだありません。</p>}
+        {shown.map((r) => (
+          <InvoiceRowCard key={r.id} r={r} />
+        ))}
+      </div>
+    </section>
+  );
+}

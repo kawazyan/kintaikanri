@@ -52,7 +52,7 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
           </h1>
         </div>
         <div className="flex h-fit gap-2">
-          {extra && <span className="rounded-full bg-amber-500 px-3 py-1 text-xs font-black text-slate-900">別途請求</span>}
+          {extra && <span className="rounded-full bg-slate-600 px-3 py-1 text-xs font-black text-white">別途請求</span>}
           <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-black">{STATUS_LABEL[i.status] ?? i.status}</span>
         </div>
       </div>

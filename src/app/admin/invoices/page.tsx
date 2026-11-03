@@ -6,21 +6,10 @@ import { AdminNav } from "../admin-nav";
 import { CreateInvoiceButton } from "./create-button";
 import { CreateExtraInvoiceButton } from "./create-extra-button";
 import { isExtraInvoice } from "@/lib/invoice-kind";
-import { RowDeleteButton } from "./row-delete-button";
+import { InvoiceRowCard, type InvoiceRow } from "./invoice-row-card";
+import { SentInvoices } from "./sent-invoices";
 
-type Row = {
-  id: string;
-  clientName: string;
-  yearMonth: string;
-  invoiceNumber: string;
-  total: number;
-  note: string;
-  needsNumber: boolean; // 確定済み・送付済み(削除に請求番号の入力が必要)
-  sent: boolean; // メールを送付した記録がある
-  extra: boolean; // 別途請求(営業協力費など)
-};
-
-function Section({ title, hint, rows, empty }: { title: string; hint: string; rows: Row[]; empty: string }) {
+function Section({ title, hint, rows, empty }: { title: string; hint: string; rows: InvoiceRow[]; empty: string }) {
   return (
     <section className="mt-8">
       <div className="flex flex-wrap items-baseline gap-2">
@@ -31,19 +20,7 @@ function Section({ title, hint, rows, empty }: { title: string; hint: string; ro
       <div className="mt-3 space-y-3">
         {rows.length === 0 && <p className="rounded-2xl border border-dashed border-slate-700 p-4 text-sm text-slate-500">{empty}</p>}
         {rows.map((r) => (
-          <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-700 bg-slate-900 p-5">
-            <Link href={`/admin/invoices/${r.id}`} className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="font-black">
-                  {r.clientName} ・ {r.yearMonth}
-                  {r.extra && <span className="ml-2 rounded-full bg-amber-500 px-2 py-0.5 text-xs font-black text-slate-900">別途請求</span>}
-                </p>
-                <p className="text-xs text-slate-400">{r.invoiceNumber} ・ {r.note}</p>
-              </div>
-              <p className="text-lg font-black">¥{r.total.toLocaleString()}</p>
-            </Link>
-            <RowDeleteButton id={r.id} invoiceNumber={r.invoiceNumber} clientName={r.clientName} total={r.total} needsNumber={r.needsNumber} sent={r.sent} />
-          </div>
+          <InvoiceRowCard key={r.id} r={r} />
         ))}
       </div>
     </section>
@@ -57,7 +34,7 @@ export default async function InvoicesPage() {
     prisma.invoice.findMany({ include: { client: true }, orderBy: { createdAt: "desc" }, take: 300 }),
   ]);
 
-  const toRow = (i: (typeof invoices)[number], note: string): Row => ({
+  const toRow = (i: (typeof invoices)[number], note: string): InvoiceRow => ({
     id: i.id,
     clientName: i.client.name,
     yearMonth: i.yearMonth,
@@ -95,7 +72,7 @@ export default async function InvoicesPage() {
       </div>
       <Section title="下書き" hint="内容を確認して「承認」" rows={drafts} empty="下書きはありません。" />
       <Section title="承認済み" hint="「送信」でメール送付" rows={approved} empty="承認済みで未送信の請求はありません。" />
-      <Section title="送付済み" hint="送付した日時つき" rows={sent} empty="送付済みの請求はまだありません。" />
+      <SentInvoices rows={sent} />
     </main>
   );
 }
