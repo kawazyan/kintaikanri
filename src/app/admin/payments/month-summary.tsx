@@ -35,7 +35,7 @@ export function MonthSummary({
   summaries: Map<string, StaffMonthSummary>;
 }) {
   return (
-    <section className="mb-8 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-lg shadow-black/40 backdrop-blur-sm">
+    <section className="kj-data-table-panel mb-8 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-lg shadow-black/40 backdrop-blur-sm">
       <h2 className="mb-1 text-sm font-semibold text-slate-300">{monthLabel}の勤怠・支払い予定</h2>
       <p className="mb-3 text-xs text-slate-500">
         支払い予定金額 = 受取金額(確定分)＋申請のある経費(申請中・承認済)。支払日が土日祝・12/29〜1/3の場合は直前の銀行営業日に前倒し。
