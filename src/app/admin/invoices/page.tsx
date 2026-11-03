@@ -56,7 +56,7 @@ export default async function InvoicesPage() {
     .map((i) => toRow(i, `送付 ${formatJst((i.sentAt ?? i.finalizedAt ?? i.createdAt))}`));
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8 text-slate-100">
+    <main className="kj-invoices-page mx-auto max-w-5xl px-4 py-8 text-slate-100">
       <AdminNav />
       <h1 className="text-2xl font-black">請求管理</h1>
       <p className="mt-1 text-sm text-slate-400">毎月1日に、契約が登録されている取引先の前月分の下書きが自動で作られます（稼働がない取引先は作られません）。下書き → 承認 → 送信 の順に進めます。</p>
