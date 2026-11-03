@@ -294,6 +294,9 @@ async function loadCarryOverSource(clientId: string, yearMonth: string) {
 
 type DraftResult = { id: string; invoiceNumber: string };
 
+// 稼働依頼も、契約ルールに合う稼働実績もない月は、下書きを作らない(月初の自動作成では「スキップ」として扱う)。
+export const NO_BILLABLE_WORK_MESSAGE = "対象月の承認済み稼働依頼も、シフトからの請求ルールに合う稼働実績もありません。";
+
 // 請求下書きを作る(管理画面のボタンと、月初の自動作成の両方から使う)。
 // 権限チェックは呼び出し側で行うこと。
 // carryOver=true なら、前の下書き(未送信)で追加したスタッフ・直した金額/稼働日/店舗/共通項目・宛名・件名・備考を引き継ぐ。
@@ -470,7 +473,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string, opt
   const { conflicted } = ctx;
   if (conflicted.size) warnings.push(`次のシフトは2社以上の契約に当てはまるため、請求に含めていません。契約の店舗名を見直してください: ${[...conflicted].slice(0, 8).join(" / ")}`);
   if (!orders.length && !statementStaff.length) {
-    if (!opts.allowEmpty) throw new Error("対象月の承認済み稼働依頼も、シフトからの請求ルールに合う稼働実績もありません。");
+    if (!opts.allowEmpty) throw new Error(NO_BILLABLE_WORK_MESSAGE);
     warnings.push("対象月の承認済み稼働依頼も、シフトからの請求ルールに合う稼働実績もないため、空の下書きを作りました。「スタッフを追加（シフトなし・手入力）」や「修正」画面で、スタッフ・稼働日・金額を入力してください。金額が0円のままでは承認・送付できません。");
   }
   const uncontracted = await uncontractedWorkWarning(ctx);
