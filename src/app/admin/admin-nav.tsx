@@ -91,7 +91,7 @@ export function AdminNav() {
           const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
           return (
             <Link key={item.href} href={item.href} className={`kj-menu-button ${active ? "is-active" : ""}`}>
-              <Icon size={25} strokeWidth={2.35} />
+              <Icon size={18} strokeWidth={2.1} />
               <span>{item.label}</span>
               {item.href === "/admin/attendance-requests" && pendingCount > 0 && <span className="kj-pending-count">{pendingCount}</span>}
             </Link>
