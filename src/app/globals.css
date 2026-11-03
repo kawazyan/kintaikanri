@@ -635,3 +635,42 @@ body {
 .admin-theme main :is(th,td){font-size:13px;line-height:1.45}
 .admin-theme main th{white-space:nowrap}
 @media(max-width:680px){.admin-theme .kj-menu-panel{gap:8px;padding:11px 8px}.admin-theme .kj-menu-button{flex:1 1 calc(50% - 8px);min-height:52px;max-width:none;padding:8px 5px;gap:6px;font-size:11px}.admin-theme .kj-menu-button svg{width:16px!important;height:16px!important;min-width:16px}.admin-theme .kj-menu-english{display:none}.admin-theme .kj-menu-title strong{font-size:20px}.admin-theme .kj-data-row{padding:13px!important}}
+
+
+/* Admin content redesign v3: preserve document previews, data and functionality */
+.admin-theme main{color:#14243b!important}
+.admin-theme main :is(h1,h2,h3){color:#12223c}
+.admin-theme main :is(.text-slate-100,.text-slate-200,.text-slate-300,.text-slate-400,.text-slate-500,.text-slate-600){color:#475b76}
+.admin-theme main :is(.text-red-200,.text-red-300,.text-red-400){color:#a52b3a}
+.admin-theme main :is(.text-amber-200,.text-amber-300){color:#966011}
+.admin-theme main :is(.text-emerald-300,.text-emerald-400){color:#137c61}
+.admin-theme main :is(.text-blue-400,.text-cyan-300){color:#245d90}
+.admin-theme main :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea){background:linear-gradient(180deg,#fff,#f1f5fb)!important;border:1px solid #bdcbdd!important;color:#172943!important;border-radius:12px;box-shadow:inset 0 2px 4px #172d490e,0 2px 5px #17314a0a;font-size:14px;min-height:36px}
+.admin-theme main :is(input,textarea)::placeholder{color:#77869b!important}
+.admin-theme main :is(input,select,textarea):focus-visible{outline:2px solid #5b83b1;outline-offset:1px}
+.admin-theme main :is(button,a)[class*="bg-blue-"],.admin-theme main :is(button,a)[class*="bg-cyan-"],.admin-theme main :is(button,a)[class*="bg-emerald-"]{background:linear-gradient(160deg,#315b8c,#10233e)!important;border:1px solid #8299b7!important;color:#fff!important;box-shadow:0 3px 0 #08182d,0 6px 11px #132c4b28}
+.admin-theme main button:disabled{opacity:.55;box-shadow:none!important}
+.admin-theme main :is(button,a)[class*="rounded-xl"],.admin-theme main :is(button,a)[class*="rounded-lg"]{font-size:13px;line-height:1.3}
+.admin-theme main :is(section,article,div)[class*="bg-slate-900/60"]:not(.kj-admin-shell),.admin-theme main :is(section,article,div)[class*="bg-slate-900"]:not(.kj-admin-shell){background:linear-gradient(150deg,#fff,#f2f6fc)!important;border-color:#c6d3e2!important;color:#172a45!important;box-shadow:0 7px 18px #112c4b16}
+.admin-theme main :is(section,article,div)[class*="bg-slate-900"] :is(h2,h3,p,span){color:inherit}
+.admin-theme main :is(section,article,div)[class*="bg-slate-900"] :is(.text-slate-500,.text-slate-600){color:#607089}
+.admin-theme main table{border-collapse:separate;border-spacing:0;color:#172a44!important}
+.admin-theme main table thead{background:#edf2f8!important;color:#213852!important}
+.admin-theme main table th{padding:12px 10px!important;font-weight:800!important;border-bottom:1px solid #cbd6e4}
+.admin-theme main table td{padding:11px 9px;border-bottom:1px solid #e3eaf3;vertical-align:top}
+.admin-theme main table tbody tr:nth-child(even){background:#edf3fa8a}
+.admin-theme main table tbody tr:hover{background:#e4edf8a8}
+.admin-theme main table :is(th,td){font-size:13px!important}
+.admin-theme main table :is(.text-slate-100,.text-slate-300,.text-slate-400,.text-slate-500){color:#40536e!important}
+.admin-theme main :is(table,form) :is(button,a){white-space:nowrap}
+.admin-theme main :is(table,form) svg{width:16px;height:16px;flex-shrink:0}
+.admin-theme main :is(form,nav)[class*="gap-3"]{row-gap:12px}
+.admin-theme main :is(section,div)[class*="rounded-2xl"][class*="border-dashed"]{background:#f5f8fc;color:#536780;border-color:#c6d4e4}
+.admin-theme main .kj-correction-panel{background:linear-gradient(150deg,#fff9e9,#f7edda)!important;border:1px solid #d8b76f!important;box-shadow:0 5px 14px #5c461622}
+.admin-theme main .kj-correction-panel p{color:#66440e!important}
+.admin-theme main .kj-correction-panel button{background:linear-gradient(150deg,#ffcb68,#e79d23)!important;color:#352300!important;border:1px solid #bb7c19;box-shadow:0 3px 0 #a26b1c}
+.admin-theme main .kj-data-table-panel{background:linear-gradient(145deg,#fff,#f2f6fb)!important;border-color:#c7d4e3!important;color:#172943}
+.admin-theme main .kj-data-table-panel>div{scrollbar-width:thin}
+.admin-theme main .kj-invoices-page>div:has(>button){max-width:100%}
+.admin-theme main .kj-invoices-page>div:has(>button)>button{max-width:100%}
+@media(max-width:680px){.admin-theme main{padding-left:12px;padding-right:12px}.admin-theme main :is(table,form) :is(button,a){font-size:12px}.admin-theme main table :is(th,td){font-size:12px!important;padding:9px 7px!important}.admin-theme main .kj-data-table-panel{padding:12px!important}.admin-theme main :is(input:not([type="checkbox"]),select){font-size:13px}.admin-theme main :is(section,article)[class*="rounded-2xl"]{border-radius:16px}}
