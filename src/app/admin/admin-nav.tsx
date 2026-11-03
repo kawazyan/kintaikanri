@@ -66,7 +66,7 @@ export function AdminNav() {
 
   return (
     <div className="admin-nav mb-7 rounded-[24px] border border-slate-200 bg-white/95 p-3 shadow-[0_12px_32px_rgba(15,23,42,.08)] backdrop-blur-sm">
-      <div className="mb-3 flex items-center justify-between px-2 pt-1">
+      <div className="admin-nav-heading mb-3 flex items-center justify-between px-2 pt-1">
         <div>
           <p className="text-[10px] font-black tracking-[0.22em] text-slate-400">K.J SYSTEM</p>
           <p className="mt-0.5 text-sm font-black text-slate-900">管理者メニュー</p>
@@ -74,14 +74,14 @@ export function AdminNav() {
         <button
           type="button"
           onClick={logout}
-          className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600 transition active:translate-y-0.5"
+          className="admin-logout flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600 transition active:translate-y-0.5"
         >
           <LogOut size={15} />
           ログアウト
         </button>
       </div>
 
-      <nav className="flex flex-wrap gap-2">
+      <nav className="admin-nav-grid flex flex-wrap gap-2">
         {links.map((item) => {
           const Icon = item.icon;
           const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
@@ -89,7 +89,7 @@ export function AdminNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black transition active:translate-y-0.5 ${
+              className={`admin-nav-link ${active ? "is-active" : ""} flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black transition active:translate-y-0.5 ${
                 active
                   ? "bg-[#14283b] text-white shadow-[0_4px_0_#091522]"
                   : "bg-[#f4f6f8] text-slate-600 hover:bg-slate-100"
@@ -98,7 +98,7 @@ export function AdminNav() {
               <Icon size={16} strokeWidth={2.2} />
               {item.label}
               {item.href === "/admin/attendance-requests" && pendingCount > 0 && (
-                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-black text-white">
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-slate-600 px-1 text-[10px] font-black text-white">
                   {pendingCount}
                 </span>
               )}
