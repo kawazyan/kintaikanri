@@ -58,14 +58,14 @@ export default async function AdminDashboardPage() {
   ];
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
+    <main className="admin-dashboard mx-auto max-w-[1440px] px-4 py-6 sm:px-7 sm:py-8">
       <AdminNav />
 
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <header className="admin-dashboard-hero mb-6 flex flex-wrap items-end justify-between gap-3 rounded-[28px] border border-[#294565] bg-gradient-to-br from-[#0c182b] via-[#203b5d] to-[#101d32] px-6 py-7 text-white shadow-[0_18px_40px_rgba(10,27,49,.24)] sm:px-9 sm:py-9">
         <div>
-          <p className="text-xs font-black tracking-[0.18em] text-red-600">ADMIN DASHBOARD</p>
-          <h1 className="mt-1 text-[28px] font-black tracking-[-0.035em] text-slate-950">管理ダッシュボード</h1>
-          <p className="mt-1 text-sm font-medium text-slate-500">勤怠・取引先・請求まで、ここからまとめて管理できます。</p>
+          <p className="text-xs font-black tracking-[0.18em] text-[#b9cee7]">ADMIN DASHBOARD</p>
+          <h1 className="mt-1 text-[28px] font-black tracking-[-0.035em] text-white">管理ダッシュボード</h1>
+          <p className="mt-1 text-sm font-medium text-slate-200">勤怠・取引先・請求まで、ここからまとめて管理できます。</p>
         </div>
       </header>
 
@@ -114,7 +114,7 @@ export default async function AdminDashboardPage() {
         </section>
       ) : null}
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section className="admin-dashboard-stats grid grid-cols-2 gap-4 lg:grid-cols-4">
         {stats.map((item, index) => {
           const Icon = item.icon;
           const dark = index === 0;
@@ -122,8 +122,8 @@ export default async function AdminDashboardPage() {
             <Link
               key={item.label}
               href={item.href}
-              className={`group rounded-[22px] p-5 shadow-[0_10px_24px_rgba(15,23,42,.08)] transition active:translate-y-0.5 ${
-                dark ? "bg-gradient-to-br from-[#1e3448] to-[#102235] text-white" : "border border-slate-200 bg-white text-slate-950"
+              className={`group admin-dashboard-stat rounded-[24px] p-5 shadow-[0_12px_28px_rgba(15,32,54,.13)] transition hover:-translate-y-1 active:translate-y-0.5 ${
+                dark ? "border border-[#4e6888] bg-gradient-to-br from-[#27476c] to-[#0d1b30] text-white" : "border border-[#cbd7e5] bg-gradient-to-br from-white to-[#eef3fa] text-slate-950"
               }`}
             >
               <div className="flex items-start justify-between">
@@ -139,9 +139,9 @@ export default async function AdminDashboardPage() {
         })}
       </section>
 
-      <section className="mt-4 grid gap-3">
-        <Link href="/admin/expenses" className="flex items-center gap-4 rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_10px_24px_rgba(15,23,42,.08)] active:translate-y-0.5">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600"><ReceiptText size={25} /></span>
+      <section className="mt-5 grid gap-4">
+        <Link href="/admin/expenses" className="admin-dashboard-expenses flex items-center gap-4 rounded-[24px] border border-[#cbd7e5] bg-gradient-to-r from-white to-[#eef3fa] p-5 shadow-[0_12px_28px_rgba(15,32,54,.1)] transition hover:-translate-y-0.5 active:translate-y-0.5">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e3ebf5] text-[#244a76]"><ReceiptText size={25} /></span>
           <div>
             <p className="text-xs font-bold text-slate-500">未確認の経費申請</p>
             <p className="mt-1 text-2xl font-black text-slate-950">{pendingExpenses}件</p>
@@ -150,16 +150,16 @@ export default async function AdminDashboardPage() {
         </Link>
       </section>
 
-      <section className="mt-8">
-        <p className="mb-3 text-xs font-black tracking-[0.18em] text-red-600">今日の稼働状況</p>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <section className="admin-dashboard-today mt-8 rounded-[28px] border border-[#cbd7e5] bg-white/80 p-4 shadow-[0_14px_30px_rgba(15,32,54,.09)] sm:p-6">
+        <p className="mb-3 text-xs font-black tracking-[0.18em] text-[#244a76]">今日の稼働状況</p>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
           {todayTiles.map((item) => {
             const Icon = item.icon;
             return (
               <Link
                 key={item.filter}
                 href={`/admin/today?filter=${item.filter}`}
-                className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-[0_8px_20px_rgba(15,23,42,.06)] transition active:translate-y-0.5"
+                className="rounded-[20px] border border-[#d4dfec] bg-gradient-to-br from-white to-[#f1f5fb] p-4 shadow-[0_8px_18px_rgba(15,32,54,.08)] transition hover:-translate-y-1 active:translate-y-0.5"
               >
                 <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100">
                   <Icon size={18} />
