@@ -15,6 +15,8 @@ import {
   LayoutDashboard,
   ListChecks,
   LogOut,
+  ChevronDown,
+  Bell,
   Mail,
   MessageCircle,
   ReceiptText,
@@ -65,43 +67,33 @@ export function AdminNav() {
   }
 
   return (
-    <div className="admin-nav mb-7 rounded-[24px] border border-slate-200 bg-white/95 p-3 shadow-[0_12px_32px_rgba(15,23,42,.08)] backdrop-blur-sm">
-      <div className="admin-nav-heading mb-3 flex items-center justify-between px-2 pt-1">
-        <div>
-          <p className="text-[10px] font-black tracking-[0.22em] text-slate-400">K.J SYSTEM</p>
-          <p className="mt-0.5 text-sm font-black text-slate-900">管理者メニュー</p>
+    <div className="kj-admin-shell">
+      <div className="kj-topbar">
+        <div className="kj-topbar-inner">
+          <div className="kj-brand">
+            <span className="kj-brand-mark">KJ</span>
+            <div><div className="kj-brand-name">K.J SYSTEM</div><div className="kj-brand-sub">勤怠管理システム</div></div>
+          </div>
+          <div className="kj-topbar-right">
+            <span className="kj-topbar-icon" aria-hidden="true"><Bell size={22} /></span>
+            <span className="kj-avatar" aria-hidden="true">KJ</span>
+            <span className="kj-admin-label">管理者</span><ChevronDown size={17} />
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={logout}
-          className="admin-logout flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600 transition active:translate-y-0.5"
-        >
-          <LogOut size={15} />
-          ログアウト
-        </button>
       </div>
-
-      <nav className="admin-nav-grid flex flex-wrap gap-2">
+      <div className="kj-menu-title-row">
+        <div className="kj-menu-title"><span className="kj-title-bar" /><strong>管理者メニュー</strong><span className="kj-menu-english">Administrator Menu</span></div>
+        <button type="button" onClick={logout} className="kj-logout"><LogOut size={21} />ログアウト</button>
+      </div>
+      <nav className="kj-menu-panel" aria-label="管理者メニュー">
         {links.map((item) => {
           const Icon = item.icon;
           const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`admin-nav-link ${active ? "is-active" : ""} flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black transition active:translate-y-0.5 ${
-                active
-                  ? "bg-[#14283b] text-white shadow-[0_4px_0_#091522]"
-                  : "bg-[#f4f6f8] text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              <Icon size={16} strokeWidth={2.2} />
-              {item.label}
-              {item.href === "/admin/attendance-requests" && pendingCount > 0 && (
-                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-slate-600 px-1 text-[10px] font-black text-white">
-                  {pendingCount}
-                </span>
-              )}
+            <Link key={item.href} href={item.href} className={`kj-menu-button ${active ? "is-active" : ""}`}>
+              <Icon size={25} strokeWidth={2.35} />
+              <span>{item.label}</span>
+              {item.href === "/admin/attendance-requests" && pendingCount > 0 && <span className="kj-pending-count">{pendingCount}</span>}
             </Link>
           );
         })}
