@@ -128,7 +128,7 @@ export function StaffList({
       </div>
       <ul className="flex flex-col gap-3">
         {staffList.map((s) => (
-          <li key={s.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 shadow-lg shadow-black/40 backdrop-blur-sm">
+          <li key={s.id} className="kj-data-row rounded-2xl border border-slate-800 bg-slate-900/60 p-3 shadow-lg shadow-black/40 backdrop-blur-sm">
             <div className="flex items-start gap-3">
               <input
                 type="checkbox"
