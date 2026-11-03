@@ -140,7 +140,7 @@ export function ShiftsTable({ shifts }: { shifts: ShiftRow[] }) {
         </div>
       )}
       <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/40 backdrop-blur-sm">
-        <table className="w-full min-w-[960px] text-left text-sm">
+        <table className="kj-mobile-shifts w-full min-w-[960px] text-left text-sm">
           <thead>
             <tr className="border-b border-slate-800 text-slate-500">
               <th className="w-10 py-2 pl-4">
