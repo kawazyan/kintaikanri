@@ -16,7 +16,7 @@ export type InvoiceRow = {
 // 請求管理の一覧の1行(下書き・承認済み・送付済みで共通)。
 export function InvoiceRowCard({ r }: { r: InvoiceRow }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-700 bg-slate-900 p-5">
+    <div className="kj-data-row flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-700 bg-slate-900 p-5">
       <Link href={`/admin/invoices/${r.id}`} className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3">
         <div>
           <p className="font-black">
