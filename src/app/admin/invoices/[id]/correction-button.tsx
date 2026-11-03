@@ -21,7 +21,7 @@ export function CorrectionButton({ invoiceId, invoiceNumber }: { invoiceId: stri
   }
 
   return (
-    <div className="mt-5 rounded-2xl border border-amber-700 bg-amber-950/30 p-4">
+    <div className="kj-correction-panel mt-5 rounded-2xl border border-amber-700 bg-amber-950/30 p-4">
       <p className="font-black text-amber-200">請求書を訂正する</p>
       <p className="mt-1 text-sm text-amber-200/80">
         取引先から訂正の依頼があったときは、訂正版（下書き）を作って直します。承認して送信すると、メールの件名・本文に「訂正」と入ります。
