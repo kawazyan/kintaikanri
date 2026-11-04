@@ -2,6 +2,7 @@ import path from "node:path";
 import { Document, Page, Text, View, Font, StyleSheet } from "@react-pdf/renderer";
 import { staffBillableExTax, type StatementSnapshot, type StatementStaff } from "@/lib/invoice-draft";
 import { travelLineLabel } from "@/lib/billing";
+import { softWrap } from "@/lib/soft-wrap";
 
 Font.register({
   family: "NotoSerifJP",
@@ -14,6 +15,9 @@ const BLUE = "#dbe5f1";
 const LINE = "#9a9a9a";
 
 const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
+
+// 「項目」の列(幅30%)に収まる文字数の目安(全角換算)。これを超える項目名は自動で改行する(隣の列に重ならないように)。
+const ITEM_COL_EM = 14;
 
 export type StatementTotals = { subtotalExTax: number; taxAmount: number; totalInclTax: number };
 
@@ -51,7 +55,7 @@ function AttendanceDays({ yearMonth, staff }: { yearMonth: string; staff: Statem
       <Text style={{ fontSize: 8.5, color: "#666", marginBottom: 4 }}>{m}月</Text>
       {[...groups].map(([place, ds]) => (
         <View key={place} style={{ marginBottom: 6 }}>
-          <Text style={{ fontSize: 9, color: NAVY, marginBottom: 3 }}>{place}　{ds.length}日</Text>
+          {(groups.size > 1 || place === UNKNOWN_PLACE) && <Text style={{ fontSize: 9, color: NAVY, marginBottom: 3 }}>{place}　{ds.length}日</Text>}
           <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
             {ds.map((d) => {
               const [yy, mm, dd] = d.split("-").map(Number);
@@ -175,7 +179,7 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
                 </View>
                 {staffItems(s).map((it, k) => (
                   <View key={k} style={st.itemRow}>
-                    <Text style={st.cItem}>{it.label}</Text>
+                    <Text style={st.cItem}>{softWrap(it.label, ITEM_COL_EM)}</Text>
                     <Text style={st.cCalc}>{it.calc}</Text>
                     <Text style={st.cAmt}>{yen(it.amountExTax)}</Text>
                   </View>
@@ -201,7 +205,7 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
             </View>
             {manual.map((l, k) => (
               <View key={k} style={st.itemRow}>
-                <Text style={[st.cItem, ...(showCalc ? [] : [{ width: "78%" }])]}>{l.label}</Text>
+                <Text style={[st.cItem, ...(showCalc ? [] : [{ width: "78%" }])]}>{showCalc ? softWrap(l.label, ITEM_COL_EM) : l.label}</Text>
                 {showCalc && <Text style={st.cCalc}>{l.calc?.trim() ?? ""}</Text>}
                 <Text style={st.cAmt}>{yen(l.quantity * l.unitPriceExTax)}</Text>
               </View>
@@ -243,7 +247,7 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
                 </View>
                 {(data.clientExtras ?? []).filter((e) => !(e.store && e.period)).map((e, k) => (
                   <View key={k} style={st.itemRow}>
-                    <Text style={st.cItem}>{e.label}</Text>
+                    <Text style={st.cItem}>{softWrap(e.label, ITEM_COL_EM)}</Text>
                     <Text style={st.cCalc}>{e.calc || `${yen(e.amountExTax)}＋税で計算`}</Text>
                     <Text style={st.cAmt}>{yen(e.amountExTax)}</Text>
                   </View>
