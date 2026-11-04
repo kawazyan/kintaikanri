@@ -5,12 +5,13 @@ import { randomBytes } from "node:crypto";
 export const AMOUNT_ENTRY_ITEM_LABEL = "業務委託費一式";
 export const AMOUNT_ENTRY_MAX_EX = 100_000_000;
 
-export type AmountEntryConfig = { token: string; approverName: string };
+// staffId: この画面に出す稼働(出退勤・店舗)を絞るスタッフ。この取引先の稼働者だけを表示するために使う。
+export type AmountEntryConfig = { token: string; approverName: string; staffId?: string };
 
 export function amountEntryOf(billingTerms: unknown): AmountEntryConfig | null {
-  const v = (billingTerms as { amountEntry?: { token?: unknown; approverName?: unknown } } | null)?.amountEntry;
+  const v = (billingTerms as { amountEntry?: { token?: unknown; approverName?: unknown; staffId?: unknown } } | null)?.amountEntry;
   if (!v || typeof v.token !== "string" || !v.token || typeof v.approverName !== "string" || !v.approverName) return null;
-  return { token: v.token, approverName: v.approverName };
+  return { token: v.token, approverName: v.approverName, ...(typeof v.staffId === "string" && v.staffId ? { staffId: v.staffId } : {}) };
 }
 
 export function newAmountEntryToken() {
