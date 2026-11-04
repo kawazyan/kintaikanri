@@ -61,13 +61,8 @@ export default async function AdminDashboardPage() {
     <main className="admin-dashboard mx-auto max-w-[1440px] px-4 py-6 sm:px-7 sm:py-8">
       <AdminNav />
 
-      <header className="admin-dashboard-hero mb-6 flex flex-wrap items-end justify-between gap-3 rounded-[28px] border border-[#294565] bg-gradient-to-br from-[#0c182b] via-[#203b5d] to-[#101d32] px-6 py-7 text-white shadow-[0_18px_40px_rgba(10,27,49,.24)] sm:px-9 sm:py-9">
-        <div>
-          <p className="text-xs font-black tracking-[0.18em] text-[#b9cee7]">ADMIN DASHBOARD</p>
-          <h1 className="kj-admin-light-title mt-1 text-[28px] font-black tracking-[-0.035em] text-white">管理ダッシュボード</h1>
-          <p className="kj-admin-light-copy mt-1 text-sm font-medium text-slate-200">勤怠・取引先・請求まで、ここからまとめて管理できます。</p>
-        </div>
-      </header>
+      <h1 className="kj-page-title">管理ダッシュボード</h1>
+      <p className="mb-6 text-sm font-medium text-slate-600">勤怠・取引先・請求まで、ここからまとめて管理できます。</p>
 
       {urgentCount > 0 ? (
         <section className="mb-6 rounded-[24px] border-2 border-red-500 bg-red-50 p-4 shadow-[0_10px_26px_rgba(220,38,38,.18)] sm:p-5" aria-label="急ぎ案件">
