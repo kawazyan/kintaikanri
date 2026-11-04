@@ -11,7 +11,7 @@ import { monthEndOf, nextMonthEnd, splitEmails } from "@/lib/invoice-defaults";
 import { DEFAULT_EXTRA_INVOICE_NOTE, INVOICE_KIND_EXTRA, extraInvoiceNumber, extraSubject, isExtraInvoice } from "@/lib/invoice-kind";
 import { createCorrectionDraft } from "@/lib/invoice-correction";
 import { approveDraftInvoice, sendApprovedInvoice } from "@/lib/invoice-send";
-import { buildManualStaffNoShift, validateManualStaffNoShift } from "@/lib/invoice-manual-staff";
+import { buildManualStaffNoShift, validateExternalStaffName, validateManualStaffNoShift } from "@/lib/invoice-manual-staff";
 import { addTax, computeInvoiceTotals, splitInclusiveTax } from "@/lib/billing";
 
 export type CreateDraftResult = { ok: true; id: string } | { ok: false; error: string };
@@ -153,7 +153,11 @@ export async function addStaffToDraft(
 
 // 下書きに、シフト・稼働依頼に紐付かないスタッフを手入力で追加する(稼働実績がなくてもよい)。金額は空(0)でもよい(承認・送付は金額が入るまで止まる)。
 // 稼働日・金額は、あとから「修正」画面で入力・変更する。契約には自動登録しない。
-export async function addManualStaffNoShift(id: string, input: { staffId: string; storeName: string; serviceExTax: number; dates?: string[] }): Promise<ActionResult> {
+// staffId を渡すと勤怠に登録済みのスタッフ、externalName を渡すと勤怠に登録していない人(パートナー会社のスタッフなど)を追加する。
+export async function addManualStaffNoShift(
+  id: string,
+  input: { staffId?: string; externalName?: string; carrier?: string; storeName: string; serviceExTax: number; dates?: string[] }
+): Promise<ActionResult> {
   await requireAdmin();
   const invoice = await prisma.invoice.findUnique({ where: { id }, select: { status: true, kind: true, yearMonth: true, statement: true, client: { select: { billingTerms: true } } } });
   if (!invoice) return { ok: false, error: "請求書が見つかりません。" };
@@ -163,11 +167,25 @@ export async function addManualStaffNoShift(id: string, input: { staffId: string
   if (!snapshot) return { ok: false, error: "稼働明細書のデータがありません。請求下書きを作り直してください。" };
   const problem = validateManualStaffNoShift(input, invoice.yearMonth);
   if (problem) return { ok: false, error: problem };
-  const person = await prisma.staff.findUnique({ where: { id: input.staffId }, select: { name: true } });
-  if (!person) return { ok: false, error: "スタッフが見つかりません。" };
-  if (snapshot.staff.some((s) => normName(s.name) === normName(person.name))) return { ok: false, error: `${person.name}さんはすでにこの請求に入っています。` };
+  let person: { name: string };
+  let external = false;
+  if (input.staffId) {
+    const found = await prisma.staff.findUnique({ where: { id: input.staffId }, select: { name: true } });
+    if (!found) return { ok: false, error: "スタッフが見つかりません。" };
+    person = found;
+    if (snapshot.staff.some((s) => normName(s.name) === normName(person.name))) return { ok: false, error: `${person.name}さんはすでにこの請求に入っています。` };
+  } else if (input.externalName?.trim()) {
+    // 勤怠に登録していない人(パートナー会社のスタッフなど)。名前は手入力。
+    const registered = await prisma.staff.findMany({ select: { name: true } });
+    const nameProblem = validateExternalStaffName(input.externalName, snapshot.staff.map((s) => s.name), registered.map((r) => r.name));
+    if (nameProblem) return { ok: false, error: nameProblem };
+    person = { name: input.externalName.trim() };
+    external = true;
+  } else {
+    return { ok: false, error: "スタッフを選ぶか、名前を入力してください。" };
+  }
 
-  const staff = buildManualStaffNoShift({ name: person.name, storeName: input.storeName, serviceExTax: input.serviceExTax, dates: input.dates });
+  const staff = buildManualStaffNoShift({ name: person.name, storeName: input.storeName, serviceExTax: input.serviceExTax, dates: input.dates, external, carrier: input.carrier });
   const next: StatementSnapshot = {
     ...snapshot,
     staff: [...snapshot.staff, staff],
@@ -185,7 +203,7 @@ export async function addManualStaffNoShift(id: string, input: { staffId: string
   ]);
   revalidatePath(`/admin/invoices/${id}`);
   revalidatePath("/admin/invoices");
-  return { ok: true, message: `${person.name}さんを手入力で追加しました（稼働${staff.days}日・${input.serviceExTax > 0 ? `業務委託費 ¥${input.serviceExTax.toLocaleString("ja-JP")}` : "金額は未入力"}）。稼働日・金額は「修正」画面で入力できます。` };
+  return { ok: true, message: `${person.name}さん${external ? "（勤怠未登録）" : ""}を手入力で追加しました（稼働${staff.days}日・${input.serviceExTax > 0 ? `業務委託費 ¥${input.serviceExTax.toLocaleString("ja-JP")}` : "金額は未入力"}）。稼働日・金額は「修正」画面で入力できます。` };
 }
 
 // 「承認」: 下書き → 承認済み(メールは送らない)。
@@ -338,7 +356,7 @@ export async function saveInvoiceEdit(
     for (let i = 0; i < snapshot.staff.length; i++) {
       const st = snapshot.staff[i];
       const changed = Object.entries(dayPlacesByStaff[i]).filter(([d, place]) => (st.dayPlaces?.[d] ?? "") !== place);
-      if (!changed.length) continue;
+      if (!changed.length || st.external) continue; // 勤怠に登録していない人はシフトがないので、請求書の表記だけを変える
       const people = await prisma.staff.findMany({ where: { name: st.name }, select: { id: true } });
       if (people.length !== 1) return { ok: false, error: `${st.name}さんを社内スタッフから特定できないため、稼働場所をシフトへ反映できません。` };
       for (const [d, place] of changed) {

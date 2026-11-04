@@ -28,6 +28,7 @@ type Initial = {
   clientExtras: { label: string; amountExTax: number; calc: string; store?: string; period?: string }[];
   staff: {
     name: string;
+    external?: boolean; // 勤怠に登録していない人(パートナー会社のスタッフなど)
     places: string;
     carriers: string;
     dates: string[];
@@ -385,7 +386,7 @@ export function EditInvoiceForm({
             {staff.map((s, i) => (
               <div key={i} className="rounded-xl border border-slate-800 bg-slate-950 p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="text-base font-black">{s.name}</p>
+                  <p className="text-base font-black">{s.name}{s.external && <span className="ml-2 rounded-full bg-slate-600 px-2 py-0.5 text-xs font-black text-white">勤怠未登録</span>}</p>
                   <p className="text-xs text-slate-600">{s.places || "―"} ／ {s.carriers || "―"}</p>
                 </div>
 
@@ -413,7 +414,11 @@ export function EditInvoiceForm({
                 <div className="mt-4">
                   <p className={field}>稼働場所（日ごと）</p>
                   <p className={hint}>
-                    直した日の場所は、保存すると<b>シフトと打刻履歴の店舗名にも反映</b>されます。場所を変えても、交通費は自動では変わりません（必要なら下で直してください）。
+                    {s.external ? (
+                      <>勤怠に登録していない人なので、請求書の表記だけが変わります（シフトには反映されません）。場所を変えても、交通費は自動では変わりません。</>
+                    ) : (
+                      <>直した日の場所は、保存すると<b>シフトと打刻履歴の店舗名にも反映</b>されます。場所を変えても、交通費は自動では変わりません（必要なら下で直してください）。</>
+                    )}
                   </p>
                   <div className="mt-2 flex gap-2">
                     <input

@@ -60,6 +60,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
           clientExtras: (statement?.clientExtras ?? []).map((e) => ({ label: e.label, amountExTax: e.amountExTax, calc: e.calc ?? "", store: e.store, period: e.period })),
           staff: (statement?.staff ?? []).map((s) => ({
             name: s.name,
+            external: !!s.external,
             places: s.places.join("、"),
             carriers: s.carriers.join("、"),
             dates: s.dates,

@@ -35,3 +35,23 @@ test("検査: 店舗名なし・不正な金額は不可、金額0は可", () =>
   assert.ok(validateManualStaffNoShift({ storeName: "A", serviceExTax: 1.5 }));
   assert.equal(validateManualStaffNoShift({ storeName: "A", serviceExTax: 0 }), null);
 });
+
+import { validateExternalStaffName } from "./invoice-manual-staff";
+
+test("勤怠に登録していない人: external=true・キャリアを請求内訳書に載せる", () => {
+  const s = buildManualStaffNoShift({ name: "山田　太郎", storeName: "テスト店", serviceExTax: 0, external: true, carrier: " au " });
+  assert.equal(s.external, true);
+  assert.deepEqual(s.carriers, ["au"]);
+  assert.equal(s.manual, undefined); // 契約には自動登録しない
+  const reg = buildManualStaffNoShift({ name: "加藤　柊", storeName: "テスト店", serviceExTax: 0 });
+  assert.equal(reg.external, undefined);
+  assert.deepEqual(reg.carriers, []);
+});
+
+test("勤怠未登録の名前の検査: 空・同じ請求にいる・勤怠登録済みの名前はエラー", () => {
+  assert.equal(validateExternalStaffName("山田　太郎", ["加藤　柊"], ["鈴木　一郎"]), null);
+  assert.ok(validateExternalStaffName("  ", [], [])?.includes("入力"));
+  assert.ok(validateExternalStaffName("山田太郎", ["山田　太郎"], [])?.includes("すでにこの請求"));
+  assert.ok(validateExternalStaffName("鈴木 一郎", [], ["鈴木　一郎"])?.includes("勤怠に登録済み"));
+  assert.ok(validateExternalStaffName("あ".repeat(51), [], [])?.includes("50文字"));
+});

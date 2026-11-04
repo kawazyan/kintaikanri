@@ -4,6 +4,30 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { newViewToken } from "@/lib/client-view";
+import { randomBytes } from "crypto";
+import { checkNewClient, type NewClientInput } from "@/lib/client-create";
+
+// 取引先(請求先のクライアントなど)を管理画面から追加する。会社名またはメールアドレスが既存の取引先と同じなら、二重には作らない。
+export async function adminCreateClient(input: NewClientInput): Promise<{ ok: true; name: string } | { ok: false; error: string }> {
+  await requireAdmin();
+  const existing = await prisma.client.findMany({ select: { id: true, name: true, email: true, invoiceEmails: true, updatedAt: true } });
+  const checked = checkNewClient(input, existing);
+  if (!checked.ok) return checked;
+  const { name, contactName, phone, emails } = checked.data;
+  await prisma.client.create({
+    data: {
+      name,
+      clientCode: `CL-${Date.now()}-${randomBytes(3).toString("hex").toUpperCase()}`,
+      contactName,
+      phone,
+      email: emails[0] ?? null,
+      invoiceEmails: emails.length ? emails.join(", ") : null,
+    },
+  });
+  revalidatePath("/admin/clients");
+  revalidatePath("/admin/invoices");
+  return { ok: true, name };
+}
 
 export async function adminBulkDeleteClients(clientIds: string[]) {
   await requireAdmin();

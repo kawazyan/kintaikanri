@@ -4,6 +4,7 @@ import { getBaseUrl } from "@/lib/url";
 import { AdminNav } from "../admin-nav";
 import { ExternalLink } from "lucide-react";
 import { ClientsList } from "./clients-list";
+import { AddClientForm } from "./add-client-form";
 
 export default async function ClientsPage() {
   await requireAdmin();
@@ -25,7 +26,9 @@ export default async function ClientsPage() {
       
     </div>
 
-    <section className="mt-6"><div className="mb-3 flex items-end justify-between"><div><p className="text-xs font-black tracking-widest text-slate-400">AUTO CREATED</p><h2 className="text-lg font-black">依頼実績のある取引先</h2></div><span className="text-sm font-black text-slate-400">{clients.length}社</span></div>
+    <AddClientForm />
+
+    <section className="mt-6"><div className="mb-3 flex items-end justify-between"><div><p className="text-xs font-black tracking-widest text-slate-400">CLIENTS</p><h2 className="text-lg font-black">取引先一覧</h2></div><span className="text-sm font-black text-slate-400">{clients.length}社</span></div>
       <ClientsList clients={clients.map(({ viewTokens, ...c }) => ({ ...c, viewUrl: viewTokens[0] ? `${baseUrl}/watch/${viewTokens[0].token}` : null }))} />
     </section>
   </main>;
