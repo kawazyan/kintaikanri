@@ -52,7 +52,7 @@ export default async function CompanyExpensesPage({ searchParams }: { searchPara
     <main className="mx-auto max-w-5xl px-4 py-8">
       <AdminNav />
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className={`text-2xl font-extrabold ${INK}`}>会社経費</h1>
+        <h1 className="kj-page-title">会社経費</h1>
         <form action={lockCompanyExpenses}>
           <button type="submit" className="rounded-lg border border-[#94a3b8] px-3 py-1.5 text-sm font-bold text-[#475569]">
             ロックする

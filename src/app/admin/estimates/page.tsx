@@ -12,11 +12,9 @@ export default async function EstimatesPage() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 text-slate-100">
       <AdminNav />
+      <h1 className="kj-page-title">見積書</h1>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-black">見積書</h1>
-          <p className="mt-1 text-sm text-slate-400">作成して「保存だけ」にするか、そのまま取引先へ送付するかを選べます。</p>
-        </div>
+        <p className="mt-1 text-sm text-slate-400">作成して「保存だけ」にするか、そのまま取引先へ送付するかを選べます。</p>
         <Link href="/admin/estimates/new" className="rounded-xl bg-blue-600 px-5 py-3 font-black text-white">
           見積書を作成
         </Link>

@@ -27,12 +27,12 @@ export default async function EstimateDetail({ params }: { params: Promise<{ id:
     <main className="mx-auto max-w-5xl px-4 py-8 text-slate-100">
       <AdminNav />
       <Link href="/admin/estimates" className="text-sm text-blue-400 underline">← 見積書の一覧へ戻る</Link>
-      <div className="mt-3 flex flex-wrap justify-between gap-3">
+      <h1 className="kj-page-title">
+        {title}
+      </h1>
+      <div className="flex flex-wrap justify-between gap-3">
         <div>
           <p className="text-sm text-slate-400">{e.estimateNumber}</p>
-          <h1 className="text-2xl font-black">
-            {title}
-          </h1>
           <p className="mt-1 text-xs text-slate-500">発行日 {e.issuedDate}</p>
         </div>
         <span className="h-fit rounded-full bg-slate-800 px-3 py-1 text-xs font-black">{STATUS_LABEL[e.status] ?? e.status}</span>

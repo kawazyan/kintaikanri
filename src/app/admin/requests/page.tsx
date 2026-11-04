@@ -14,7 +14,7 @@ export default async function AdminRequests() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 text-slate-100">
       <AdminNav />
-      <div className="flex justify-between"><h1 className="text-2xl font-black">稼働依頼</h1><span className="text-sm text-slate-400">{orders.length}件</span></div>
+      <h1 className="kj-page-title">稼働依頼</h1><p className="text-sm text-slate-400">{orders.length}件</p>
       <p className="mt-2 text-xs font-bold text-slate-500">誤送信など不要な案件は、各案件の「案件を削除」から完全削除できます。</p>
       <div className="mt-6 space-y-3">
         {orders.map((o) => (

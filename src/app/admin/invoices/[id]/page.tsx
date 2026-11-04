@@ -44,12 +44,12 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 text-slate-100">
       <AdminNav />
+      <h1 className="kj-page-title">
+        {i.client.name}{i.branch ? `　${i.branch}` : ""} / {i.yearMonth}
+      </h1>
       <div className="flex flex-wrap justify-between gap-3">
         <div>
           <p className="text-sm text-slate-600">{i.invoiceNumber}</p>
-          <h1 className="text-2xl font-black">
-            {i.client.name}{i.branch ? `　${i.branch}` : ""} / {i.yearMonth}
-          </h1>
         </div>
         <div className="flex h-fit gap-2">
           {extra && <span className="rounded-full bg-slate-600 px-3 py-1 text-xs font-black text-white">別途請求</span>}

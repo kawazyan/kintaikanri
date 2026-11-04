@@ -59,11 +59,10 @@ export default async function UnassignedPage({ searchParams }: { searchParams: P
 
   return <main className="mx-auto max-w-6xl px-4 py-8 text-slate-900"><AdminNav />
     <Link href="/admin/clients" className="text-sm font-black text-slate-500 underline">← 取引先・依頼窓口へ戻る</Link>
-    <div className="mt-3 rounded-[28px] bg-[#14283b] p-6 text-white">
-      <p className="text-[11px] font-black tracking-[.18em] text-slate-300">UNASSIGNED SHIFTS</p>
-      <h1 className="mt-2 text-2xl font-black">クライアントが決まらないシフト</h1>
-      <p className="mt-2 text-sm font-bold text-slate-300">契約(早見表)に当てはまらない、または2社以上に当てはまるシフトです。請求にも閲覧ページにも含まれません。契約の店舗名などを見直してください。</p>
-      <div className="mt-4 flex gap-2 text-sm font-black"><Link href={`?month=${shift(-1)}`} className="rounded-xl bg-white/15 px-3 py-1.5">← 前月</Link><span className="px-2 py-1.5">{y}年{m}月</span><Link href={`?month=${shift(1)}`} className="rounded-xl bg-white/15 px-3 py-1.5">翌月 →</Link></div>
+    <h1 className="kj-page-title">クライアントが決まらないシフト</h1>
+    <div>
+      <p className="mb-2 text-sm font-bold">契約(早見表)に当てはまらない、または2社以上に当てはまるシフトです。請求にも閲覧ページにも含まれません。契約の店舗名などを見直してください。</p>
+      <div className="mt-4 flex gap-2 text-sm font-black"><Link href={`?month=${shift(-1)}`} className="rounded-xl bg-slate-200 px-3 py-1.5 text-slate-800">← 前月</Link><span className="px-2 py-1.5">{y}年{m}月</span><Link href={`?month=${shift(1)}`} className="rounded-xl bg-slate-200 px-3 py-1.5 text-slate-800">翌月 →</Link></div>
     </div>
     {renderTable("2社以上に当てはまる(要確認)", conflicts, "同じスタッフ・店舗が複数の契約に当てはまっています。契約の店舗名・期間を分けてください。")}
     {renderTable("どの契約にも当てはまらない", none, "契約が未登録、または店舗名の表記が契約と合っていない可能性があります。")}

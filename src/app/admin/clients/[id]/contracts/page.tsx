@@ -20,11 +20,8 @@ export default async function ContractsPage({ params }: { params: Promise<{ id: 
 
   return <main className="mx-auto max-w-6xl px-4 py-8 text-slate-900"><AdminNav />
     <Link href="/admin/clients" className="text-sm font-black text-slate-500 underline">← 取引先・依頼窓口へ戻る</Link>
-    <div className="mt-3 rounded-[28px] bg-[#14283b] p-6 text-white">
-      <p className="text-[11px] font-black tracking-[.18em] text-slate-300">CONTRACTS</p>
-      <h1 className="mt-2 text-2xl font-black">{client.name} の契約(早見表)</h1>
-      <p className="mt-2 text-sm font-bold text-slate-300">「どのスタッフが、どの店舗で、いくらで」働くかを登録します。シフトはこの表でクライアントに振り分けられ、請求と出退勤の閲覧ページに使われます。同じスタッフ・店舗が2社に当てはまると自動では振り分けず「要確認」になります。</p>
-    </div>
+    <h1 className="kj-page-title">{client.name} の契約(早見表)</h1>
+    <p className="mb-4 text-sm font-bold">「どのスタッフが、どの店舗で、いくらで」働くかを登録します。シフトはこの表でクライアントに振り分けられ、請求と出退勤の閲覧ページに使われます。同じスタッフ・店舗が2社に当てはまると自動では振り分けず「要確認」になります。</p>
     <form key={`${!!terms.splitInvoiceLines}-${terms.pdfBundle ?? ""}`} action={setSplitInvoiceLines.bind(null, client.id)} className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
       <label className="flex items-start gap-3 text-sm font-bold text-slate-800">
         <input type="checkbox" name="splitInvoiceLines" defaultChecked={!!terms.splitInvoiceLines} className="mt-1 h-5 w-5" />

@@ -46,7 +46,7 @@ export default async function AdminShiftsPage({
     <main className="mx-auto max-w-5xl px-4 py-8">
       <AdminNav />
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
+        <h1 className="kj-page-title">
           シフト一覧(全スタッフ)
         </h1>
         <div className="flex items-center gap-4">

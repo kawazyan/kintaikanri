@@ -614,8 +614,13 @@ body {
 .admin-theme .kj-menu-button.is-active{color:white;background:linear-gradient(150deg,#496c98 0%,#172c4b 40%,#07152b 95%);border-color:#a5bbd8;box-shadow:inset 0 2px 3px #a9c4e88c,0 5px 0 #09172d,0 10px 16px #081a3d7a}
 .admin-theme .kj-pending-count{padding:1px 6px;border-radius:20px;background:#c9d7e9;color:#152e4f;font-size:11px}
 .admin-theme main{max-width:1440px}
-.admin-theme main>h1{position:relative;padding:17px 24px;margin:16px 0 16px;background:linear-gradient(110deg,#0d1c34,#233f65 55%,#e5edf8 56%,transparent 85%);border-left:5px solid #6e91bb;color:#fff!important;font-size:30px;box-shadow:0 7px 15px #10284a25}
-.admin-theme main>h1 + p{color:#33435c!important;font-size:15px;line-height:1.8}
+.admin-theme main>h1,.admin-theme main .kj-page-title{position:relative;padding:17px 24px;margin:16px 0 16px;background:linear-gradient(110deg,#0d1c34,#233f65 55%,#e5edf8 56%,transparent 85%);border-left:5px solid #6e91bb;color:#fff!important;font-size:30px;box-shadow:0 7px 15px #10284a25}
+.admin-theme main .kj-page-title{display:block;width:100%;box-sizing:border-box;flex:1 1 100%}
+/* 長い見出し(会社名・店舗名が入るものなど)が、帯の濃い部分からはみ出して読めなくならないよう、右側をあけて折り返す(パソコン幅のみ) */
+@media(min-width:681px){.admin-theme main>h1,.admin-theme main .kj-page-title{padding-right:44%}}
+/* スマホ幅: 見出しの文字が薄い部分にかかって読めなくならないよう、文字を少し小さくして、濃い部分を広げる */
+@media(max-width:680px){.admin-theme main>h1,.admin-theme main .kj-page-title{font-size:21px;line-height:1.4;padding:14px 18px;background:linear-gradient(110deg,#0d1c34,#233f65 84%,#e5edf8 85%,transparent 100%)}}
+.admin-theme main>h1 + p,.admin-theme main .kj-page-title + p{color:#33435c!important;font-size:15px;line-height:1.8}
 .admin-theme main a[href="/admin/estimates/new"]{background:linear-gradient(145deg,#325783,#0b1c36)!important;color:#fff!important;border:1px solid #7294bc;box-shadow:0 5px 0 #07172d,0 9px 13px #0c24444a;padding:14px 24px;border-radius:15px}
 .admin-theme main a[href="/admin/estimates"]{background:linear-gradient(145deg,#fff,#dce6f3)!important;color:#122641!important;border:1px solid #b8c8db;box-shadow:0 5px 0 #b3c2d4,0 9px 13px #0c24442d;padding:14px 24px;border-radius:15px}
 .admin-theme main section{scroll-margin-top:20px}
