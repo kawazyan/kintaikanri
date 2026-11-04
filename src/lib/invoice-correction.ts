@@ -41,7 +41,7 @@ export async function createCorrectionDraft(id: string) {
   const lines = statement
     ? buildInvoiceLines(statement, split)
     : src.lines.map((l) => ({ sortOrder: l.sortOrder, itemType: l.itemType, label: l.label, description: l.description, unitPriceExTax: l.unitPriceExTax, quantity: l.quantity, subtotalExTax: l.subtotalExTax, taxAmount: l.taxAmount, totalInclTax: l.totalInclTax }));
-  const totals = computeInvoiceTotals(lines);
+  const totals = computeInvoiceTotals(lines, statement?.taxRounding);
 
   const revision = src.revision + 1;
   const invoiceNumber = extra ? `${base}-R${revision}` : `KJ-${src.yearMonth.replace("-", "")}-${Date.now().toString().slice(-6)}-R${revision}`;

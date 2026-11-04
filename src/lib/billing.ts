@@ -13,9 +13,15 @@ export const expenseLabel = (category: string) =>
 
 // 請求書テンプレートの計算方式: 小計=Σ(数量×単価)、消費税=小計×10%(円未満切り捨て)、合計=小計+消費税。
 // 税率は10%固定(軽減税率・非課税は使わない)。
-export function computeInvoiceTotals(lines: { quantity: number; unitPriceExTax: number }[]) {
+// 通常は切り捨て。taxRounding="HALF_UP"の請求書だけ四捨五入(例外・今回だけの指定)。
+export type TaxRounding = "HALF_UP";
+export function taxOnSubtotal(subtotalExTax: number, taxRounding?: TaxRounding) {
+  return taxRounding === "HALF_UP" ? Math.floor((subtotalExTax * 10 + 50) / 100) : Math.floor((subtotalExTax * 10) / 100);
+}
+
+export function computeInvoiceTotals(lines: { quantity: number; unitPriceExTax: number }[], taxRounding?: TaxRounding) {
   const subtotalExTax = lines.reduce((sum, l) => sum + l.quantity * l.unitPriceExTax, 0);
-  const taxAmount = Math.floor((subtotalExTax * 10) / 100);
+  const taxAmount = taxOnSubtotal(subtotalExTax, taxRounding);
   return { subtotalExTax, taxAmount, totalInclTax: subtotalExTax + taxAmount };
 }
 

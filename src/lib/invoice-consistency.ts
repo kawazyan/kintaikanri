@@ -1,4 +1,5 @@
 import { statementBillableExTax, type StatementSnapshot } from "@/lib/invoice-draft";
+import { taxOnSubtotal } from "@/lib/billing";
 
 type InvoiceForCheck = {
   subtotalExTax: number;
@@ -17,7 +18,7 @@ export function invoiceMismatch(inv: InvoiceForCheck, statement: StatementSnapsh
   const linesSum = inv.lines.reduce((s, l) => s + l.quantity * l.unitPriceExTax, 0);
   if (inv.lines.some((l) => l.quantity * l.unitPriceExTax !== l.subtotalExTax)) problems.push("請求書の品目の金額（数量×単価）が合っていません");
   if (linesSum !== inv.subtotalExTax) problems.push(`請求書の品目の合計（税抜 ${yen(linesSum)}）と小計（税抜 ${yen(inv.subtotalExTax)}）が違います`);
-  const tax = Math.floor((inv.subtotalExTax * 10) / 100);
+  const tax = taxOnSubtotal(inv.subtotalExTax, statement?.taxRounding);
   if (inv.taxAmount !== tax || inv.totalInclTax !== inv.subtotalExTax + tax) problems.push(`消費税・合計が小計から計算した金額（消費税 ${yen(tax)}、税込 ${yen(inv.subtotalExTax + tax)}）と違います`);
   if (statement) {
     const stmt = statement.manualLines?.length ? statement.manualLines.reduce((s, l) => s + l.quantity * l.unitPriceExTax, 0) : statementBillableExTax(statement);

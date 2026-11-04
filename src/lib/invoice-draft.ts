@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { addTax, computeInvoiceTotals, expenseLabel, splitInclusiveTax } from "@/lib/billing";
+import { addTax, computeInvoiceTotals, expenseLabel, splitInclusiveTax, type TaxRounding } from "@/lib/billing";
 import { jstDayRange, jstMonthRange, toJstDateValue } from "@/lib/time";
 import { unifyStoreNames, withShopSuffix } from "@/lib/store-names";
 import { buildInvoiceLines } from "@/lib/invoice-lines";
@@ -63,6 +63,8 @@ export type StatementSnapshot = {
   manualTaxMode?: "EX" | "INCL";
   // 手入力のとき、請求内訳書にスタッフごとの稼働日・店舗の表を載せるか(省略=載せる)。
   manualShowAttendance?: boolean;
+  // 消費税の端数処理。省略=切り捨て。"HALF_UP"は四捨五入(この請求書だけの例外)。
+  taxRounding?: TaxRounding;
 };
 
 // 手入力の1行。請求書の品目であり、請求内訳書の行でもある。calc=内訳書の「計算方法」。

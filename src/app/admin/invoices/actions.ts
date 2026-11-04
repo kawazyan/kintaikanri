@@ -205,7 +205,7 @@ export async function addManualStaffNoShift(
   };
   const split = !!((invoice.client.billingTerms ?? {}) as BillingTerms).splitInvoiceLines;
   const lines = buildInvoiceLines(next, split);
-  const totals = computeInvoiceTotals(lines);
+  const totals = computeInvoiceTotals(lines, next.taxRounding);
   await prisma.$transaction([
     prisma.invoice.update({ where: { id }, data: { subtotalExTax: totals.subtotalExTax, taxAmount: totals.taxAmount, totalInclTax: totals.totalInclTax, statement: next } }),
     prisma.invoiceLine.deleteMany({ where: { invoiceId: id } }),
@@ -450,7 +450,7 @@ export async function saveInvoiceEdit(
   // 請求書の品目: 取引先の設定がONなら「稼働費用（スタッフ名）」「交通費相当額」などに分ける。それ以外は「業務委託費一式」。
   const split = !!((invoice.client.billingTerms ?? {}) as BillingTerms).splitInvoiceLines;
   const lines = nextStatement ? buildInvoiceLines(nextStatement, split) : buildInvoiceLines({ staff: [], clientExtras: [{ label: "業務委託費一式", amountExTax: unitPrice, amountInclTax: addTax(unitPrice).amountIncl }] }, false);
-  const totals = computeInvoiceTotals(lines);
+  const totals = computeInvoiceTotals(lines, (nextStatement ?? (invoice.statement as unknown as StatementSnapshot | null))?.taxRounding);
   await prisma.$transaction([
     ...placeSyncOps,
     prisma.invoice.update({
