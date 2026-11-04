@@ -17,7 +17,7 @@ export async function findPreviewInvoice(token: string, invoiceId: string) {
   if (!found) return null;
   const invoice = await prisma.invoice.findUnique({
     where: { id: invoiceId },
-    select: { id: true, clientId: true, kind: true, branch: true, status: true, sentAt: true, yearMonth: true, statement: true, subtotalExTax: true, taxAmount: true, totalInclTax: true, invoiceNumber: true },
+    select: { id: true, clientId: true, kind: true, branch: true, status: true, sentAt: true, yearMonth: true, statement: true, subtotalExTax: true, taxAmount: true, totalInclTax: true, invoiceNumber: true, subject: true },
   });
   if (!invoice || invoice.clientId !== found.client.id || invoice.sentAt) return null;
   if (invoice.kind !== "WORK" || invoice.branch) return null;

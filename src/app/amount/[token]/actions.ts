@@ -46,7 +46,7 @@ export async function prepareAmountEntry(token: string, yearMonth: string, amoun
   const staffRow: StatementStaff = {
     name: staff?.name ?? "（稼働者）",
     places: [...new Set(Object.values(dayPlaces))],
-    carriers: [],
+    carriers: entry.carrier ? [entry.carrier] : [],
     dates,
     dayPlaces,
     days: dates.length,

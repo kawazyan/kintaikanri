@@ -6,12 +6,18 @@ export const AMOUNT_ENTRY_ITEM_LABEL = "業務委託費一式";
 export const AMOUNT_ENTRY_MAX_EX = 100_000_000;
 
 // staffId: この画面に出す稼働(出退勤・店舗)を絞るスタッフ。この取引先の稼働者だけを表示するために使う。
-export type AmountEntryConfig = { token: string; approverName: string; staffId?: string };
+// carrier: 明細書に出すキャリア(例: SoftBank)。
+export type AmountEntryConfig = { token: string; approverName: string; staffId?: string; carrier?: string };
 
 export function amountEntryOf(billingTerms: unknown): AmountEntryConfig | null {
-  const v = (billingTerms as { amountEntry?: { token?: unknown; approverName?: unknown; staffId?: unknown } } | null)?.amountEntry;
+  const v = (billingTerms as { amountEntry?: { token?: unknown; approverName?: unknown; staffId?: unknown; carrier?: unknown } } | null)?.amountEntry;
   if (!v || typeof v.token !== "string" || !v.token || typeof v.approverName !== "string" || !v.approverName) return null;
-  return { token: v.token, approverName: v.approverName, ...(typeof v.staffId === "string" && v.staffId ? { staffId: v.staffId } : {}) };
+  return {
+    token: v.token,
+    approverName: v.approverName,
+    ...(typeof v.staffId === "string" && v.staffId ? { staffId: v.staffId } : {}),
+    ...(typeof v.carrier === "string" && v.carrier.trim() ? { carrier: v.carrier.trim() } : {}),
+  };
 }
 
 export function newAmountEntryToken() {
