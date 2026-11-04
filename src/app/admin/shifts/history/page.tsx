@@ -30,7 +30,7 @@ export default async function ShiftHistoryPage() {
   return (
     <main className="mx-auto max-w-4xl px-4 py-8">
       <AdminNav />
-      <h1 className="mb-6 bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
+      <h1 className="kj-page-title">
         シフト変更履歴
       </h1>
 

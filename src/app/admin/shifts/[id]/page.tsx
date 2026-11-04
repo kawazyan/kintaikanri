@@ -26,7 +26,7 @@ export default async function AdminEditShiftPage({
   return (
     <main className="mx-auto max-w-md px-4 py-8">
       <AdminNav />
-      <h1 className="mb-6 bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
+      <h1 className="kj-page-title">
         シフト編集 - {shift.staff.name}({shift.staff.employeeCode})
       </h1>
 

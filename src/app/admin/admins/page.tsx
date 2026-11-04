@@ -11,7 +11,7 @@ export default async function AdminAdminsPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
       <AdminNav />
-      <h1 className="mb-6 bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
+      <h1 className="kj-page-title">
         管理者アドレス管理
       </h1>
       <p className="mb-4 text-sm text-slate-500">

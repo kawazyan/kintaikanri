@@ -54,7 +54,7 @@ export default async function AdminTodayPage({
           ← ダッシュボードへ戻る
         </Link>
       </div>
-      <h1 className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
+      <h1 className="kj-page-title">
         {FILTER_LABEL[filter] ?? "本日稼働予定"}
       </h1>
 

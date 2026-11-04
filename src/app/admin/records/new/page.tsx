@@ -30,7 +30,7 @@ export default async function NewRecordPage({
           ← 打刻記録一覧へ戻る
         </Link>
       </p>
-      <h1 className="mb-1 bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
+      <h1 className="kj-page-title">
         打刻を代わりに登録
       </h1>
       <p className="mb-6 text-xs text-slate-500">

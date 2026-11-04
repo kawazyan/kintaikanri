@@ -25,7 +25,7 @@ export default async function AdminNewShiftPage({
       <Link href="/admin/shifts" className="text-sm text-blue-400 underline">
         ← シフト一覧へ戻る
       </Link>
-      <h1 className="mt-3 bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
+      <h1 className="kj-page-title">
         スタッフのシフトを登録
       </h1>
 

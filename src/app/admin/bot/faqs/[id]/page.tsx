@@ -30,7 +30,7 @@ export default async function EditBotFaqPage({
           ← FAQ管理へ戻る
         </Link>
       </div>
-      <h1 className="mb-6 bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-xl font-bold text-transparent">
+      <h1 className="kj-page-title">
         FAQの編集
       </h1>
 
