@@ -48,7 +48,7 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
         <div>
           <p className="text-sm text-slate-600">{i.invoiceNumber}</p>
           <h1 className="text-2xl font-black">
-            {i.client.name} / {i.yearMonth}
+            {i.client.name}{i.branch ? `　${i.branch}` : ""} / {i.yearMonth}
           </h1>
         </div>
         <div className="flex h-fit gap-2">

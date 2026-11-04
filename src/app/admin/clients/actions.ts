@@ -6,6 +6,26 @@ import { prisma } from "@/lib/prisma";
 import { newViewToken } from "@/lib/client-view";
 import { randomBytes } from "crypto";
 import { checkNewClient, type NewClientInput } from "@/lib/client-create";
+import { checkBranches, type BranchInput } from "@/lib/invoice-branch";
+import type { BillingTerms } from "@/lib/billing-terms";
+
+// 取引先の「請求先(店舗)」(店舗名＋送信先メール)を保存する。請求下書きの作成で店舗を選ぶと、宛名(会社名＋店舗名)と送信先が自動で入る。
+// 店舗名を変えると、前の月の請求の引き継ぎ(店舗名で探す)は、その店舗では効かなくなる。すでに作った請求書の宛名・送信先は変わらない。
+export async function saveClientBranches(clientId: string, input: BranchInput[]): Promise<{ ok: true; count: number } | { ok: false; error: string }> {
+  await requireAdmin();
+  const checked = checkBranches(input);
+  if (!checked.ok) return checked;
+  const c = await prisma.client.findUnique({ where: { id: clientId }, select: { billingTerms: true } });
+  if (!c) return { ok: false, error: "取引先が見つかりません。" };
+  const next: BillingTerms = { ...((c.billingTerms ?? {}) as BillingTerms) };
+  if (checked.presets.length) next.recipientPresets = checked.presets;
+  else delete next.recipientPresets;
+  await prisma.client.update({ where: { id: clientId }, data: { billingTerms: next as object } });
+  revalidatePath("/admin/clients");
+  revalidatePath(`/admin/clients/${clientId}/branches`);
+  revalidatePath("/admin/invoices");
+  return { ok: true, count: checked.presets.length };
+}
 
 // 取引先(請求先のクライアントなど)を管理画面から追加する。会社名またはメールアドレスが既存の取引先と同じなら、二重には作らない。
 export async function adminCreateClient(input: NewClientInput): Promise<{ ok: true; name: string } | { ok: false; error: string }> {

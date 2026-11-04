@@ -6,6 +6,7 @@ import { AdminNav } from "../admin-nav";
 import { CreateInvoiceButton } from "./create-button";
 import { CreateExtraInvoiceButton } from "./create-extra-button";
 import { isExtraInvoice } from "@/lib/invoice-kind";
+import { recipientPresetsOf, type BillingTerms } from "@/lib/billing-terms";
 import { InvoiceRowCard, type InvoiceRow } from "./invoice-row-card";
 import { SentInvoices } from "./sent-invoices";
 
@@ -44,6 +45,7 @@ export default async function InvoicesPage() {
     needsNumber: i.status !== "DRAFT" && i.status !== "APPROVED",
     sent: !!i.sentAt,
     extra: isExtraInvoice(i.kind),
+    branch: i.branch,
   });
 
   const drafts = invoices.filter((i) => i.status === "DRAFT").map((i) => toRow(i, `作成 ${formatJst(i.createdAt)}`));
@@ -65,7 +67,7 @@ export default async function InvoicesPage() {
         <Link href="/admin/estimates" className="rounded-xl border border-slate-500 px-5 py-3 font-black text-slate-100">見積書の一覧</Link>
       </div>
       <div className="mt-5">
-        <CreateInvoiceButton clients={clients.map((c) => ({ id: c.id, name: c.name }))} />
+        <CreateInvoiceButton clients={clients.map((c) => ({ id: c.id, name: c.name, branches: recipientPresetsOf(c.billingTerms as BillingTerms | null).map((p) => p.label) }))} />
       </div>
       <div className="mt-4">
         <CreateExtraInvoiceButton clients={clients.map((c) => ({ id: c.id, name: c.name }))} />

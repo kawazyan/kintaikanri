@@ -9,6 +9,8 @@ import { fetchEventAds } from "@/lib/event-ads";
 import { loadRuleIndex, type RuleIndex } from "@/lib/client-shifts";
 import { mergeCarryOver } from "@/lib/invoice-carryover";
 import { INVOICE_KIND_WORK } from "@/lib/invoice-kind";
+import { branchAddressee, carryFromPreviousMonth, normBranch, prevYearMonth } from "@/lib/invoice-branch";
+import { recipientPresetsOf } from "@/lib/billing-terms";
 
 // 稼働明細書に載せるスナップショット(請求下書き作成時点の内容を Invoice.statement に保存する)。
 // 請求書は「業務委託費一式」の1行だけ。計算方法と内訳はすべてこの明細書に書く。
@@ -284,9 +286,9 @@ async function uncontractedWorkWarning(ctx: RuleCtx): Promise<string | null> {
 }
 
 // 修正を引き継ぐ元: その取引先・月の最新の請求が、未送信(下書き・承認済み)で明細書を持つ場合だけ。
-async function loadCarryOverSource(clientId: string, yearMonth: string) {
+async function loadCarryOverSource(clientId: string, yearMonth: string, branch: string | null) {
   const latest = await prisma.invoice.findFirst({
-    where: { clientId, yearMonth, kind: INVOICE_KIND_WORK }, // 別途請求は引き継ぎ元にしない
+    where: { clientId, yearMonth, kind: INVOICE_KIND_WORK, branch }, // 別途請求は引き継ぎ元にしない。店舗ごとの請求は、同じ店舗だけ
     orderBy: { revision: "desc" },
     select: { status: true, statement: true, addressee: true, subject: true, note: true, dueDate: true, recipientEmails: true },
   });
@@ -303,11 +305,21 @@ export const NO_BILLABLE_WORK_MESSAGE = "対象月の承認済み稼働依頼も
 // 権限チェックは呼び出し側で行うこと。
 // carryOver=true なら、前の下書き(未送信)で追加したスタッフ・直した金額/稼働日/店舗/共通項目・宛名・件名・備考を引き継ぐ。
 // allowEmpty=true(管理画面のボタンだけ): 稼働依頼もシフトからの実績もない月でも、空の下書きを作る(あとで手入力する)。月初の自動作成では使わない(空の下書きを量産しないため)。
-export async function buildInvoiceDraft(clientId: string, yearMonth: string, opts: { carryOver?: boolean; allowEmpty?: boolean } = {}): Promise<DraftResult> {
+// opts.branch: 請求先(店舗)の名前。取引先に登録した「請求先(店舗)」から選ぶ。指定すると、宛名(会社名＋店舗名)と送信先を自動で入れ、前の月の同じ店舗の請求の中身(品目・金額)を引き継ぎ、版は店舗ごとに数える。
+export async function buildInvoiceDraft(clientId: string, yearMonth: string, opts: { carryOver?: boolean; allowEmpty?: boolean; branch?: string | null } = {}): Promise<DraftResult> {
   if (!clientId || !yearMonth) throw new Error("取引先と対象月は必須です。");
 
   const client = await prisma.client.findUnique({ where: { id: clientId }, select: { name: true, billingTerms: true } });
   if (!client) throw new Error("取引先が見つかりません。");
+  // 請求先(店舗): 取引先に登録してある店舗から探す(表記の違いは同じ扱い)。見つからなければ、間違った宛先で作らないようにエラーにする。
+  let branch: string | null = null;
+  let branchEmails: string[] = [];
+  if (opts.branch?.trim()) {
+    const found = recipientPresetsOf(client.billingTerms as BillingTerms | null).find((p) => normBranch(p.label) === normBranch(opts.branch!));
+    if (!found) throw new Error(`請求先（店舗）「${opts.branch.trim()}」は、取引先に登録されていません。取引先の画面で登録してください。`);
+    branch = found.label;
+    branchEmails = found.emails;
+  }
 
   const billableWhere = { clientId, yearMonth, status: { in: ["APPROVED", "CHANGES_PENDING", "TERMINATED"] as ("APPROVED" | "CHANGES_PENDING" | "TERMINATED")[] } };
   // 稼働依頼に紐付いていないシフトは請求に入らないため、先に紐付けを同期する
@@ -462,7 +474,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string, opt
   }
 
   // 前の下書きで「スタッフを追加」したスタッフ(まだ契約に登録されていないもの)を、同じ条件で入れ直す。
-  const prev = opts.carryOver ? await loadCarryOverSource(clientId, yearMonth) : null;
+  const prev = opts.carryOver ? await loadCarryOverSource(clientId, yearMonth, branch) : null;
   if (prev) {
     for (const old of prev.statement.staff) {
       if (!old.manual || statementStaff.some((x) => normName(x.name) === normName(old.name))) continue;
@@ -526,21 +538,52 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string, opt
     }
   }
 
+  // 請求先(店舗)を指定したとき: 前の月の同じ店舗の請求の中身(品目・金額)を引き継ぐ。同じ月の前の下書きを引き継いだときは、そちらを優先する。
+  // 稼働日つきのスタッフ明細は引き継がない(月が変わると合わないため)。共通の項目は、今月すでに自動で入っているときは足さない(二重に請求しないため)。
+  let carried: ReturnType<typeof carryFromPreviousMonth> = null;
+  let carriedNote: string | null = null;
+  if (branch && !prev) {
+    const pm = prevYearMonth(yearMonth);
+    const prevMonth = await prisma.invoice.findFirst({
+      where: { clientId, yearMonth: pm, kind: INVOICE_KIND_WORK, branch, totalInclTax: { gt: 0 } },
+      orderBy: { createdAt: "desc" },
+      select: { statement: true, note: true },
+    });
+    carried = prevMonth?.statement ? carryFromPreviousMonth(prevMonth.statement as unknown as StatementSnapshot) : null;
+    if (carried) {
+      if (!finalExtras.length) finalExtras = carried.clientExtras;
+      carriedNote = prevMonth?.note?.trim() ? prevMonth.note : null;
+      warnings.push(`前の月（${pm}）の同じ店舗（${branch}）の請求から、品目・金額を引き継ぎました。今月に合わない部分（日付・金額など）がないか確認してください。`);
+    } else {
+      warnings.push(`前の月（${pm}）の同じ店舗（${branch}）の請求が見つからなかったため、品目・金額は引き継いでいません。`);
+    }
+  }
+  // 中身を引き継いだときは、「空の下書き」の注意は出さない。
+  const shownWarnings = carried ? warnings.filter((w) => !w.startsWith("対象月の承認済み稼働依頼も、シフトからの請求ルールに合う稼働実績もないため、空の下書きを作りました")) : warnings;
+
   // 請求書の品目: 既定は「業務委託費一式」の1行(交通費相当額なども含めた税抜合計)。
   // 取引先の設定(splitInvoiceLines)がONなら「稼働費用（スタッフ名）」「交通費相当額」などに分ける。
-  const lines = buildInvoiceLines({ staff: finalStaff, clientExtras: finalExtras }, !!terms.splitInvoiceLines);
+  const lines = buildInvoiceLines({ staff: finalStaff, clientExtras: finalExtras, manualLines: carried?.manualLines }, !!terms.splitInvoiceLines);
 
   // 請求書テンプレートと同じ方式: 消費税 = 税抜合計 × 10% を切り捨て。
   const { subtotalExTax, taxAmount, totalInclTax } = computeInvoiceTotals(lines);
   const previous = await prisma.invoice.findFirst({
-    where: { clientId, yearMonth, kind: INVOICE_KIND_WORK }, // 別途請求は版の数に入れない
+    where: { clientId, yearMonth, kind: INVOICE_KIND_WORK, branch }, // 別途請求は版の数に入れない。店舗ごとの請求は、同じ店舗だけで版を数える
     orderBy: { revision: "desc" },
     select: { revision: true },
   });
   const revision = (previous?.revision ?? 0) + 1;
   const invoiceNumber = `KJ-${yearMonth.replace("-", "")}-${Date.now().toString().slice(-6)}${revision > 1 ? `-R${revision}` : ""}`;
 
-  const statement: StatementSnapshot = { clientName: client.name, yearMonth, staff: finalStaff, clientExtras: finalExtras, warnings, baseline };
+  const statement: StatementSnapshot = {
+    clientName: client.name,
+    yearMonth,
+    staff: finalStaff,
+    clientExtras: finalExtras,
+    warnings: shownWarnings,
+    baseline,
+    ...(carried?.manualLines ? { manualLines: carried.manualLines, manualTaxMode: carried.manualTaxMode, manualShowAttendance: carried.manualShowAttendance } : {}),
+  };
 
   const invoice = await prisma.invoice.create({
     data: {
@@ -553,6 +596,8 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string, opt
       totalInclTax,
       statement,
       ...(prev ? { addressee: prev.addressee, subject: prev.subject, note: prev.note, dueDate: prev.dueDate, recipientEmails: prev.recipientEmails } : {}),
+      // 請求先(店舗): 宛名(会社名＋店舗名)と送信先は、取引先に登録した店舗の内容を入れる(あとから修正画面で変えられる)。
+      ...(branch ? { branch, addressee: branchAddressee(client.name, branch), recipientEmails: branchEmails.join(", "), ...(carriedNote ? { note: carriedNote } : {}) } : {}),
       lines: { create: lines },
       workOrders: { create: orders.map((o) => ({ workOrderId: o.id })) },
     },

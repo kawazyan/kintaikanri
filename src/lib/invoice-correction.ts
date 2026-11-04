@@ -26,6 +26,7 @@ export async function createCorrectionDraft(id: string) {
       clientId: src.clientId,
       yearMonth: src.yearMonth,
       kind: src.kind,
+      branch: src.branch, // 店舗ごとの請求は、同じ店舗だけで版を数える
       revision: { gt: src.revision },
       ...(extra ? { invoiceNumber: { startsWith: base } } : {}),
     },
@@ -51,6 +52,7 @@ export async function createCorrectionDraft(id: string) {
       invoiceNumber,
       revision,
       kind: src.kind,
+      branch: src.branch,
       ...totals,
       ...(statement ? { statement: statement as object } : {}),
       addressee: src.addressee,

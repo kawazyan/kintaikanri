@@ -96,6 +96,7 @@ export async function sendApprovedInvoice(id: string) {
       clientId: invoice.clientId,
       yearMonth: invoice.yearMonth,
       kind: invoice.kind,
+      branch: invoice.branch, // 店舗ごとの請求は、同じ店舗の前の版だけを見る(別の店舗の請求を「訂正」扱いにしない)
       revision: { lt: invoice.revision },
       sentAt: { not: null },
       ...(isExtra ? { invoiceNumber: { startsWith: invoiceFamilyBase(invoice.invoiceNumber) } } : {}),

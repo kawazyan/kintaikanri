@@ -11,6 +11,7 @@ export type InvoiceRow = {
   needsNumber: boolean; // 確定済み・送付済み(削除に請求番号の入力が必要)
   sent: boolean; // メールを送付した記録がある
   extra: boolean; // 新規請求書(営業協力費など、稼働とは別の請求)
+  branch: string | null; // 請求先(店舗)。未設定=会社あて
 };
 
 // 請求管理の一覧の1行(下書き・承認済み・送付済みで共通)。
@@ -20,7 +21,7 @@ export function InvoiceRowCard({ r }: { r: InvoiceRow }) {
       <Link href={`/admin/invoices/${r.id}`} className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3">
         <div>
           <p className="font-black">
-            {r.clientName} ・ {r.yearMonth}
+            {r.clientName}{r.branch ? `　${r.branch}` : ""} ・ {r.yearMonth}
             {r.extra && <span className="ml-2 rounded-full bg-slate-600 px-2 py-0.5 text-xs font-black text-white">別途請求</span>}
           </p>
           <p className="text-xs text-slate-400">{r.invoiceNumber} ・ {r.note}</p>

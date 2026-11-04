@@ -698,6 +698,8 @@ model Invoice {
   revision Int @default(1)
   // 請求の種類。WORK=稼働分の請求(従来どおり。月ごと・取引先ごとの版管理の対象) / EXTRA=別途請求(営業協力費など、スタッフの稼働とは別の請求)
   kind String @default("WORK")
+  // 請求先(店舗など)。同じ取引先の中で店舗ごとに請求書を分けるときの店舗名(Client.billingTerms.recipientPresets の店舗名)。未設定=会社あて。版(訂正版)・前月の引き継ぎは、店舗ごとに別々に管理する
+  branch String?
   status InvoiceStatus @default(DRAFT)
   subtotalExTax Int @default(0)
   taxAmount Int @default(0)

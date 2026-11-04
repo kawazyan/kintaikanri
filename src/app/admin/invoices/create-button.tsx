@@ -4,7 +4,10 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createInvoiceDraft } from "./actions";
 
-export function CreateInvoiceButton({ clients }: { clients: { id: string; name: string }[] }) {
+// branches: 取引先に登録してある請求先(店舗)。あれば、店舗を選ぶと宛名・送信先が自動で入る。
+export function CreateInvoiceButton({ clients }: { clients: { id: string; name: string; branches: string[] }[] }) {
+  const [clientId, setClientId] = useState("");
+  const branches = clients.find((c) => c.id === clientId)?.branches ?? [];
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -18,6 +21,10 @@ export function CreateInvoiceButton({ clients }: { clients: { id: string; name: 
             setError("取引先と対象月を選んでください。");
             return;
           }
+          if (branches.length && !String(fd.get("branch") || "")) {
+            setError("請求先（店舗）を選んでください（会社あてで作る場合は「店舗を指定しない」を選びます）。");
+            return;
+          }
           const res = await createInvoiceDraft(fd);
           if (res.ok) router.push(`/admin/invoices/${res.id}`);
           else setError(res.error);
@@ -27,7 +34,7 @@ export function CreateInvoiceButton({ clients }: { clients: { id: string; name: 
       className="rounded-2xl border border-slate-700 bg-slate-900 p-5"
     >
       <div className="grid gap-3 md:grid-cols-[1fr_180px_auto]">
-        <select name="clientId" className="rounded-xl bg-slate-800 px-3 py-2">
+        <select name="clientId" value={clientId} onChange={(e) => setClientId(e.target.value)} className="rounded-xl bg-slate-800 px-3 py-2">
           <option value="">取引先を選択</option>
           {clients.map((c) => (
             <option key={c.id} value={c.id}>
@@ -40,6 +47,18 @@ export function CreateInvoiceButton({ clients }: { clients: { id: string; name: 
           {pending ? "作成中…" : "請求下書きを作成"}
         </button>
       </div>
+      {branches.length > 0 && (
+        <div className="mt-3">
+          <select key={clientId} name="branch" defaultValue="" className="w-full rounded-xl bg-slate-800 px-3 py-2 md:w-auto md:min-w-[260px]">
+            <option value="">請求先（店舗）を選択</option>
+            {branches.map((b) => (
+              <option key={b} value={b}>{b}</option>
+            ))}
+            <option value="__NONE__">店舗を指定しない（会社あて）</option>
+          </select>
+          <p className="mt-1 text-xs text-slate-400">店舗を選ぶと、宛名（会社名＋店舗名）と送信先が自動で入り、前の月の同じ店舗の請求の品目・金額を引き継ぎます。</p>
+        </div>
+      )}
       <label className="mt-3 flex items-start gap-2 text-sm text-slate-300">
         <input type="checkbox" name="carryOver" defaultChecked className="mt-1" />
         <span>

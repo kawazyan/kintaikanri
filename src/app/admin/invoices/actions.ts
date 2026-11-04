@@ -5,7 +5,7 @@ import type { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildInvoiceDraft, computeManualStaff, statementBillableExTax, type StatementSnapshot } from "@/lib/invoice-draft";
-import { normName, otherClientContracts, type BillingTerms } from "@/lib/billing-terms";
+import { normName, otherClientContracts, recipientPresetsOf, type BillingTerms } from "@/lib/billing-terms";
 import { buildInvoiceLines, manualUnitExTax } from "@/lib/invoice-lines";
 import { monthEndOf, nextMonthEnd, splitEmails } from "@/lib/invoice-defaults";
 import { DEFAULT_EXTRA_INVOICE_NOTE, INVOICE_KIND_EXTRA, extraInvoiceNumber, extraSubject, isExtraInvoice } from "@/lib/invoice-kind";
@@ -21,8 +21,18 @@ export async function createInvoiceDraft(formData: FormData): Promise<CreateDraf
   await requireAdmin();
   const clientId = String(formData.get("clientId") || "");
   const yearMonth = String(formData.get("yearMonth") || "");
+  // 請求先(店舗): 取引先に店舗が登録されているときは、選んだ店舗(空=会社あて)。店舗を選ばずに作ると、宛名・送信先が入らないので、選び忘れを防ぐ。
+  const branchRaw = String(formData.get("branch") || "").trim();
+  const noBranch = branchRaw === "__NONE__"; // 「店舗を指定しない(会社あて)」
+  const branch = noBranch ? "" : branchRaw;
   try {
-    const { id } = await buildInvoiceDraft(clientId, yearMonth, { carryOver: formData.get("carryOver") === "on", allowEmpty: true });
+    if (!branch && !noBranch && clientId) {
+      const c = await prisma.client.findUnique({ where: { id: clientId }, select: { billingTerms: true } });
+      if (recipientPresetsOf(c?.billingTerms as BillingTerms | null).length) {
+        return { ok: false, error: "この取引先は店舗ごとに請求先が登録されています。請求先（店舗）を選んでください（会社あてで作る場合は「店舗を指定しない」を選びます）。" };
+      }
+    }
+    const { id } = await buildInvoiceDraft(clientId, yearMonth, { carryOver: formData.get("carryOver") === "on", allowEmpty: true, branch: branch || null });
     revalidatePath("/admin/invoices");
     return { ok: true, id };
   } catch (e) {

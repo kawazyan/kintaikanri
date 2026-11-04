@@ -152,6 +152,7 @@ export function ClientsList({ clients }: { clients: ClientRow[] }) {
               )}
             </div>
             <Link href={`/admin/clients/${c.id}/contracts`} className="mt-4 block rounded-2xl bg-[#14283b] px-4 py-3 text-center text-sm font-black text-white">契約(スタッフ×店舗×単価)を登録・確認</Link>
+            <Link href={`/admin/clients/${c.id}/branches`} className="mt-2 block rounded-2xl border border-[#14283b] px-4 py-3 text-center text-sm font-black text-[#14283b]">請求先（店舗ごとの宛先）を登録・確認</Link>
             <ViewUrlBox client={c} />
           </article>
         ))}
