@@ -6,7 +6,6 @@ export const metadata = { title: "金額入力", robots: { index: false, follow:
 
 const TZ = "Asia/Tokyo";
 const fmtDay = (d: Date) => d.toLocaleDateString("ja-JP", { timeZone: TZ, month: "numeric", day: "numeric", weekday: "short" });
-const fmtTime = (d: Date) => d.toLocaleTimeString("ja-JP", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
 const fmtDateTime = (d: Date) => d.toLocaleString("ja-JP", { timeZone: TZ, year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
 const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
 
@@ -23,9 +22,10 @@ const thClass = "border-b border-slate-200 px-2 py-2 text-left text-xs font-bold
 const tdClass = "border-b border-slate-100 px-2 py-2 text-sm text-slate-900";
 
 // 取引先ごとの専用リンク。合言葉(token)が一致しなければ、取引先名も稼働も表示しない。
-export default async function AmountEntryPage({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ m?: string }> }) {
+export default async function AmountEntryPage({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ m?: string; sent?: string }> }) {
   const { token } = await params;
-  const { m } = await searchParams;
+  const { m, sent: sentParam } = await searchParams;
+  const sentMonth = sentParam && /^\d{4}-(0[1-9]|1[0-2])$/.test(sentParam) ? sentParam : null;
   const clients = await prisma.client.findMany({ select: { id: true, name: true, billingTerms: true } });
   const client = clients.find((c) => amountEntryOf(c.billingTerms)?.token === token);
   const entry = client ? amountEntryOf(client.billingTerms) : null;
@@ -47,26 +47,15 @@ export default async function AmountEntryPage({ params, searchParams }: { params
   const end = new Date(`${new Date(Date.UTC(y, mo, 1)).toISOString().slice(0, 7)}-01T00:00:00+09:00`);
 
   // この取引先の稼働者(設定のスタッフ)の、対象月のシフトと打刻だけを出す。
+  // 出退勤の時刻は出さない。日付と稼働店舗だけ。取消のシフトは出さない。
   const shifts = entry.staffId
     ? await prisma.shift.findMany({
-        where: { staffId: entry.staffId, startTime: { gte: start, lt: end } },
-        include: { clockRecords: { orderBy: { timestamp: "asc" } } },
+        where: { staffId: entry.staffId, cancelledAt: null, startTime: { gte: start, lt: end } },
+        select: { id: true, startTime: true, storeName: true },
         orderBy: { startTime: "asc" },
       })
     : [];
-  const rows = shifts.map((s) => {
-    const ins = s.clockRecords.filter((r) => r.type === "IN");
-    const outs = s.clockRecords.filter((r) => r.type === "OUT");
-    return {
-      id: s.id,
-      day: fmtDay(s.startTime),
-      store: s.storeName,
-      planned: `${fmtTime(s.startTime)}〜${fmtTime(s.endTime)}`,
-      inAt: ins[0] ? fmtTime(ins[0].timestamp) : "—",
-      outAt: outs.length ? fmtTime(outs[outs.length - 1].timestamp) : "—",
-      cancelled: !!s.cancelledAt,
-    };
-  });
+  const rows = shifts.map((s) => ({ id: s.id, day: fmtDay(s.startTime), store: s.storeName }));
 
   const sent = await prisma.invoice.findMany({
     where: { clientId: client.id, sentAt: { not: null } },
@@ -79,7 +68,10 @@ export default async function AmountEntryPage({ params, searchParams }: { params
     <div className="admin-theme min-h-dvh">
       <main className="mx-auto max-w-3xl px-4 py-6">
         <h1 className="kj-page-title">{client.name}</h1>
-        <p>金額を入力して送信すると、請求書がすぐ取引先へ届きます。送信は取り消せません。</p>
+        <p>金額を入力して内容を確認したあと、送信すると請求書と明細書が取引先へ届きます。送信は取り消せません。</p>
+        {sentMonth && (
+          <p className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-900">{sentMonth.replace("-", "年")}月分を送信しました。下の「送信済みの請求」に並んでいます。</p>
+        )}
 
         <section className={`${cardClass} mt-5`}>
           <h2 className="text-base font-black text-slate-900">金額を入力して送信</h2>
@@ -110,10 +102,6 @@ export default async function AmountEntryPage({ params, searchParams }: { params
                   <tr>
                     <th className={thClass}>日付</th>
                     <th className={thClass}>稼働店舗</th>
-                    <th className={thClass}>予定</th>
-                    <th className={thClass}>出勤</th>
-                    <th className={thClass}>退勤</th>
-                    <th className={thClass}>状態</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -121,15 +109,11 @@ export default async function AmountEntryPage({ params, searchParams }: { params
                     <tr key={r.id}>
                       <td className={tdClass}>{r.day}</td>
                       <td className={tdClass}>{r.store}</td>
-                      <td className={tdClass}>{r.planned}</td>
-                      <td className={tdClass}>{r.inAt}</td>
-                      <td className={tdClass}>{r.outAt}</td>
-                      <td className={tdClass}>{r.cancelled ? <span className="font-bold text-red-700">取消</span> : "稼働"}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <p className="mt-3 text-sm font-bold text-slate-800">稼働日数: {rows.filter((r) => !r.cancelled).length}日</p>
+              <p className="mt-3 text-sm font-bold text-slate-800">稼働日数: {rows.length}日</p>
             </div>
           )}
         </section>
