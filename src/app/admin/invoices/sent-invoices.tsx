@@ -2,9 +2,36 @@
 
 import { useState } from "react";
 import { InvoiceRowCard, type InvoiceRow } from "./invoice-row-card";
+import type { MonthProfit } from "@/lib/month-profit";
+
+const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
+
+// 選んだ月の売上・支払い予定・粗利(送付済みの請求が対象。固定費・税金などは含まない)。
+function ProfitSummary({ p }: { p: MonthProfit }) {
+  const item = (label: string, value: string, sub?: string, tone = "text-slate-100") => (
+    <div className="rounded-xl bg-slate-800/70 px-4 py-3">
+      <div className="text-xs text-slate-400">{label}</div>
+      <div className={`mt-1 text-xl font-black ${tone}`}>{value}</div>
+      {sub && <div className="mt-1 text-xs text-slate-400">{sub}</div>}
+    </div>
+  );
+  return (
+    <div className="mt-3 rounded-2xl border border-slate-700 p-3">
+      <div className="grid gap-3 sm:grid-cols-3">
+        {item("月の合計売上（税抜）", yen(p.salesExTax), `税込 ${yen(p.salesInclTax)}・請求${p.invoiceCount}件`)}
+        {item("支払い予定金額", yen(p.payTotal), `スタッフ報酬＋経費 ${yen(p.staffPay)}・広告費 ${yen(p.adCost)}`)}
+        {item("粗利（税抜）", yen(p.grossProfit), "売上（税抜）− 支払い予定", p.grossProfit < 0 ? "text-rose-300" : "text-emerald-300")}
+      </div>
+      {p.staffPayUnknown.length > 0 && (
+        <p className="mt-2 text-xs text-amber-300">報酬の金額が決まっていないスタッフがいるため、支払い予定に入っていません: {p.staffPayUnknown.join("、")}</p>
+      )}
+      <p className="mt-2 text-xs text-slate-500">送付済みの請求（訂正版は最新の版）が対象です。粗利に固定費・税金などは含みません。</p>
+    </div>
+  );
+}
 
 // 送付済みの請求を、請求の対象月ごとにまとめて表示する。プルダウンで月を選ぶ(最初は一番新しい月)。
-export function SentInvoices({ rows }: { rows: InvoiceRow[] }) {
+export function SentInvoices({ rows, profits = {} }: { rows: InvoiceRow[]; profits?: Record<string, MonthProfit> }) {
   const months = [...new Set(rows.map((r) => r.yearMonth))].sort().reverse();
   const [month, setMonth] = useState(months[0] ?? "");
   // 選んでいた月の請求が削除などでなくなったときは、一番新しい月に戻す。
@@ -27,6 +54,7 @@ export function SentInvoices({ rows }: { rows: InvoiceRow[] }) {
           <option value="ALL">すべての月（{rows.length}件）</option>
         </select>
       )}
+      {current !== "ALL" && profits[current] && <ProfitSummary p={profits[current]} />}
       <div className="mt-3 space-y-3">
         {shown.length === 0 && <p className="rounded-2xl border border-dashed border-slate-700 p-4 text-sm text-slate-500">送付済みの請求はまだありません。</p>}
         {shown.map((r) => (

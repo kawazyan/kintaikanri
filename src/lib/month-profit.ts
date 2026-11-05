@@ -1,0 +1,81 @@
+import { prisma } from "@/lib/prisma";
+import { loadStaffMonthSummaries } from "@/lib/staff-month-summary";
+import { invoiceFamilyBase, isExtraInvoice } from "@/lib/invoice-kind";
+import type { StatementSnapshot } from "@/lib/invoice-draft";
+
+// 請求管理の「月の売上・支払い予定・粗利」。
+// 売上 = その月(請求の対象月)の送付済みの請求。訂正版があるときは、送付済みの一番新しい版だけを数える。
+// 支払い予定 = スタッフへの報酬＋経費精算(振込関係ページと同じ計算) ＋ 広告費(請求した広告費の行 = Meta への実費)。
+// 粗利 = 売上(税抜) − 支払い予定。固定費・税金などは含まない。
+export type MonthProfit = {
+  yearMonth: string;
+  salesExTax: number;
+  salesInclTax: number;
+  invoiceCount: number;
+  staffPay: number; // 金額が決まっている人の合計
+  staffPayUnknown: string[]; // 金額が決まっていない人(報酬の目標額が未入力など)
+  adCost: number;
+  payTotal: number;
+  grossProfit: number;
+};
+
+type SentInvoice = { clientId: string; kind: string; branch: string | null; invoiceNumber: string; revision: number; yearMonth: string; subtotalExTax: number; totalInclTax: number; statement: unknown };
+
+// 同じ請求の系列(取引先・種類・店舗、別途請求は請求番号の系列)ごとに、一番新しい版だけ残す。
+export function latestSent<T extends SentInvoice>(rows: T[]): T[] {
+  const best = new Map<string, T>();
+  for (const r of rows) {
+    const key = [r.clientId, r.yearMonth, r.kind, r.branch ?? "", isExtraInvoice(r.kind) ? invoiceFamilyBase(r.invoiceNumber) : ""].join("|");
+    const cur = best.get(key);
+    if (!cur || r.revision > cur.revision) best.set(key, r);
+  }
+  return [...best.values()];
+}
+
+export function adCostOf(statement: unknown): number {
+  const s = statement as StatementSnapshot | null;
+  return (s?.clientExtras ?? []).filter((e) => e.store && e.period).reduce((a, e) => a + e.amountExTax, 0);
+}
+
+export async function loadMonthProfits(months: string[]): Promise<Map<string, MonthProfit>> {
+  const out = new Map<string, MonthProfit>();
+  if (!months.length) return out;
+  const [sent, staff] = await Promise.all([
+    prisma.invoice.findMany({
+      where: { yearMonth: { in: months }, sentAt: { not: null }, status: { in: ["FINALIZED", "REISSUED"] } },
+      select: { clientId: true, kind: true, branch: true, invoiceNumber: true, revision: true, yearMonth: true, subtotalExTax: true, totalInclTax: true, statement: true },
+    }),
+    prisma.staff.findMany({
+      where: { status: "ACTIVE" },
+      select: { id: true, name: true, paymentMethod: true, fixedClosingDay: true, fixedPaymentMonthOffset: true, fixedPaymentDay: true },
+    }),
+  ]);
+  const latest = latestSent(sent);
+  for (const ym of months) {
+    const inv = latest.filter((i) => i.yearMonth === ym);
+    const summaries = await loadStaffMonthSummaries(staff, ym);
+    let staffPay = 0;
+    const unknown: string[] = [];
+    for (const s of staff) {
+      const m = summaries.get(s.id);
+      if (!m) continue;
+      if (m.total === null) unknown.push(s.name);
+      else staffPay += m.total;
+    }
+    const salesExTax = inv.reduce((a, i) => a + i.subtotalExTax, 0);
+    const adCost = inv.reduce((a, i) => a + adCostOf(i.statement), 0);
+    const payTotal = staffPay + adCost;
+    out.set(ym, {
+      yearMonth: ym,
+      salesExTax,
+      salesInclTax: inv.reduce((a, i) => a + i.totalInclTax, 0),
+      invoiceCount: inv.length,
+      staffPay,
+      staffPayUnknown: unknown,
+      adCost,
+      payTotal,
+      grossProfit: salesExTax - payTotal,
+    });
+  }
+  return out;
+}

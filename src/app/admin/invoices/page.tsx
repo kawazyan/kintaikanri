@@ -9,6 +9,7 @@ import { isExtraInvoice } from "@/lib/invoice-kind";
 import { recipientPresetsOf, type BillingTerms } from "@/lib/billing-terms";
 import { InvoiceRowCard, type InvoiceRow } from "./invoice-row-card";
 import { SentInvoices } from "./sent-invoices";
+import { loadMonthProfits } from "@/lib/month-profit";
 
 function Section({ title, hint, rows, empty }: { title: string; hint: string; rows: InvoiceRow[]; empty: string }) {
   return (
@@ -57,6 +58,10 @@ export default async function InvoicesPage() {
     .sort((a, b) => ((b.sentAt ?? b.finalizedAt ?? b.createdAt).getTime()) - ((a.sentAt ?? a.finalizedAt ?? a.createdAt).getTime()))
     .map((i) => toRow(i, `送付 ${formatJst((i.sentAt ?? i.finalizedAt ?? i.createdAt))}`));
 
+  // 送付済みの請求がある月(新しい順に最大6か月)の、売上・支払い予定・粗利。
+  const profitMonths = [...new Set(sent.map((r) => r.yearMonth))].sort().reverse().slice(0, 6);
+  const profits = Object.fromEntries(await loadMonthProfits(profitMonths));
+
   return (
     <main className="kj-invoices-page mx-auto max-w-5xl px-4 py-8 text-slate-100">
       <AdminNav />
@@ -74,7 +79,7 @@ export default async function InvoicesPage() {
       </div>
       <Section title="下書き" hint="内容を確認して「承認」" rows={drafts} empty="下書きはありません。" />
       <Section title="承認済み" hint="「送信」でメール送付" rows={approved} empty="承認済みで未送信の請求はありません。" />
-      <SentInvoices rows={sent} />
+      <SentInvoices rows={sent} profits={profits} />
     </main>
   );
 }
