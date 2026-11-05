@@ -206,18 +206,32 @@ export function sectionsOf(data: Pick<StatementSnapshot, "staff" | "clientExtras
   return [...map.values()];
 }
 
+// 店舗ごとの消費税。請求全体の消費税(合計×10%)を、店舗の税抜小計の比で分ける。
+// 各店舗は10%の切り捨て、足りない分は端数(切り捨てた小数)の大きい店舗から1円ずつ足す(同じなら先の店舗)。合計は請求書の消費税と一致する。
+export function allocateTax(subtotals: number[], totalTax: number): number[] {
+  const base = subtotals.map((v) => Math.floor(v / 10));
+  const frac = subtotals.map((v, i) => ({ i, r: v - base[i] * 10 }));
+  let rest = totalTax - base.reduce((a, b) => a + b, 0);
+  const order = [...frac].sort((a, b) => b.r - a.r || a.i - b.i);
+  for (let k = 0; rest > 0 && order.length; k = (k + 1) % order.length, rest--) base[order[k].i] += 1;
+  for (let k = order.length - 1; rest < 0 && order.length; k = (k - 1 + order.length) % order.length, rest++) base[order[k].i] -= 1;
+  return base;
+}
+
 // 1ページ目: 店舗ごとの合計の表。
-function SectionSummary({ data }: { data: StatementSnapshot }) {
+function SectionSummary({ data, taxAmount }: { data: StatementSnapshot; taxAmount: number }) {
   const secs = sectionsOf(data);
+  const taxes = allocateTax(secs.map((x) => x.total), taxAmount);
   const hasOther = secs.some((x) => x.other > 0);
-  const w = hasOther ? ["28%", "15%", "13%", "15%", "12%", "17%"] : ["31%", "18%", "15%", "18%", "18%"];
+  const w = hasOther ? ["20%", "11%", "9%", "11%", "9%", "13%", "11%", "16%"] : ["22%", "12%", "10%", "12%", "14%", "12%", "18%"];
   const cols: { label: string; v: (x: (typeof secs)[number]) => number }[] = [
     { label: svcLabel(data), v: (x) => x.service },
     { label: "交通費相当額", v: (x) => x.travel },
     { label: "広告掲載費", v: (x) => x.ads },
     ...(hasOther ? [{ label: "その他", v: (x: (typeof secs)[number]) => x.other }] : []),
   ];
-  const cell = (i: number, right = true) => ({ width: w[i], paddingVertical: 3.5, paddingHorizontal: 5, ...(right ? { textAlign: "right" as const } : {}) });
+  const cell = (i: number, right = true) => ({ width: w[i], paddingVertical: 3.5, paddingHorizontal: 4, fontSize: 8, ...(right ? { textAlign: "right" as const } : {}) });
+  const n = cols.length;
   const sum = (f: (x: (typeof secs)[number]) => number) => secs.reduce((a, x) => a + f(x), 0);
   return (
     <View style={st.staffBlock} wrap={false}>
@@ -229,15 +243,19 @@ function SectionSummary({ data }: { data: StatementSnapshot }) {
         {cols.map((c, i) => (
           <Text key={c.label} style={[cell(i + 1), st.small]}>{c.label}</Text>
         ))}
-        <Text style={[cell(cols.length + 1), st.small]}>小計（税抜）</Text>
+        <Text style={[cell(n + 1), st.small]}>小計（税抜）</Text>
+        <Text style={[cell(n + 2), st.small]}>消費税</Text>
+        <Text style={[cell(n + 3), st.small]}>合計（税込）</Text>
       </View>
-      {secs.map((x) => (
+      {secs.map((x, j) => (
         <View key={x.name} style={st.itemRow}>
           <Text style={cell(0, false)}>{x.name}</Text>
           {cols.map((c, i) => (
             <Text key={c.label} style={cell(i + 1)}>{c.v(x) ? yen(c.v(x)) : "―"}</Text>
           ))}
-          <Text style={cell(cols.length + 1)}>{yen(x.total)}</Text>
+          <Text style={cell(n + 1)}>{yen(x.total)}</Text>
+          <Text style={cell(n + 2)}>{yen(taxes[j])}</Text>
+          <Text style={cell(n + 3)}>{yen(x.total + taxes[j])}</Text>
         </View>
       ))}
       <View style={st.subRow}>
@@ -245,9 +263,11 @@ function SectionSummary({ data }: { data: StatementSnapshot }) {
         {cols.map((c, i) => (
           <Text key={c.label} style={cell(i + 1)}>{yen(sum(c.v))}</Text>
         ))}
-        <Text style={cell(cols.length + 1)}>{yen(sum((x) => x.total))}</Text>
+        <Text style={cell(n + 1)}>{yen(sum((x) => x.total))}</Text>
+        <Text style={cell(n + 2)}>{yen(taxes.reduce((a, b) => a + b, 0))}</Text>
+        <Text style={cell(n + 3)}>{yen(sum((x) => x.total) + taxes.reduce((a, b) => a + b, 0))}</Text>
       </View>
-      <Text style={{ fontSize: 8, color: "#555", paddingHorizontal: 6, paddingVertical: 4 }}>店舗ごとの稼働日・計算方法は、次のページ以降に店舗別に記載しています。</Text>
+      <Text style={{ fontSize: 8, color: "#555", paddingHorizontal: 6, paddingVertical: 4 }}>店舗ごとの消費税は、請求全体の消費税を店舗の小計に応じて分けたものです（合計は請求書の消費税と一致します）。店舗ごとの稼働日・計算方法は、次のページ以降に記載しています。</Text>
     </View>
   );
 }
@@ -327,7 +347,7 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
         {data.staff.length === 0 && <Text style={st.note}>対象月の稼働実績はありません。</Text>}
 
         {sectioned ? (
-          <SectionSummary data={data} />
+          <SectionSummary data={data} taxAmount={totals.taxAmount} />
         ) : (
           <>
             {(manual && data.manualShowAttendance === false ? [] : data.staff).map((s, i) => (
@@ -394,7 +414,7 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
         </View>
       </Page>
       {sectioned &&
-        sectionsOf(data).map((sec) => (
+        sectionsOf(data).map((sec, j, all) => ({ sec, tax: allocateTax(all.map((x) => x.total), totals.taxAmount)[j] })).map(({ sec, tax }) => (
           <Page key={sec.name} size="A4" style={st.page}>
             <View style={st.titleWrap}>
               <Text style={st.title}>請求内訳書</Text>
@@ -413,6 +433,14 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
                 <View style={[st.sRow, { borderTopWidth: 0, backgroundColor: BLUE }]}>
                   <Text>{sec.name} 小計（税抜）</Text>
                   <Text>{yen(sec.total)}</Text>
+                </View>
+                <View style={st.sRow}>
+                  <Text>消費税（10%）</Text>
+                  <Text>{yen(tax)}</Text>
+                </View>
+                <View style={st.sTotal}>
+                  <Text style={{ fontSize: 10, color: "#fff" }}>{sec.name} 合計（税込）</Text>
+                  <Text style={{ fontSize: 12, color: "#fff" }}>{yen(sec.total + tax)}</Text>
                 </View>
               </View>
             </View>
