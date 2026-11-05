@@ -71,6 +71,8 @@ export type StatementSnapshot = {
   taxRounding?: TaxRounding;
   // 請求内訳書での「業務委託費」の呼び方(例: 稼働費)。請求書の品目「業務委託費一式」は変えない。
   serviceLabel?: string;
+  // 請求内訳書の「〇年〇月稼働分」の「稼働分」の部分(例: 請求分)。
+  monthSuffix?: string;
 };
 
 // 手入力の1行。請求書の品目であり、請求内訳書の行でもある。calc=内訳書の「計算方法」。
@@ -599,6 +601,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string, opt
     warnings: shownWarnings,
     baseline,
     ...(terms.statementServiceLabel?.trim() ? { serviceLabel: terms.statementServiceLabel.trim() } : {}),
+    ...(terms.statementMonthSuffix?.trim() ? { monthSuffix: terms.statementMonthSuffix.trim() } : {}),
     ...(carried?.manualLines ? { manualLines: carried.manualLines, manualTaxMode: carried.manualTaxMode, manualShowAttendance: carried.manualShowAttendance } : {}),
   };
 
