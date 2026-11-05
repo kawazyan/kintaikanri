@@ -431,7 +431,7 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
             <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 10 }} wrap={false}>
               <View style={st.totalBox}>
                 <View style={[st.sRow, { borderTopWidth: 0, backgroundColor: BLUE }]}>
-                  <Text>{sec.name} 小計（税抜）</Text>
+                  <Text>小計（税抜）</Text>
                   <Text>{yen(sec.total)}</Text>
                 </View>
                 <View style={st.sRow}>
@@ -439,7 +439,7 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
                   <Text>{yen(tax)}</Text>
                 </View>
                 <View style={st.sTotal}>
-                  <Text style={{ fontSize: 10, color: "#fff" }}>{sec.name} 合計（税込）</Text>
+                  <Text style={{ fontSize: 10, color: "#fff" }}>合計（税込）</Text>
                   <Text style={{ fontSize: 12, color: "#fff" }}>{yen(sec.total + tax)}</Text>
                 </View>
               </View>
