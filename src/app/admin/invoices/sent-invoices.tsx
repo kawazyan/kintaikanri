@@ -19,7 +19,7 @@ function ProfitSummary({ p }: { p: MonthProfit }) {
     <div className="mt-3 rounded-2xl border border-[#cbd5e1] bg-[#f1f5f9] p-3">
       <div className="grid gap-3 sm:grid-cols-3">
         {item("月の合計売上（税抜）", yen(p.salesExTax), `税込 ${yen(p.salesInclTax)}・請求${p.invoiceCount}件`)}
-        {item("支払い予定金額", yen(p.payTotal), `スタッフ報酬＋経費 ${yen(p.staffPay)}・広告費 ${yen(p.adCost)}・外注費 ${yen(p.outsourcing)}`)}
+        {item("支払い予定金額", yen(p.payTotal), `スタッフ報酬＋経費 ${yen(p.staffPay)}・別途報酬 ${yen(p.bonus)}・広告費 ${yen(p.adCost)}・外注費 ${yen(p.outsourcing)}`)}
         {item("粗利（税抜）", yen(p.grossProfit), "売上（税抜）− 支払い予定", p.grossProfit < 0 ? "text-[#be123c]" : "text-[#047857]")}
       </div>
       {p.staffPayUnknown.length > 0 && (

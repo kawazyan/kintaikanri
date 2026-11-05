@@ -60,6 +60,7 @@ export default async function AdminStaffDetailPage({
         <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
           <div className="rounded-lg bg-[#f1f5f9] p-2"><div className="text-[#475569]">累計 売上（税抜）</div><div className="text-base font-black">{yen(history.totals.sales)}</div></div>
           <div className="rounded-lg bg-[#f1f5f9] p-2"><div className="text-[#475569]">累計 報酬＋経費</div><div className="text-base font-black">{yen(history.totals.pay)}</div></div>
+          <div className="rounded-lg bg-[#f1f5f9] p-2"><div className="text-[#475569]">累計 別途報酬（リファラル等）</div><div className="text-base font-black">{yen(history.totals.bonus)}</div></div>
           <div className="rounded-lg bg-[#f1f5f9] p-2"><div className="text-[#475569]">累計 粗利</div><div className={`text-base font-black ${history.totals.gross < 0 ? "text-[#be123c]" : "text-[#047857]"}`}>{yen(history.totals.gross)}</div></div>
           <div className="rounded-lg bg-[#f1f5f9] p-2"><div className="text-[#475569]">累計 振込済み</div><div className="text-base font-black">{yen(history.totals.paid)}</div></div>
         </div>
@@ -73,6 +74,7 @@ export default async function AdminStaffDetailPage({
                   <th className="py-1 text-left font-bold">月</th>
                   <th className="py-1 text-right font-bold">売上（税抜）</th>
                   <th className="py-1 text-right font-bold">報酬＋経費</th>
+                  <th className="py-1 text-right font-bold">別途報酬</th>
                   <th className="py-1 text-right font-bold">粗利</th>
                   <th className="py-1 text-right font-bold">振込済み</th>
                 </tr>
@@ -83,6 +85,7 @@ export default async function AdminStaffDetailPage({
                     <td className="py-1">{ymLabel(r.yearMonth)}</td>
                     <td className="py-1 text-right">{r.sales ? yen(r.sales) : "―"}</td>
                     <td className="py-1 text-right">{r.pay === null ? "未確定" : yen(r.pay)}</td>
+                    <td className="py-1 text-right">{r.bonus ? yen(r.bonus) : "―"}</td>
                     <td className={`py-1 text-right font-bold ${r.gross !== null && r.gross < 0 ? "text-[#be123c]" : "text-[#047857]"}`}>{r.gross === null ? "―" : yen(r.gross)}</td>
                     <td className="py-1 text-right">{r.paid ? yen(r.paid) : "―"}</td>
                   </tr>
@@ -92,7 +95,7 @@ export default async function AdminStaffDetailPage({
           </div>
         )}
         <p className="mt-2 text-[11px] leading-relaxed text-[#475569]">
-          売上＝送付済みの請求（訂正版は最新の版）のうち、このスタッフの稼働費・交通費の合計。報酬＋経費＝振込関係ページと同じ計算。振込済み＝固定支払は締め月、振込申請は振込した月で数えます。{history.totals.unknownMonths > 0 ? `報酬が未確定の月（${history.totals.unknownMonths}か月）は、累計に入っていません。` : ""}
+          売上＝送付済みの請求（訂正版は最新の版）のうち、このスタッフの稼働費・交通費の合計。報酬＋経費＝振込関係ページと同じ計算。別途報酬＝リファラル報酬・インセンティブなどの申請（申請中＋承認済み）。粗利＝売上 − 報酬＋経費 − 別途報酬。振込済み＝固定支払は締め月、振込申請は振込した月で数えます。{history.totals.unknownMonths > 0 ? `報酬が未確定の月（${history.totals.unknownMonths}か月）は、累計に入っていません。` : ""}
         </p>
       </section>
 

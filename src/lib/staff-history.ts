@@ -8,15 +8,16 @@ import { jstMonthRange, toJstDateValue } from "@/lib/time";
 // スタッフ詳細の「月別の実績」。
 // 売上 = 送付済みの請求(訂正版は最新の版)の請求内訳書のうち、このスタッフの行(名前が一致)の合計(税抜。業務委託費＋交通費＋経費)。
 // 報酬＋経費 = 振込関係ページと同じ計算(その月の確定報酬＋申請中・承認済みの経費)。null=金額が決まっていない。
-// 粗利 = 売上 − 報酬＋経費。振込済み = 固定支払の振込完了(締め月)＋振込申請の振込完了(振込した月)。
-export type StaffMonthRow = { yearMonth: string; sales: number; pay: number | null; gross: number | null; paid: number };
+// 粗利 = 売上 − 報酬＋経費 − 別途報酬(リファラルなど)。振込済み = 固定支払の振込完了(締め月)＋振込申請の振込完了(振込した月)。
+// bonus = 別途報酬(リファラル報酬・インセンティブなど。申請中＋承認済みの申請額)。粗利から引き、振込済みにも振込した月で数える。
+export type StaffMonthRow = { yearMonth: string; sales: number; pay: number | null; bonus: number; gross: number | null; paid: number };
 
-export async function loadStaffHistory(staffId: string, maxMonths = 12): Promise<{ rows: StaffMonthRow[]; totals: { sales: number; pay: number; gross: number; paid: number; unknownMonths: number } }> {
+export async function loadStaffHistory(staffId: string, maxMonths = 12): Promise<{ rows: StaffMonthRow[]; totals: { sales: number; pay: number; bonus: number; gross: number; paid: number; unknownMonths: number } }> {
   const staff = await prisma.staff.findUnique({ where: { id: staffId }, select: { id: true, name: true, paymentMethod: true, fixedClosingDay: true, fixedPaymentMonthOffset: true, fixedPaymentDay: true } });
-  if (!staff) return { rows: [], totals: { sales: 0, pay: 0, gross: 0, paid: 0, unknownMonths: 0 } };
+  if (!staff) return { rows: [], totals: { sales: 0, pay: 0, bonus: 0, gross: 0, paid: 0, unknownMonths: 0 } };
   const key = normName(staff.name);
 
-  const [shifts, invoices, fixedPaid, transfers] = await Promise.all([
+  const [shifts, invoices, fixedPaid, transfers, comps] = await Promise.all([
     prisma.shift.findMany({ where: { staffId, cancelledAt: null }, select: { startTime: true } }),
     prisma.invoice.findMany({
       where: { sentAt: { not: null }, status: { in: ["FINALIZED", "REISSUED"] } },
@@ -24,7 +25,10 @@ export async function loadStaffHistory(staffId: string, maxMonths = 12): Promise
     }),
     prisma.fixedPaymentCompletion.findMany({ where: { staffId }, select: { closingYearMonth: true, paidAmount: true } }),
     prisma.transferRequest.findMany({ where: { staffId, status: "PAID" }, select: { paidAt: true, paidAmount: true, amount: true } }),
+    prisma.compensationRequest.findMany({ where: { staffId, status: { in: ["SUBMITTED", "APPROVED"] } }, select: { yearMonth: true, amountTaxInclusive: true, paidAt: true, paidAmount: true } }),
   ]);
+  const bonusByMonth = new Map<string, number>();
+  for (const c of comps) bonusByMonth.set(c.yearMonth, (bonusByMonth.get(c.yearMonth) ?? 0) + c.amountTaxInclusive);
 
   const salesByMonth = new Map<string, number>();
   for (const inv of latestSent(invoices)) {
@@ -41,8 +45,13 @@ export async function loadStaffHistory(staffId: string, maxMonths = 12): Promise
     const ym = toJstDateValue(t.paidAt).slice(0, 7);
     paidByMonth.set(ym, (paidByMonth.get(ym) ?? 0) + (t.paidAmount ?? t.amount));
   }
+  for (const c of comps) {
+    if (!c.paidAt) continue;
+    const ym = toJstDateValue(c.paidAt).slice(0, 7);
+    paidByMonth.set(ym, (paidByMonth.get(ym) ?? 0) + (c.paidAmount ?? c.amountTaxInclusive));
+  }
 
-  const months = [...new Set([...shifts.map((s) => toJstDateValue(s.startTime).slice(0, 7)), ...salesByMonth.keys(), ...paidByMonth.keys()])]
+  const months = [...new Set([...shifts.map((s) => toJstDateValue(s.startTime).slice(0, 7)), ...salesByMonth.keys(), ...paidByMonth.keys(), ...bonusByMonth.keys()])]
     .filter((ym) => jstMonthRange(ym).start.getTime() <= Date.now())
     .sort()
     .reverse()
@@ -53,11 +62,12 @@ export async function loadStaffHistory(staffId: string, maxMonths = 12): Promise
     const sum = (await loadStaffMonthSummaries([staff], ym)).get(staff.id);
     const pay = sum ? sum.total : null;
     const sales = salesByMonth.get(ym) ?? 0;
-    rows.push({ yearMonth: ym, sales, pay, gross: pay === null ? null : sales - pay, paid: paidByMonth.get(ym) ?? 0 });
+    const bonus = bonusByMonth.get(ym) ?? 0;
+    rows.push({ yearMonth: ym, sales, pay, bonus, gross: pay === null ? null : sales - pay - bonus, paid: paidByMonth.get(ym) ?? 0 });
   }
   const totals = rows.reduce(
-    (a, r) => ({ sales: a.sales + r.sales, pay: a.pay + (r.pay ?? 0), gross: a.gross + (r.gross ?? 0), paid: a.paid + r.paid, unknownMonths: a.unknownMonths + (r.pay === null ? 1 : 0) }),
-    { sales: 0, pay: 0, gross: 0, paid: 0, unknownMonths: 0 }
+    (a, r) => ({ sales: a.sales + r.sales, pay: a.pay + (r.pay ?? 0), bonus: a.bonus + r.bonus, gross: a.gross + (r.gross ?? 0), paid: a.paid + r.paid, unknownMonths: a.unknownMonths + (r.pay === null ? 1 : 0) }),
+    { sales: 0, pay: 0, bonus: 0, gross: 0, paid: 0, unknownMonths: 0 }
   );
   return { rows, totals };
 }
