@@ -356,7 +356,9 @@ export async function saveInvoiceEdit(
       if (!label && !e.amountExTax) continue; // 空行は無視
       if (!label) return { ok: false, error: "共通の項目に、名前のない行があります。名前を入力するか、行を削除してください。" };
       if (!Number.isInteger(e.amountExTax) || e.amountExTax < 0) return { ok: false, error: `共通の項目「${label}」の金額（税抜）は0以上の整数で入力してください。` };
-      clientExtras.push({ label, amountExTax: e.amountExTax, amountInclTax: addTax(e.amountExTax).amountIncl, ...(e.calc?.trim() ? { calc: e.calc.trim() } : {}), ...(e.store?.trim() && e.period?.trim() ? { store: e.store.trim(), period: e.period.trim() } : {}) });
+      // 店舗別の内訳書の店舗(区分)名は画面で直さないので、元の行(同じ店舗・期間、なければ同じ項目名)から引き継ぐ。
+      const prev = (snapshot?.clientExtras ?? []).find((p) => (e.store?.trim() && p.store === e.store.trim() && p.period === e.period?.trim()) || p.label === label);
+      clientExtras.push({ label, amountExTax: e.amountExTax, amountInclTax: addTax(e.amountExTax).amountIncl, ...(e.calc?.trim() ? { calc: e.calc.trim() } : {}), ...(e.store?.trim() && e.period?.trim() ? { store: e.store.trim(), period: e.period.trim() } : {}), ...(prev?.section ? { section: prev.section } : {}) });
     }
     // 稼働場所: 稼働日ごとに整える。空欄の日は「稼働店舗 要確認」と表示される(元の値は残さない)。
     const dayPlacesByStaff: Record<string, string>[] = snapshot.staff.map((st, i) => {

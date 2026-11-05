@@ -15,7 +15,8 @@ import { recipientPresetsOf } from "@/lib/billing-terms";
 // 稼働明細書に載せるスナップショット(請求下書き作成時点の内容を Invoice.statement に保存する)。
 // 請求書は「業務委託費一式」の1行だけ。計算方法と内訳はすべてこの明細書に書く。
 // store/period は広告費(K.J EVENT)の行だけ持つ。あれば明細書で「イベント主催店舗／イベント開催期間」の表にする。
-export type StatementExtra = { label: string; amountExTax: number; amountInclTax: number; calc?: string; store?: string; period?: string };
+// section: 店舗別の内訳書にするときの店舗(区分)名。スタッフの行と広告費の行に同じ名前を入れると、請求内訳書を店舗ごとに分けて載せる(請求書は1枚のまま)。
+export type StatementExtra = { label: string; amountExTax: number; amountInclTax: number; calc?: string; store?: string; period?: string; section?: string };
 
 
 export type StatementStaff = {
@@ -37,6 +38,8 @@ export type StatementStaff = {
   manual?: ManualStaffInfo;
   // 勤怠に登録していない人(パートナー会社のスタッフなど)。シフト・打刻がないので、稼働場所を直してもシフトへは反映しない。契約にも自動登録しない。
   external?: boolean;
+  // 店舗別の内訳書にするときの店舗(区分)名(StatementExtra.section と同じ名前でまとめる)。
+  section?: string;
 };
 
 // 追加スタッフの条件(請求書に書いた内容が正)。rateExTax は欠勤控除する前の月額(税抜)。
