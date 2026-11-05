@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { AdminNav } from "../../admin-nav";
 import { updateStaffDetails } from "../actions";
 import { SubmitButton } from "@/components/submit-button";
+import { loadStaffHistory } from "@/lib/staff-history";
 
 function toDateInputValue(d: Date | null): string {
   if (!d) return "";
@@ -43,6 +44,9 @@ export default async function AdminStaffDetailPage({
     d ? new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric" }).format(d) : "-";
 
   const boundAction = updateStaffDetails.bind(null, staff.id);
+  const history = await loadStaffHistory(staff.id);
+  const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
+  const ymLabel = (ym: string) => `${ym.slice(0, 4)}年${Number(ym.slice(5))}月`;
 
   return (
     <main className="mx-auto max-w-lg px-4 py-8">
@@ -50,6 +54,47 @@ export default async function AdminStaffDetailPage({
       <h1 className="kj-page-title">
         スタッフ詳細 - {staff.name}({staff.employeeCode})
       </h1>
+
+      <section className="mb-6 rounded-2xl border border-[#cbd5e1] bg-[#ffffff] p-3 text-[#0f172a]">
+        <h2 className="text-sm font-bold text-[#1e3a8a]">月別の実績（直近12か月）</h2>
+        <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+          <div className="rounded-lg bg-[#f1f5f9] p-2"><div className="text-[#475569]">累計 売上（税抜）</div><div className="text-base font-black">{yen(history.totals.sales)}</div></div>
+          <div className="rounded-lg bg-[#f1f5f9] p-2"><div className="text-[#475569]">累計 報酬＋経費</div><div className="text-base font-black">{yen(history.totals.pay)}</div></div>
+          <div className="rounded-lg bg-[#f1f5f9] p-2"><div className="text-[#475569]">累計 粗利</div><div className={`text-base font-black ${history.totals.gross < 0 ? "text-[#be123c]" : "text-[#047857]"}`}>{yen(history.totals.gross)}</div></div>
+          <div className="rounded-lg bg-[#f1f5f9] p-2"><div className="text-[#475569]">累計 振込済み</div><div className="text-base font-black">{yen(history.totals.paid)}</div></div>
+        </div>
+        {history.rows.length === 0 ? (
+          <p className="mt-2 text-xs text-[#475569]">実績はまだありません。</p>
+        ) : (
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-[#cbd5e1] text-[#475569]">
+                  <th className="py-1 text-left font-bold">月</th>
+                  <th className="py-1 text-right font-bold">売上（税抜）</th>
+                  <th className="py-1 text-right font-bold">報酬＋経費</th>
+                  <th className="py-1 text-right font-bold">粗利</th>
+                  <th className="py-1 text-right font-bold">振込済み</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.rows.map((r) => (
+                  <tr key={r.yearMonth} className="border-b border-[#e2e8f0]">
+                    <td className="py-1">{ymLabel(r.yearMonth)}</td>
+                    <td className="py-1 text-right">{r.sales ? yen(r.sales) : "―"}</td>
+                    <td className="py-1 text-right">{r.pay === null ? "未確定" : yen(r.pay)}</td>
+                    <td className={`py-1 text-right font-bold ${r.gross !== null && r.gross < 0 ? "text-[#be123c]" : "text-[#047857]"}`}>{r.gross === null ? "―" : yen(r.gross)}</td>
+                    <td className="py-1 text-right">{r.paid ? yen(r.paid) : "―"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="mt-2 text-[11px] leading-relaxed text-[#475569]">
+          売上＝送付済みの請求（訂正版は最新の版）のうち、このスタッフの稼働費・交通費の合計。報酬＋経費＝振込関係ページと同じ計算。振込済み＝固定支払は締め月、振込申請は振込した月で数えます。{history.totals.unknownMonths > 0 ? `報酬が未確定の月（${history.totals.unknownMonths}か月）は、累計に入っていません。` : ""}
+        </p>
+      </section>
 
       {saved === "1" && (
         <p className="mb-4 rounded-lg border border-emerald-700 bg-emerald-950/40 px-3 py-2 text-sm font-semibold text-emerald-300">
