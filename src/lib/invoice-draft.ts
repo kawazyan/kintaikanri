@@ -11,6 +11,7 @@ import { mergeCarryOver } from "@/lib/invoice-carryover";
 import { INVOICE_KIND_WORK } from "@/lib/invoice-kind";
 import { branchAddressee, carryFromPreviousMonth, normBranch, prevYearMonth } from "@/lib/invoice-branch";
 import { recipientPresetsOf } from "@/lib/billing-terms";
+import { splitByStore } from "@/lib/store-sections";
 
 // 稼働明細書に載せるスナップショット(請求下書き作成時点の内容を Invoice.statement に保存する)。
 // 請求書は「業務委託費一式」の1行だけ。計算方法と内訳はすべてこの明細書に書く。
@@ -48,7 +49,7 @@ export type ManualStaffInfo = ManualStaffInput & { plannedDays: number };
 
 // 下書き作成時の自動計算結果(修正を引き継ぐとき、「手で直した項目」を見分けるための元の値)。
 export type StatementBaseline = {
-  staff: Pick<StatementStaff, "name" | "dates" | "dayPlaces" | "serviceExTax" | "serviceCalc" | "travel">[];
+  staff: Pick<StatementStaff, "name" | "section" | "dates" | "dayPlaces" | "serviceExTax" | "serviceCalc" | "travel">[];
   clientExtras: StatementExtra[];
 };
 
@@ -523,10 +524,18 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string, opt
     }
   }
 
+  // 店舗別の請求内訳書: スタッフの行を店舗ごとに分け、広告費と同じ店舗名(区分)にそろえる。
+  if (terms.statementByStore) {
+    const r = splitByStore(statementStaff, clientExtras);
+    statementStaff.splice(0, statementStaff.length, ...r.staff);
+    clientExtras.splice(0, clientExtras.length, ...r.extras);
+    warnings.push(...r.warnings);
+  }
+
   // 自動計算の結果を「元の値」として残し(次回の引き継ぎで、手で直した項目を見分けるため)、前の下書きの修正を重ねる。
   const baseline: StatementBaseline = JSON.parse(
     JSON.stringify({
-      staff: statementStaff.map((s) => ({ name: s.name, dates: s.dates, dayPlaces: s.dayPlaces, serviceExTax: s.serviceExTax, serviceCalc: s.serviceCalc, travel: s.travel })),
+      staff: statementStaff.map((s) => ({ name: s.name, section: s.section, dates: s.dates, dayPlaces: s.dayPlaces, serviceExTax: s.serviceExTax, serviceCalc: s.serviceCalc, travel: s.travel })),
       clientExtras,
     })
   );

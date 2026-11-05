@@ -22,8 +22,8 @@ export function mergeCarryOver(
   }
 
   const staff = fresh.staff.map((f) => {
-    const p = prev.staff.find((x) => normName(x.name) === normName(f.name));
-    const b = baseline.staff.find((x) => normName(x.name) === normName(f.name));
+    const p = prev.staff.find((x) => normName(x.name) === normName(f.name) && (x.section ?? "") === (f.section ?? ""));
+    const b = baseline.staff.find((x) => normName(x.name) === normName(f.name) && ((x as { section?: string }).section ?? "") === (f.section ?? ""));
     if (!p || !b) return f;
     const out: StatementStaff = { ...f };
     const carried: string[] = [];
@@ -60,7 +60,7 @@ export function mergeCarryOver(
   });
 
   for (const p of prev.staff) {
-    if (!staff.some((x) => normName(x.name) === normName(p.name))) {
+    if (!staff.some((x) => normName(x.name) === normName(p.name) && (x.section ?? "") === (p.section ?? ""))) {
       notes.push(`前の下書きにいた${p.name}さんは、今回の計算には含まれませんでした（稼働実績・契約を確認してください）。`);
     }
   }

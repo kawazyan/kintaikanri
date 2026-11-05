@@ -30,6 +30,8 @@ export type BillingTerms = {
   shopSuffix?: boolean;
   // true なら、請求書の品目を「業務委託費一式」ではなく「稼働費用（スタッフ名）」「交通費相当額」などに分けて表示する。
   splitInvoiceLines?: boolean;
+  // 請求内訳書を店舗ごとに分ける(請求書は1枚)。スタッフの稼働を店舗ごとに分け、広告費と同じ店舗(表記揺れは照合)でまとめる。
+  statementByStore?: boolean;
   // 請求メールのPDFの付け方。COMBINED=請求書→請求内訳書の順に1つのPDF / 省略(SEPARATE)=2つのPDFをバラで添付。
   pdfBundle?: "COMBINED" | "SEPARATE";
   // この取引先あての請求書メールだけ、確認用にBCC(先方には見えない)で自動追加する自社アドレス。
