@@ -25,6 +25,43 @@ function ProfitSummary({ p }: { p: MonthProfit }) {
       {p.staffPayUnknown.length > 0 && (
         <p className="mt-2 text-xs font-bold text-[#b45309]">報酬の金額が決まっていないスタッフがいるため、支払い予定に入っていません: {p.staffPayUnknown.join("、")}</p>
       )}
+      {p.byStaff.length > 0 && (
+        <details className="mt-3 rounded-xl border border-[#cbd5e1] bg-[#ffffff] p-3">
+          <summary className="cursor-pointer text-sm font-bold text-[#1e3a8a]">スタッフ別の内訳（粗利の低い順）</summary>
+          <div className="mt-2 overflow-x-auto">
+            <table className="w-full text-xs text-[#0f172a]">
+              <thead>
+                <tr className="border-b border-[#cbd5e1] text-[#475569]">
+                  <th className="py-1 text-left font-bold">スタッフ</th>
+                  <th className="py-1 text-right font-bold">売上（税抜）</th>
+                  <th className="py-1 text-right font-bold">報酬</th>
+                  <th className="py-1 text-right font-bold">経費</th>
+                  <th className="py-1 text-right font-bold">別途報酬</th>
+                  <th className="py-1 text-right font-bold">粗利</th>
+                </tr>
+              </thead>
+              <tbody>
+                {p.byStaff.map((r) => (
+                  <tr key={r.name} className="border-b border-[#e2e8f0]">
+                    <td className="py-1">{r.name}</td>
+                    <td className="py-1 text-right">{r.sales ? yen(r.sales) : "―"}</td>
+                    <td className="py-1 text-right">{r.earnings === null ? "未確定" : r.earnings ? yen(r.earnings) : "―"}</td>
+                    <td className="py-1 text-right">{r.expenses ? yen(r.expenses) : "―"}</td>
+                    <td className="py-1 text-right">{r.bonus ? yen(r.bonus) : "―"}</td>
+                    <td className={`py-1 text-right font-bold ${r.gross !== null && r.gross < 0 ? "text-[#be123c]" : "text-[#047857]"}`}>{r.gross === null ? "―" : yen(r.gross)}</td>
+                  </tr>
+                ))}
+                <tr className="border-b border-[#e2e8f0] text-[#475569]">
+                  <td className="py-1">スタッフ以外（外部スタッフ・広告費など）</td>
+                  <td className="py-1 text-right">{yen(p.otherSales)}</td>
+                  <td className="py-1 text-right" colSpan={3}>広告費 {yen(p.adCost)}・外注費 {yen(p.outsourcing)}</td>
+                  <td className="py-1 text-right font-bold">{yen(p.otherSales - p.adCost - p.outsourcing)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
       <p className="mt-2 text-xs text-[#475569]">送付済みの請求（訂正版は最新の版）が対象です。粗利に固定費・税金などは含みません。</p>
     </div>
   );
