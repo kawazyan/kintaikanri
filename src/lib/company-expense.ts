@@ -1,6 +1,8 @@
 // 会社の経費(家賃・カード・駐車場代・税理士顧問料など)の入力検証。管理者専用ページ(/admin/company-expenses)で使う。
 
-export const COMPANY_EXPENSE_CATEGORIES = ["家賃・事務所代", "カード払い", "車両費", "税理士顧問料", "駐車場代", "その他"] as const;
+export const COMPANY_EXPENSE_CATEGORIES = ["家賃・事務所代", "カード払い", "車両費", "税理士顧問料", "駐車場代", "外注費", "その他"] as const;
+// 外注費(他社からの請求。税抜で入力)だけは、請求管理の「支払い予定金額」に入れて粗利から引く。ほかの区分は固定費として粗利に含めない。
+export const OUTSOURCING_CATEGORY = "外注費";
 export type CompanyExpenseCategory = (typeof COMPANY_EXPENSE_CATEGORIES)[number];
 
 export type CompanyExpenseInput = {

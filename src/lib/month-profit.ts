@@ -2,10 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { loadStaffMonthSummaries } from "@/lib/staff-month-summary";
 import { invoiceFamilyBase, isExtraInvoice } from "@/lib/invoice-kind";
 import type { StatementSnapshot } from "@/lib/invoice-draft";
+import { OUTSOURCING_CATEGORY } from "@/lib/company-expense";
 
 // 請求管理の「月の売上・支払い予定・粗利」。
 // 売上 = その月(請求の対象月)の送付済みの請求。訂正版があるときは、送付済みの一番新しい版だけを数える。
-// 支払い予定 = スタッフへの報酬＋経費精算(振込関係ページと同じ計算) ＋ 広告費(請求した広告費の行 = Meta への実費)。
+// 支払い予定 = スタッフへの報酬＋経費精算(振込関係ページと同じ計算) ＋ 広告費(請求した広告費の行 = Meta への実費) ＋ 外注費(会社経費の「外注費」)。
 // 粗利 = 売上(税抜) − 支払い予定。固定費・税金などは含まない。
 export type MonthProfit = {
   yearMonth: string;
@@ -15,6 +16,7 @@ export type MonthProfit = {
   staffPay: number; // 金額が決まっている人の合計
   staffPayUnknown: string[]; // 金額が決まっていない人(報酬の目標額が未入力など)
   adCost: number;
+  outsourcing: number; // 外注費(会社経費の「外注費」。他社からの請求・税抜)
   payTotal: number;
   grossProfit: number;
 };
@@ -40,7 +42,7 @@ export function adCostOf(statement: unknown): number {
 export async function loadMonthProfits(months: string[]): Promise<Map<string, MonthProfit>> {
   const out = new Map<string, MonthProfit>();
   if (!months.length) return out;
-  const [sent, staff] = await Promise.all([
+  const [sent, staff, outs] = await Promise.all([
     prisma.invoice.findMany({
       where: { yearMonth: { in: months }, sentAt: { not: null }, status: { in: ["FINALIZED", "REISSUED"] } },
       select: { clientId: true, kind: true, branch: true, invoiceNumber: true, revision: true, yearMonth: true, subtotalExTax: true, totalInclTax: true, statement: true },
@@ -49,6 +51,7 @@ export async function loadMonthProfits(months: string[]): Promise<Map<string, Mo
       where: { status: "ACTIVE" },
       select: { id: true, name: true, paymentMethod: true, fixedClosingDay: true, fixedPaymentMonthOffset: true, fixedPaymentDay: true },
     }),
+    prisma.companyExpense.findMany({ where: { yearMonth: { in: months }, category: OUTSOURCING_CATEGORY }, select: { yearMonth: true, amount: true } }),
   ]);
   const latest = latestSent(sent);
   for (const ym of months) {
@@ -64,7 +67,8 @@ export async function loadMonthProfits(months: string[]): Promise<Map<string, Mo
     }
     const salesExTax = inv.reduce((a, i) => a + i.subtotalExTax, 0);
     const adCost = inv.reduce((a, i) => a + adCostOf(i.statement), 0);
-    const payTotal = staffPay + adCost;
+    const outsourcing = outs.filter((o) => o.yearMonth === ym).reduce((a, o) => a + o.amount, 0);
+    const payTotal = staffPay + adCost + outsourcing;
     out.set(ym, {
       yearMonth: ym,
       salesExTax,
@@ -73,6 +77,7 @@ export async function loadMonthProfits(months: string[]): Promise<Map<string, Mo
       staffPay,
       staffPayUnknown: unknown,
       adCost,
+      outsourcing,
       payTotal,
       grossProfit: salesExTax - payTotal,
     });

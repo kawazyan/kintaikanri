@@ -59,7 +59,7 @@ export default async function CompanyExpensesPage({ searchParams }: { searchPara
           </button>
         </form>
       </div>
-      <p className={`mt-1 text-sm ${MUTED}`}>家賃・カード・駐車場代・税理士顧問料など。このページはパスワードを知っている人だけが見られます。</p>
+      <p className={`mt-1 text-sm ${MUTED}`}>家賃・カード・駐車場代・税理士顧問料など。「外注費」（他社からの請求。税抜で入力）は、請求管理の支払い予定金額・粗利に入ります。このページはパスワードを知っている人だけが見られます。</p>
 
       <nav className="mt-4 flex gap-1 overflow-x-auto" aria-label="月の切り替え">
         {monthTabs.map((t) => (
