@@ -8,24 +8,24 @@ const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
 
 // 選んだ月の売上・支払い予定・粗利(送付済みの請求が対象。固定費・税金などは含まない)。
 function ProfitSummary({ p }: { p: MonthProfit }) {
-  const item = (label: string, value: string, sub?: string, tone = "text-slate-100") => (
-    <div className="rounded-xl bg-slate-800/70 px-4 py-3">
-      <div className="text-xs text-slate-400">{label}</div>
+  const item = (label: string, value: string, sub?: string, tone = "text-[#0f172a]") => (
+    <div className="rounded-xl border border-[#cbd5e1] bg-[#ffffff] px-4 py-3">
+      <div className="text-xs font-bold text-[#334155]">{label}</div>
       <div className={`mt-1 text-xl font-black ${tone}`}>{value}</div>
-      {sub && <div className="mt-1 text-xs text-slate-400">{sub}</div>}
+      {sub && <div className="mt-1 text-xs text-[#475569]">{sub}</div>}
     </div>
   );
   return (
-    <div className="mt-3 rounded-2xl border border-slate-700 p-3">
+    <div className="mt-3 rounded-2xl border border-[#cbd5e1] bg-[#f1f5f9] p-3">
       <div className="grid gap-3 sm:grid-cols-3">
         {item("月の合計売上（税抜）", yen(p.salesExTax), `税込 ${yen(p.salesInclTax)}・請求${p.invoiceCount}件`)}
         {item("支払い予定金額", yen(p.payTotal), `スタッフ報酬＋経費 ${yen(p.staffPay)}・広告費 ${yen(p.adCost)}・外注費 ${yen(p.outsourcing)}`)}
-        {item("粗利（税抜）", yen(p.grossProfit), "売上（税抜）− 支払い予定", p.grossProfit < 0 ? "text-rose-300" : "text-emerald-300")}
+        {item("粗利（税抜）", yen(p.grossProfit), "売上（税抜）− 支払い予定", p.grossProfit < 0 ? "text-[#be123c]" : "text-[#047857]")}
       </div>
       {p.staffPayUnknown.length > 0 && (
-        <p className="mt-2 text-xs text-amber-300">報酬の金額が決まっていないスタッフがいるため、支払い予定に入っていません: {p.staffPayUnknown.join("、")}</p>
+        <p className="mt-2 text-xs font-bold text-[#b45309]">報酬の金額が決まっていないスタッフがいるため、支払い予定に入っていません: {p.staffPayUnknown.join("、")}</p>
       )}
-      <p className="mt-2 text-xs text-slate-500">送付済みの請求（訂正版は最新の版）が対象です。粗利に固定費・税金などは含みません。</p>
+      <p className="mt-2 text-xs text-[#475569]">送付済みの請求（訂正版は最新の版）が対象です。粗利に固定費・税金などは含みません。</p>
     </div>
   );
 }
