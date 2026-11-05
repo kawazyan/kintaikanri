@@ -71,7 +71,7 @@ export type StatementSnapshot = {
   taxRounding?: TaxRounding;
   // 請求内訳書での「業務委託費」の呼び方(例: 稼働費)。請求書の品目「業務委託費一式」は変えない。
   serviceLabel?: string;
-  // 請求内訳書の「〇年〇月稼働分」の「稼働分」の部分(例: 請求分)。
+  // 請求内訳書の「〇年〇月請求分」の「請求分」の部分(省略=請求分。送付済みの古い請求は「稼働分」を保存してある)。
   monthSuffix?: string;
 };
 

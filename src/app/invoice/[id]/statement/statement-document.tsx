@@ -320,7 +320,7 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
         </View>
         <View style={st.head}>
           <Text style={st.client}>{data.clientName}　御中</Text>
-          <Text style={st.month}>{y}年{m}月{data.monthSuffix?.trim() || "稼働分"}</Text>
+          <Text style={st.month}>{y}年{m}月{data.monthSuffix?.trim() || "請求分"}</Text>
         </View>
         <Text style={st.lead}>{manual ? "請求書の内訳です。" : "請求書「業務委託費一式」の内訳です。"}金額は税抜、消費税は合計に対して10%で計算しています。</Text>
 
@@ -401,7 +401,7 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
             </View>
             <View style={st.head}>
               <Text style={st.client}>{sec.name}</Text>
-              <Text style={st.month}>{y}年{m}月{data.monthSuffix?.trim() || "稼働分"}</Text>
+              <Text style={st.month}>{y}年{m}月{data.monthSuffix?.trim() || "請求分"}</Text>
             </View>
             <Text style={st.lead}>{data.clientName}様 ご請求分のうち、{sec.name}の内訳です。金額は税抜です。</Text>
             {sec.staff.map((s, i) => (
