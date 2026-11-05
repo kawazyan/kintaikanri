@@ -69,6 +69,8 @@ export type StatementSnapshot = {
   manualShowAttendance?: boolean;
   // 消費税の端数処理。省略=切り捨て。"HALF_UP"は四捨五入(この請求書だけの例外)。
   taxRounding?: TaxRounding;
+  // 請求内訳書での「業務委託費」の呼び方(例: 稼働費)。請求書の品目「業務委託費一式」は変えない。
+  serviceLabel?: string;
 };
 
 // 手入力の1行。請求書の品目であり、請求内訳書の行でもある。calc=内訳書の「計算方法」。
@@ -596,6 +598,7 @@ export async function buildInvoiceDraft(clientId: string, yearMonth: string, opt
     clientExtras: finalExtras,
     warnings: shownWarnings,
     baseline,
+    ...(terms.statementServiceLabel?.trim() ? { serviceLabel: terms.statementServiceLabel.trim() } : {}),
     ...(carried?.manualLines ? { manualLines: carried.manualLines, manualTaxMode: carried.manualTaxMode, manualShowAttendance: carried.manualShowAttendance } : {}),
   };
 

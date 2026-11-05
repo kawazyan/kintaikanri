@@ -23,8 +23,8 @@ export type StatementTotals = { subtotalExTax: number; taxAmount: number; totalI
 
 // 請求書は「業務委託費一式」の1行のみ。その内訳(計算方法)はすべてここに書く。
 type Item = { label: string; calc: string; amountExTax: number };
-function staffItems(s: StatementStaff): Item[] {
-  const items: Item[] = [{ label: "業務委託費", calc: s.serviceCalc || "―", amountExTax: s.serviceExTax ?? 0 }];
+function staffItems(s: StatementStaff, serviceLabel = "業務委託費"): Item[] {
+  const items: Item[] = [{ label: serviceLabel, calc: s.serviceCalc || "―", amountExTax: s.serviceExTax ?? 0 }];
   if (s.travel.mode !== "NONE" && s.travel.lines?.length) {
     for (const l of s.travel.lines) items.push({ label: l.label, calc: l.calc, amountExTax: l.amountExTax });
   } else if (s.travel.mode !== "NONE") {
@@ -78,7 +78,7 @@ function AttendanceDays({ yearMonth, staff }: { yearMonth: string; staff: Statem
 }
 
 
-function StaffBlock({ yearMonth, s, showItems }: { yearMonth: string; s: StatementStaff; showItems: boolean }) {
+function StaffBlock({ yearMonth, s, showItems, serviceLabel }: { yearMonth: string; s: StatementStaff; showItems: boolean; serviceLabel?: string }) {
   return (
           <View style={st.staffBlock} wrap={false}>
             <View style={st.staffHead}>
@@ -107,7 +107,7 @@ function StaffBlock({ yearMonth, s, showItems }: { yearMonth: string; s: Stateme
                   <Text style={[st.cCalc, st.small]}>計算方法</Text>
                   <Text style={[st.cAmt, st.small]}>金額（税抜）</Text>
                 </View>
-                {staffItems(s).map((it, k) => (
+                {staffItems(s, serviceLabel).map((it, k) => (
                   <View key={k} style={st.itemRow}>
                     <Text style={st.cItem}>{softWrap(it.label, ITEM_COL_EM)}</Text>
                     <Text style={st.cCalc}>{it.calc}</Text>
@@ -172,6 +172,9 @@ function ExtrasBlock({ extras }: { extras: StatementExtra[] }) {
   );
 }
 
+// 内訳書での「業務委託費」の呼び方(取引先ごとに変えられる。請求書の品目は変えない)。
+const svcLabel = (d: Pick<StatementSnapshot, "serviceLabel">) => d.serviceLabel?.trim() || "業務委託費";
+
 export function isSectioned(data: Pick<StatementSnapshot, "staff" | "clientExtras">) {
   return data.staff.some((s) => s.section?.trim()) || (data.clientExtras ?? []).some((e) => e.section?.trim());
 }
@@ -209,7 +212,7 @@ function SectionSummary({ data }: { data: StatementSnapshot }) {
   const hasOther = secs.some((x) => x.other > 0);
   const w = hasOther ? ["28%", "15%", "13%", "15%", "12%", "17%"] : ["31%", "18%", "15%", "18%", "18%"];
   const cols: { label: string; v: (x: (typeof secs)[number]) => number }[] = [
-    { label: "業務委託費", v: (x) => x.service },
+    { label: svcLabel(data), v: (x) => x.service },
     { label: "交通費相当額", v: (x) => x.travel },
     { label: "広告掲載費", v: (x) => x.ads },
     ...(hasOther ? [{ label: "その他", v: (x: (typeof secs)[number]) => x.other }] : []),
@@ -291,12 +294,12 @@ function summaryRows(data: StatementSnapshot): { label: string; amountExTax: num
   const goods = rest.filter((e) => e.label.includes("商材"));
   const others = [...rest.filter((e) => !e.label.includes("商材")), ...data.staff.flatMap((s) => s.extras ?? [])];
   return [
-    { label: "業務委託費", amountExTax: sum(data.staff.map((s) => ({ amountExTax: s.serviceExTax ?? 0 }))) },
+    { label: svcLabel(data), amountExTax: sum(data.staff.map((s) => ({ amountExTax: s.serviceExTax ?? 0 }))) },
     { label: "交通費相当額", amountExTax: sum(data.staff.map((s) => ({ amountExTax: s.travel.amountExTax }))) },
     { label: "広告掲載費", amountExTax: sum(ads) },
     { label: "商材費", amountExTax: sum(goods) },
     { label: "その他", amountExTax: sum(others) },
-  ].filter((r) => r.amountExTax > 0 || r.label === "業務委託費");
+  ].filter((r, i) => r.amountExTax > 0 || i === 0);
 }
 
 export function StatementDocument({ data, totals }: { data: StatementSnapshot; totals: StatementTotals }) {
@@ -328,7 +331,7 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
         ) : (
           <>
             {(manual && data.manualShowAttendance === false ? [] : data.staff).map((s, i) => (
-              <StaffBlock key={`${s.name}-${i}`} yearMonth={data.yearMonth} s={s} showItems={!manual} />
+              <StaffBlock key={`${s.name}-${i}`} yearMonth={data.yearMonth} s={s} showItems={!manual} serviceLabel={svcLabel(data)} />
             ))}
           </>
         )}
@@ -402,7 +405,7 @@ export function StatementDocument({ data, totals }: { data: StatementSnapshot; t
             </View>
             <Text style={st.lead}>{data.clientName}様 ご請求分のうち、{sec.name}の内訳です。金額は税抜です。</Text>
             {sec.staff.map((s, i) => (
-              <StaffBlock key={`${s.name}-${i}`} yearMonth={data.yearMonth} s={s} showItems />
+              <StaffBlock key={`${s.name}-${i}`} yearMonth={data.yearMonth} s={s} showItems serviceLabel={svcLabel(data)} />
             ))}
             <ExtrasBlock extras={sec.extras} />
             <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 10 }} wrap={false}>
