@@ -10,7 +10,7 @@ import { buildInvoiceLines, manualUnitExTax } from "@/lib/invoice-lines";
 import { monthEndOf, nextMonthEnd, splitEmails } from "@/lib/invoice-defaults";
 import { DEFAULT_EXTRA_INVOICE_NOTE, INVOICE_KIND_EXTRA, extraInvoiceNumber, extraSubject, isExtraInvoice } from "@/lib/invoice-kind";
 import { createCorrectionDraft } from "@/lib/invoice-correction";
-import { approveDraftInvoice, resendSentInvoice, sendApprovedInvoice } from "@/lib/invoice-send";
+import { approveDraftInvoice, previewInvoiceMail, resendSentInvoice, sendApprovedInvoice } from "@/lib/invoice-send";
 import { buildManualStaffNoShift, validateExternalStaffName, validateManualStaffNoShift } from "@/lib/invoice-manual-staff";
 import { addTax, computeInvoiceTotals, splitInclusiveTax } from "@/lib/billing";
 
@@ -241,6 +241,17 @@ export async function sendInvoice(id: string): Promise<ActionResult> {
     return { ok: true, message: `送信しました（宛先: ${to.join(", ")}${cc.length ? ` / CC: ${cc.join(", ")}` : ""}）` };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "送信に失敗しました。" };
+  }
+}
+
+// 送信・再送の前に、実際に送られる件名・本文・宛先・添付を返す(確認画面用。何も送らず、DBも変えない)。
+export type MailPreview = { mode: "send" | "resend"; subject: string; text: string; to: string[]; cc: string[]; bcc: string[]; attachments: string[]; isCorrection: boolean };
+export async function previewMail(id: string, mode: "send" | "resend", to?: string[]): Promise<{ ok: true; preview: MailPreview } | { ok: false; error: string }> {
+  await requireAdmin();
+  try {
+    return { ok: true, preview: await previewInvoiceMail(id, mode, to) };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "送信内容の確認に失敗しました。" };
   }
 }
 

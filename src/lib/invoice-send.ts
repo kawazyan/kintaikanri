@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { sendMailStrict } from "@/lib/mail";
-import { renderInvoicePdf, renderStatementPdf } from "@/lib/invoice-render";
+import { loadInvoiceDoc, renderInvoicePdf, renderStatementPdf } from "@/lib/invoice-render";
 import { invoiceRecipients, resolveInvoiceRecipients } from "@/lib/invoice-defaults";
 import { planManualContracts } from "@/lib/manual-contracts";
 import { invoiceMismatch } from "@/lib/invoice-consistency";
@@ -121,8 +121,9 @@ export async function resendSentInvoice(id: string, to: string[], saveTo: "CLIEN
   return { to: sent.to, cc: sent.cc, added, saved };
 }
 
-// メール本文・PDFを作って送る共通処理(初回送信と再送で使う)。DBの状態は変えない。
-async function deliverInvoiceMail(id: string, opts: { resend: boolean; to?: string[] }) {
+// メールの中身(宛先・件名・本文・添付ファイル名)を作る。PDFは作らず、DBも変えない。
+// 送信前の確認画面(previewInvoiceMail)と、実際の送信(deliverInvoiceMail)で同じ中身を使う。
+async function composeInvoiceMail(id: string, opts: { resend: boolean; to?: string[] }) {
   const invoice = await prisma.invoice.findUnique({
     where: { id },
     include: { client: true, lines: true },
@@ -149,13 +150,12 @@ async function deliverInvoiceMail(id: string, opts: { resend: boolean; to?: stri
 
   const bcc = confirmBccFor((invoice.client.billingTerms ?? {}) as BillingTerms, to, cc);
 
-  const issuedAt = new Date(); // 送付した実際の日時(記録用)。請求書の発行日は稼働月の月末日。
   // 別途請求(営業協力費など)は稼働明細書(請求内訳書)がないので、請求書だけを送る。
   const isExtra = isExtraInvoice(invoice.kind);
-  const inv = await renderInvoicePdf(id);
-  const stmt = isExtra ? null : await renderStatementPdf(id);
-  if (!inv || (!isExtra && !stmt)) throw new Error("PDFの作成に失敗しました。");
+  const loaded = await loadInvoiceDoc(id);
+  if (!loaded) throw new Error("請求書が見つかりません。");
   const extraTitle = isExtra ? extraTitleOf(invoice.lines) : "";
+  const inv = { data: loaded.data };
 
   const [y, m] = invoice.yearMonth.split("-").map(Number);
   const addressee = inv.data.addressee;
@@ -207,6 +207,37 @@ async function deliverInvoiceMail(id: string, opts: { resend: boolean; to?: stri
     ...MAIL_SIGNATURE,
   ].join("\n");
 
+  const bundle = isExtra ? false : ((invoice.client.billingTerms ?? {}) as BillingTerms).pdfBundle === "COMBINED";
+  const attachmentNames = isExtra
+    ? [pdfFileName("請求書", y, m, extraTitle)]
+    : bundle
+      ? [pdfFileName("請求書・請求内訳書", y, m)]
+      : [pdfFileName("請求書", y, m), pdfFileName("請求内訳書", y, m)];
+
+  return { invoice, to, cc, bcc, subject, text, isExtra, isCorrection, y, m, extraTitle, bundle, attachmentNames };
+}
+
+// 送信前の確認画面に出す内容(実際に送る件名・本文・宛先・添付と同じもの)。mode=send は初回送信、resend は再送。
+export async function previewInvoiceMail(id: string, mode: "send" | "resend", to?: string[]) {
+  const head = await prisma.invoice.findUnique({ where: { id }, select: { status: true, sentAt: true } });
+  if (!head) throw new Error("請求書が見つかりません。");
+  if (mode === "send" && head.status !== "APPROVED") throw new Error("承認済みの請求だけ送信できます。");
+  if (mode === "resend" && !head.sentAt) throw new Error("送付済みの請求だけ再送できます。");
+  const cleaned = mode === "resend" ? [...new Set((to ?? []).map((x) => x.trim()).filter(Boolean))] : undefined;
+  if (mode === "resend" && !cleaned?.length) throw new Error("送信先を1件以上選んでください。");
+  const c = await composeInvoiceMail(id, { resend: mode === "resend", to: cleaned });
+  return { mode, subject: c.subject, text: c.text, to: c.to, cc: c.cc, bcc: c.bcc, attachments: c.attachmentNames, isCorrection: c.isCorrection };
+}
+
+// メールを実際に送る共通処理(初回送信と再送で使う)。DBの状態は変えない。
+async function deliverInvoiceMail(id: string, opts: { resend: boolean; to?: string[] }) {
+  const c = await composeInvoiceMail(id, opts);
+  const { to, cc, bcc, subject, text, isExtra, y, m, extraTitle } = c;
+  const issuedAt = new Date(); // 送付した実際の日時(記録用)。請求書の発行日は稼働月の月末日。
+  const inv = await renderInvoicePdf(id);
+  const stmt = isExtra ? null : await renderStatementPdf(id);
+  if (!inv || (!isExtra && !stmt)) throw new Error("PDFの作成に失敗しました。");
+
   await sendMailStrict({
     to,
     cc,
@@ -217,7 +248,7 @@ async function deliverInvoiceMail(id: string, opts: { resend: boolean; to?: stri
     attachments:
       isExtra || !stmt
         ? [{ filename: pdfFileName("請求書", y, m, extraTitle), content: inv.buffer }]
-        : ((invoice.client.billingTerms ?? {}) as BillingTerms).pdfBundle === "COMBINED"
+        : c.bundle
           ? [{ filename: pdfFileName("請求書・請求内訳書", y, m), content: await mergePdfs([inv.buffer, stmt.buffer]) }]
           : [
               { filename: pdfFileName("請求書", y, m), content: inv.buffer },

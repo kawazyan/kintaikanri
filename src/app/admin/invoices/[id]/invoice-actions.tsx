@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { approveInvoice, deleteInvoice, sendInvoice } from "../actions";
+import { approveInvoice, deleteInvoice, previewMail, sendInvoice, type MailPreview } from "../actions";
+import { MailPreviewDialog } from "./mail-preview-dialog";
 
 // 下書き: 承認 / 修正 / 削除 ・ 承認済み: 送信 / 修正 / 削除
 export function InvoiceActions({
@@ -12,7 +13,6 @@ export function InvoiceActions({
   recipients,
   total,
   clientName,
-  extra = false,
 }: {
   invoiceId: string;
   status: "DRAFT" | "APPROVED";
@@ -25,6 +25,7 @@ export function InvoiceActions({
   const [name, setName] = useState("");
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
+  const [preview, setPreview] = useState<MailPreview | null>(null);
 
   function run(fn: () => Promise<{ ok: true; message: string } | { ok: false; error: string }>, after?: () => void) {
     setMessage(null);
@@ -45,9 +46,20 @@ export function InvoiceActions({
     if (!window.confirm(`${clientName} の請求（税込 ¥${total.toLocaleString("ja-JP")}）を承認します。\nメールはまだ送信されません。よろしいですか？`)) return;
     run(() => approveInvoice(invoiceId, name));
   }
+  // 「送信」: まず実際に送る件名・本文を確認画面に出し、「送信する」で初めて送る。
   function send() {
-    if (!window.confirm(`${extra ? "請求書" : "請求書と稼働明細書"}（税込 ¥${total.toLocaleString("ja-JP")}）を\n${recipients}\nへメール送信します。よろしいですか？`)) return;
-    run(() => sendInvoice(invoiceId));
+    setMessage(null);
+    startTransition(async () => {
+      const res = await previewMail(invoiceId, "send");
+      if (res.ok) setPreview(res.preview);
+      else setMessage({ ok: false, text: res.error });
+    });
+  }
+  function confirmSend() {
+    run(() => sendInvoice(invoiceId), () => {
+      setPreview(null);
+      router.refresh();
+    });
   }
   function remove() {
     if (!window.confirm(`${clientName} の請求（税込 ¥${total.toLocaleString("ja-JP")}）を削除します。元に戻せません。よろしいですか？`)) return;
@@ -90,6 +102,7 @@ export function InvoiceActions({
         </button>
       </div>
       {message && <p className={`mt-3 text-sm font-bold ${message.ok ? "text-emerald-700" : "text-red-700"}`}>{message.text}</p>}
+      {preview && <MailPreviewDialog preview={preview} pending={pending} onConfirm={confirmSend} onClose={() => setPreview(null)} />}
     </div>
   );
 }

@@ -164,7 +164,6 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
               invoiceId={i.id}
               registered={resolveInvoiceRecipients(i.recipientEmails, i.client)}
               saveTarget={splitEmails(i.recipientEmails).length ? "INVOICE" : "CLIENT"}
-              total={i.totalInclTax}
               extra={extra}
             />
           )}

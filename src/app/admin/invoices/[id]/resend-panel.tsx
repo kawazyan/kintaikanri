@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { resendInvoice } from "../actions";
+import { previewMail, resendInvoice, type MailPreview } from "../actions";
+import { MailPreviewDialog } from "./mail-preview-dialog";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -11,13 +12,11 @@ export function ResendPanel({
   invoiceId,
   registered,
   saveTarget,
-  total,
   extra,
 }: {
   invoiceId: string;
   registered: string[]; // いま登録されている宛先(取引先 or この請求)
   saveTarget: "CLIENT" | "INVOICE"; // 追加した宛先の保存先(請求ごとに宛先がある請求は INVOICE)
-  total: number;
   extra: boolean;
 }) {
   const router = useRouter();
@@ -27,6 +26,7 @@ export function ResendPanel({
   const [save, setSave] = useState(true);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
+  const [preview, setPreview] = useState<MailPreview | null>(null);
 
   const all = [...registered, ...added];
   const selected = all.filter((x) => checked[x]);
@@ -46,13 +46,20 @@ export function ResendPanel({
     setMessage(null);
   }
 
+  // 「再送する」: まず実際に送る件名・本文を確認画面に出し、「再送する」で初めて送る。
   function resend() {
     if (!selected.length) return setMessage({ ok: false, text: "送信先を1件以上選んでください。" });
-    const saveText = newOnes.length && save ? `\n\n追加した宛先（${newOnes.join(", ")}）は、${saveTarget === "CLIENT" ? "取引先" : "この請求"}の宛先にも保存します。` : "";
-    if (!window.confirm(`${extra ? "請求書" : "請求書と請求内訳書"}（税込 ¥${total.toLocaleString("ja-JP")}）を\n${selected.join("\n")}\nへ再送します。よろしいですか？${saveText}`)) return;
     setMessage(null);
     startTransition(async () => {
+      const res = await previewMail(invoiceId, "resend", selected);
+      if (res.ok) setPreview(res.preview);
+      else setMessage({ ok: false, text: res.error });
+    });
+  }
+  function confirmResend() {
+    startTransition(async () => {
       const res = await resendInvoice(invoiceId, selected, save ? saveTarget : null);
+      setPreview(null);
       if (res.ok) {
         setMessage({ ok: true, text: res.message });
         setAdded([]);
@@ -106,6 +113,15 @@ export function ResendPanel({
         {pending ? "再送中..." : `再送する（${extra ? "請求書" : "請求書＋請求内訳書"}）`}
       </button>
       {message && <p className={`mt-3 text-sm font-bold ${message.ok ? "text-emerald-400" : "text-red-400"}`}>{message.text}</p>}
+      {preview && (
+        <MailPreviewDialog
+          preview={preview}
+          note={newOnes.length && save ? `追加した宛先（${newOnes.join(", ")}）は、${saveTarget === "CLIENT" ? "取引先" : "この請求"}の宛先にも保存します。` : undefined}
+          pending={pending}
+          onConfirm={confirmResend}
+          onClose={() => setPreview(null)}
+        />
+      )}
     </div>
   );
 }
