@@ -10,7 +10,7 @@ import { buildInvoiceLines, manualUnitExTax } from "@/lib/invoice-lines";
 import { monthEndOf, nextMonthEnd, splitEmails } from "@/lib/invoice-defaults";
 import { DEFAULT_EXTRA_INVOICE_NOTE, INVOICE_KIND_EXTRA, extraInvoiceNumber, extraSubject, isExtraInvoice } from "@/lib/invoice-kind";
 import { createCorrectionDraft } from "@/lib/invoice-correction";
-import { approveDraftInvoice, sendApprovedInvoice } from "@/lib/invoice-send";
+import { approveDraftInvoice, resendSentInvoice, sendApprovedInvoice } from "@/lib/invoice-send";
 import { buildManualStaffNoShift, validateExternalStaffName, validateManualStaffNoShift } from "@/lib/invoice-manual-staff";
 import { addTax, computeInvoiceTotals, splitInclusiveTax } from "@/lib/billing";
 
@@ -241,6 +241,22 @@ export async function sendInvoice(id: string): Promise<ActionResult> {
     return { ok: true, message: `送信しました（宛先: ${to.join(", ")}${cc.length ? ` / CC: ${cc.join(", ")}` : ""}）` };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "送信に失敗しました。" };
+  }
+}
+
+// 「再送」: 送付済みの請求を、同じ内容で選んだ宛先へもう一度メール送信する(金額・状態は変えない)。
+// saveTo: 追加した宛先の保存先。CLIENT=取引先の宛先 / INVOICE=この請求だけ / null=保存しない。
+export async function resendInvoice(id: string, to: string[], saveTo: "CLIENT" | "INVOICE" | null): Promise<ActionResult> {
+  await requireAdmin();
+  try {
+    const r = await resendSentInvoice(id, to, saveTo);
+    revalidatePath(`/admin/invoices/${id}`);
+    revalidatePath("/admin/invoices");
+    revalidatePath("/admin/clients");
+    const saved = r.saved && r.added.length ? ` 追加した宛先（${r.added.join(", ")}）を${r.saved === "CLIENT" ? "取引先" : "この請求"}の宛先に保存しました。` : "";
+    return { ok: true, message: `再送しました（宛先: ${r.to.join(", ")}${r.cc.length ? ` / CC: ${r.cc.join(", ")}` : ""}）。${saved}` };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "再送に失敗しました。" };
   }
 }
 

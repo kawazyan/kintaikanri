@@ -720,7 +720,23 @@ model Invoice {
   updatedAt DateTime @updatedAt
   lines InvoiceLine[]
   workOrders InvoiceWorkOrder[]
+  sendLogs InvoiceSendLog[]
   @@index([clientId, yearMonth])
+}
+
+// 請求書メールの送付履歴(初回の送信と再送)。送付済みの請求の詳細に一覧で出す。
+model InvoiceSendLog {
+  id String @id @default(cuid())
+  invoiceId String
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  kind String // SEND=初回送信 / RESEND=再送
+  sentAt DateTime @default(now())
+  toEmails String // 宛先(カンマ区切り)
+  ccEmails String? // CC(カンマ区切り)
+  bccEmails String? // BCC(カンマ区切り)
+  savedTo String? // 再送で追加した宛先の保存先。CLIENT=取引先 / INVOICE=この請求のみ / NULL=保存なし
+  addedEmails String? // 再送で新しく追加した宛先(カンマ区切り)
+  @@index([invoiceId, sentAt])
 }
 
 model InvoiceWorkOrder {

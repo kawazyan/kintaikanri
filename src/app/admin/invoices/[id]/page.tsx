@@ -3,11 +3,13 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatJst } from "@/lib/time";
-import { resolveInvoiceRecipients } from "@/lib/invoice-defaults";
+import { resolveInvoiceRecipients, splitEmails } from "@/lib/invoice-defaults";
 import { AdminNav } from "../../admin-nav";
 import { InvoiceActions } from "./invoice-actions";
 import { DeleteSentInvoiceButton } from "./delete-sent-button";
 import { PdfPreview } from "./pdf-preview";
+import { ResendPanel } from "./resend-panel";
+import { SendHistory } from "./send-history";
 import { AddStaffForm } from "./add-staff-form";
 import { AddManualStaffForm } from "./add-manual-staff-form";
 import { CorrectionButton } from "./correction-button";
@@ -23,7 +25,7 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
   const { id } = await params;
   const i = await prisma.invoice.findUnique({
     where: { id },
-    include: { client: true, lines: { orderBy: { sortOrder: "asc" } } },
+    include: { client: true, lines: { orderBy: { sortOrder: "asc" } }, sendLogs: { orderBy: { sentAt: "desc" } } },
   });
   if (!i) notFound();
 
@@ -157,6 +159,16 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
             )}
             {!extra && <Link href={`/invoice/${i.id}/detail`} className="rounded-xl border border-slate-600 px-4 py-3 font-black">勤務・請求明細書</Link>}
           </div>
+          {i.sentAt && (
+            <ResendPanel
+              invoiceId={i.id}
+              registered={resolveInvoiceRecipients(i.recipientEmails, i.client)}
+              saveTarget={splitEmails(i.recipientEmails).length ? "INVOICE" : "CLIENT"}
+              total={i.totalInclTax}
+              extra={extra}
+            />
+          )}
+          <SendHistory logs={i.sendLogs} legacy={i.sentAt ? { sentAt: i.sentAt, sentTo: i.sentTo } : null} />
           <CorrectionButton invoiceId={i.id} invoiceNumber={i.invoiceNumber} />
           <DeleteSentInvoiceButton invoiceId={i.id} invoiceNumber={i.invoiceNumber} clientName={i.client.name} total={i.totalInclTax} sent={!!i.sentAt} />
         </>

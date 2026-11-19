@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { sendMailStrict } from "@/lib/mail";
 import { renderInvoicePdf, renderStatementPdf } from "@/lib/invoice-render";
-import { resolveInvoiceRecipients } from "@/lib/invoice-defaults";
+import { invoiceRecipients, resolveInvoiceRecipients } from "@/lib/invoice-defaults";
 import { planManualContracts } from "@/lib/manual-contracts";
 import { invoiceMismatch } from "@/lib/invoice-consistency";
 import { mergePdfs } from "@/lib/pdf-bundle";
@@ -58,6 +58,76 @@ export async function sendApprovedInvoice(id: string) {
   });
   if (!invoice) throw new Error("請求書が見つかりません。");
   if (invoice.status !== "APPROVED") throw new Error("承認済みの請求だけ送信できます。");
+  const sent = await deliverInvoiceMail(id, { resend: false });
+  const { to, cc, bcc, issuedAt } = sent;
+
+  await prisma.invoice.update({
+    where: { id },
+    data: {
+      status: invoice.revision > 1 ? "REISSUED" : "FINALIZED",
+      finalizedAt: issuedAt,
+      finalizedBy: invoice.approvedBy,
+      sentAt: new Date(),
+      sentTo: [...to, ...cc, ...bcc].join(", "),
+      sendLogs: { create: { kind: "SEND", toEmails: to.join(", "), ccEmails: cc.join(", ") || null, bccEmails: bcc.join(", ") || null } },
+    },
+  });
+
+  return { to, cc };
+}
+
+// 送付済みの請求を、同じ内容(請求書・請求内訳書)でもう一度メール送信する。
+// 請求の金額・番号・状態・送付日時は変えない。宛先は呼び出し側が選んだもの(to)を使う。
+// 送信に成功したときだけ、履歴(InvoiceSendLog)と、宛先の保存(任意)を記録する。
+export async function resendSentInvoice(id: string, to: string[], saveTo: "CLIENT" | "INVOICE" | null) {
+  const invoice = await prisma.invoice.findUnique({ where: { id }, include: { client: true } });
+  if (!invoice) throw new Error("請求書が見つかりません。");
+  if (!invoice.sentAt) throw new Error("送付済みの請求だけ再送できます。");
+  const cleaned = [...new Set(to.map((x) => x.trim()).filter(Boolean))];
+  if (!cleaned.length) throw new Error("送信先を1件以上選んでください。");
+  const bad = cleaned.find((x) => !EMAIL_RE.test(x));
+  if (bad) throw new Error(`送信先のメールアドレスの形式が正しくありません: ${bad}`);
+
+  const sent = await deliverInvoiceMail(id, { resend: true, to: cleaned });
+
+  // 宛先の保存先: 登録済みの宛先に無かったものだけを足す(重複・順序の変更はしない)。
+  const registered = resolveInvoiceRecipients(invoice.recipientEmails, invoice.client);
+  const added = cleaned.filter((x) => !registered.some((r) => r.toLowerCase() === x.toLowerCase()));
+  let saved: "CLIENT" | "INVOICE" | null = null;
+  const ops = [];
+  if (saveTo && added.length) {
+    saved = saveTo;
+    if (saveTo === "INVOICE") {
+      ops.push(prisma.invoice.update({ where: { id }, data: { recipientEmails: [...registered, ...added].join(", ") } }));
+    } else {
+      // 取引先の請求用宛先に足す。請求用宛先が未設定で email を使っていた場合も、その宛先を残したまま足す。
+      ops.push(prisma.client.update({ where: { id: invoice.clientId }, data: { invoiceEmails: [...invoiceRecipients(invoice.client), ...added].join(", ") } }));
+    }
+  }
+  ops.push(
+    prisma.invoiceSendLog.create({
+      data: {
+        invoiceId: id,
+        kind: "RESEND",
+        toEmails: sent.to.join(", "),
+        ccEmails: sent.cc.join(", ") || null,
+        bccEmails: sent.bcc.join(", ") || null,
+        savedTo: saved,
+        addedEmails: added.join(", ") || null,
+      },
+    })
+  );
+  await prisma.$transaction(ops);
+  return { to: sent.to, cc: sent.cc, added, saved };
+}
+
+// メール本文・PDFを作って送る共通処理(初回送信と再送で使う)。DBの状態は変えない。
+async function deliverInvoiceMail(id: string, opts: { resend: boolean; to?: string[] }) {
+  const invoice = await prisma.invoice.findUnique({
+    where: { id },
+    include: { client: true, lines: true },
+  });
+  if (!invoice) throw new Error("請求書が見つかりません。");
   if (!invoice.statement) {
     throw new Error("稼働明細書のデータがありません。請求下書きを作り直してください。");
   }
@@ -67,7 +137,7 @@ export async function sendApprovedInvoice(id: string) {
   const mismatch = invoiceMismatch(invoice, invoice.statement as unknown as StatementSnapshot);
   if (mismatch) throw new Error(mismatch);
 
-  const to = resolveInvoiceRecipients(invoice.recipientEmails, invoice.client);
+  const to = opts.to ?? resolveInvoiceRecipients(invoice.recipientEmails, invoice.client);
   if (!to.length) {
     throw new Error(`取引先「${invoice.client.name}」にメールアドレスが登録されていません。請求書の「修正」画面で送信先を入力するか、取引先窓口の画面で登録してから、もう一度送信してください。`);
   }
@@ -105,14 +175,23 @@ export async function sendApprovedInvoice(id: string) {
   });
   const isCorrection = !!sentBefore;
   const monthLabel = `${y}年${m}月分${extraTitle ? `（${extraTitle}）` : ""}`;
-  const subject = isCorrection ? `【請求書（訂正）】${monthLabel}のご請求（株式会社K.J）` : `【請求書】${monthLabel}のご請求（株式会社K.J）`;
+  const subject = opts.resend
+    ? `【請求書（${isCorrection ? "訂正・再送" : "再送"}）】${monthLabel}のご請求（株式会社K.J）`
+    : isCorrection
+      ? `【請求書（訂正）】${monthLabel}のご請求（株式会社K.J）`
+      : `【請求書】${monthLabel}のご請求（株式会社K.J）`;
   const text = [
     `${addressee} 御中`,
     "",
     "いつも大変お世話になっております。",
     "株式会社K.Jです。",
     "",
-    ...(isExtra
+    ...(opts.resend
+      ? [
+          `${isCorrection ? "訂正版の" : ""}${monthLabel}の請求書${isExtra ? "" : "と請求内訳書"}を、改めてお送りいたします。`,
+          "すでにお受け取りの場合は、お手数ですがこちらをご確認くださいますようお願い申し上げます。",
+        ]
+      : isExtra
       ? isCorrection
         ? [`先日お送りした${monthLabel}の請求書に訂正がございましたため、訂正版の請求書をお送りいたします。`, "お手数をおかけいたしますが、前回の請求書は破棄のうえ、添付ファイルをご確認くださいますようお願い申し上げます。"]
         : [`${monthLabel}の請求書をお送りいたします。`, "添付ファイルをご確認くださいますようお願い申し上げます。"]
@@ -146,16 +225,5 @@ export async function sendApprovedInvoice(id: string) {
             ],
   });
 
-  await prisma.invoice.update({
-    where: { id },
-    data: {
-      status: invoice.revision > 1 ? "REISSUED" : "FINALIZED",
-      finalizedAt: issuedAt,
-      finalizedBy: invoice.approvedBy,
-      sentAt: new Date(),
-      sentTo: [...to, ...cc, ...bcc].join(", "),
-    },
-  });
-
-  return { to, cc };
+  return { to, cc, bcc, issuedAt };
 }
