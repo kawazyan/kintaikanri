@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { computeMonthlyEarnings } from "@/lib/earnings";
-import { sumSubmittedExpenses } from "@/lib/staff-month-summary";
+import { sumPayableAdditions } from "@/lib/staff-month-summary";
 
 export async function markTransferRequestPaid(requestId: string, formData: FormData) {
   await requireAdmin();
@@ -69,13 +69,20 @@ export async function markFixedPaymentDone(staffId: string, closingYearMonth: st
 
   const { confirmedAmount } = await computeMonthlyEarnings(staffId, closingYearMonth, new Date());
   if (confirmedAmount === null) return;
-  const paidAmount = confirmedAmount + (await sumSubmittedExpenses(staffId, closingYearMonth));
+  const paidAmount = confirmedAmount + (await sumPayableAdditions(staffId, closingYearMonth));
 
-  await prisma.fixedPaymentCompletion.upsert({
-    where: { staffId_closingYearMonth: { staffId, closingYearMonth } },
-    update: {},
-    create: { staffId, closingYearMonth, paidAmount },
-  });
+  // 振込完了に含めた別途報酬(承認済・未振込)は、同じ振込で払ったものとして振込済みにする(二重払い防止)。
+  await prisma.$transaction([
+    prisma.fixedPaymentCompletion.upsert({
+      where: { staffId_closingYearMonth: { staffId, closingYearMonth } },
+      update: {},
+      create: { staffId, closingYearMonth, paidAmount },
+    }),
+    prisma.compensationRequest.updateMany({
+      where: { staffId, yearMonth: closingYearMonth, status: "APPROVED", paidAt: null },
+      data: { paidAt: new Date(), paidAmount: null, paidByOperatorName: "固定支払の振込完了に含む" },
+    }),
+  ]);
 
   revalidatePath("/admin/payments");
   revalidatePath("/admin");

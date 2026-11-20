@@ -12,6 +12,7 @@ export type StaffMonthSummary = AttendanceCounts & {
   earnings: number | null; // その月の受取金額(確定分)。null=計算できない
   monthlyMax: number | null; // 管理者が入れた、その月の報酬の満額(MonthlyEarningTarget)。null=未入力(報酬設定の月額を使う)
   expenses: number; // 申請のある経費(申請中+承認済)
+  compensation: number; // 別途報酬(リファラル等)のうち承認済・未振込の合計
   expensesPending: number; // うち承認待ち
   total: number | null; // earnings + expenses。earnings が null なら null
   paymentDate: Date | null; // 支払い予定日(固定支払のみ)
@@ -36,7 +37,7 @@ export async function loadStaffMonthSummaries(staffList: StaffInput[], yearMonth
   const ids = staffList.map((s) => s.id);
   const { start, end } = jstMonthRange(yearMonth);
 
-  const [shifts, clocks, irregular, simple, expenses, requests, completions, targets] = await Promise.all([
+  const [shifts, clocks, irregular, simple, expenses, requests, completions, targets, compensations] = await Promise.all([
     prisma.shift.findMany({ where: { staffId: { in: ids }, cancelledAt: null, startTime: { gte: start, lt: end } }, select: { id: true, staffId: true, startTime: true } }),
     prisma.clockRecord.findMany({ where: { staffId: { in: ids }, timestamp: { gte: start, lt: end } }, select: { staffId: true, type: true, timestamp: true, shiftId: true } }),
     prisma.irregularReport.findMany({ where: { staffId: { in: ids }, reportType: { in: ["EARLY_LEAVE", "ABSENCE", "SAME_DAY_ABSENCE"] }, targetDate: { gte: start, lt: end } }, select: { staffId: true, targetDate: true, reportType: true } }),
@@ -45,6 +46,7 @@ export async function loadStaffMonthSummaries(staffList: StaffInput[], yearMonth
     prisma.transferRequest.findMany({ where: { staffId: { in: ids }, status: "REQUESTING" }, select: { staffId: true, amount: true, desiredPaymentDate: true } }),
     prisma.fixedPaymentCompletion.findMany({ where: { staffId: { in: ids }, closingYearMonth: yearMonth }, select: { staffId: true, paidAmount: true, paidAt: true } }),
     prisma.monthlyEarningTarget.findMany({ where: { staffId: { in: ids }, yearMonth }, select: { staffId: true, targetAmount: true } }),
+    prisma.compensationRequest.findMany({ where: { staffId: { in: ids }, yearMonth, status: "APPROVED", paidAt: null }, select: { staffId: true, amountTaxInclusive: true } }),
   ]);
   const targetByStaff = new Map(targets.map((t) => [t.staffId, t.targetAmount]));
   const completionByStaff = new Map(completions.map((c) => [c.staffId, c]));
@@ -54,7 +56,7 @@ export async function loadStaffMonthSummaries(staffList: StaffInput[], yearMonth
     for (const r of rows) (m.get(r.staffId) ?? m.set(r.staffId, []).get(r.staffId)!).push(r);
     return m;
   };
-  const gShifts = group(shifts), gClocks = group(clocks), gIrr = group(irregular), gSimple = group(simple), gExp = group(expenses), gReq = group(requests);
+  const gShifts = group(shifts), gClocks = group(clocks), gIrr = group(irregular), gSimple = group(simple), gExp = group(expenses), gReq = group(requests), gComp = group(compensations);
 
   const result = new Map<string, StaffMonthSummary>();
   for (const s of staffList) {
@@ -76,6 +78,8 @@ export async function loadStaffMonthSummaries(staffList: StaffInput[], yearMonth
     const exps = gExp.get(s.id) ?? [];
     const expenseTotal = exps.reduce((sum, e) => sum + e.amountTaxInclusive, 0);
     const expensePending = exps.filter((e) => e.status === "SUBMITTED").reduce((sum, e) => sum + e.amountTaxInclusive, 0);
+    // 別途報酬は固定支払のスタッフだけ、振込完了時にまとめて払う(申請支払のスタッフは別途報酬の「振込済み」で払う)。
+    const compensationTotal = s.paymentMethod === "FIXED" ? (gComp.get(s.id) ?? []).reduce((sum, c) => sum + c.amountTaxInclusive, 0) : 0;
 
     const reqs = gReq.get(s.id) ?? [];
     let paymentDate: Date | null = null;
@@ -97,7 +101,8 @@ export async function loadStaffMonthSummaries(staffList: StaffInput[], yearMonth
       monthlyMax: targetByStaff.get(s.id) ?? null,
       expenses: expenseTotal,
       expensesPending: expensePending,
-      total: confirmedAmount === null ? null : confirmedAmount + expenseTotal,
+      compensation: compensationTotal,
+      total: confirmedAmount === null ? null : confirmedAmount + expenseTotal + compensationTotal,
       paymentDate,
       paymentNote,
       paymentState,
@@ -110,10 +115,14 @@ export async function loadStaffMonthSummaries(staffList: StaffInput[], yearMonth
   return result;
 }
 
-// 振込日の通知用: そのスタッフ・その月(締め月)の「申請のある経費」の合計(申請中+承認済)。
-export async function sumSubmittedExpenses(staffId: string, yearMonth: string): Promise<number> {
-  const rows = await prisma.expense.findMany({ where: { staffId, yearMonth, status: { in: ["SUBMITTED", "APPROVED"] } }, select: { amountTaxInclusive: true } });
-  return rows.reduce((sum, e) => sum + e.amountTaxInclusive, 0);
+// 振込の「上乗せ分」: そのスタッフ・その月(締め月)の申請のある経費(申請中+承認済)と、
+// 承認済み・未振込の別途報酬(リファラル等)の合計。振込完了・振込日の通知・急ぎ表示で同じ値を使う。
+export async function sumPayableAdditions(staffId: string, yearMonth: string): Promise<number> {
+  const [expenses, comps] = await Promise.all([
+    prisma.expense.findMany({ where: { staffId, yearMonth, status: { in: ["SUBMITTED", "APPROVED"] } }, select: { amountTaxInclusive: true } }),
+    prisma.compensationRequest.findMany({ where: { staffId, yearMonth, status: "APPROVED", paidAt: null }, select: { amountTaxInclusive: true } }),
+  ]);
+  return expenses.reduce((sum, e) => sum + e.amountTaxInclusive, 0) + comps.reduce((sum, c) => sum + c.amountTaxInclusive, 0);
 }
 
 // 打刻記録一覧の「該当スタッフの月の勤怠」用。1人分の集計(判定基準は attendance-summary.ts)に、遅刻の申請日を加えたもの。

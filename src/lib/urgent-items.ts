@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { computeMonthlyEarnings } from "@/lib/earnings";
 import { fixedPaymentDateForClosingMonth } from "@/lib/payment";
 import { fixedPaymentState } from "@/lib/fixed-payment-status";
-import { sumSubmittedExpenses } from "@/lib/staff-month-summary";
+import { sumPayableAdditions } from "@/lib/staff-month-summary";
 import { currentJstYearMonth, jstDayRange, jstMonthRange, toJstDateValue } from "@/lib/time";
 
 // 管理ダッシュボードの「急ぎ案件」。
@@ -56,7 +56,7 @@ export async function loadUrgentItems(now: Date = new Date()): Promise<{ unpaid:
       if (!paymentDate) continue;
       if (fixedPaymentState({ paymentDate, completed: done.has(`${s.id}:${closing}`), now }) !== "OVERDUE") continue;
       const { confirmedAmount } = await computeMonthlyEarnings(s.id, closing, now);
-      const amount = confirmedAmount === null ? null : confirmedAmount + (await sumSubmittedExpenses(s.id, closing));
+      const amount = confirmedAmount === null ? null : confirmedAmount + (await sumPayableAdditions(s.id, closing));
       unpaid.push({ kind: "FIXED", staffId: s.id, name: s.name, amount, closingYearMonth: closing, paymentDate, isToday: paymentDate.getTime() === todayStart.getTime() });
     }
   }

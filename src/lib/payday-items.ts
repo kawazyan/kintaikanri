@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { computeMonthlyEarnings } from "@/lib/earnings";
 import { fixedPaymentDueToday } from "@/lib/payment";
 import { type PaydayItem } from "@/lib/payday-message";
-import { sumSubmittedExpenses } from "@/lib/staff-month-summary";
+import { sumPayableAdditions } from "@/lib/staff-month-summary";
 import { jstDayRange } from "@/lib/time";
 
 // 「今日が振込日」のスタッフと金額を集める(朝9時のLINE通知と、管理ダッシュボードの急ぎ表示で共通)。
@@ -25,15 +25,15 @@ export async function collectPaydayItems(now: Date): Promise<PaydayItem[]> {
       continue;
     }
     const { confirmedAmount } = await computeMonthlyEarnings(s.id, due.closingYearMonth, now);
-    // 振込金額 = 受取金額 + 申請のある経費(申請中・承認済)。
-    const expenses = await sumSubmittedExpenses(s.id, due.closingYearMonth);
+    // 振込金額 = 受取金額 + 申請のある経費(申請中・承認済) + 承認済み別途報酬(未振込)。
+    const expenses = await sumPayableAdditions(s.id, due.closingYearMonth);
     items.push({
       kind: "FIXED",
       staffId: s.id,
       closingYearMonth: due.closingYearMonth,
       name: s.name,
       amount: confirmedAmount === null ? null : confirmedAmount + expenses,
-      note: `${m}月分${expenses > 0 ? `・経費¥${expenses.toLocaleString("ja-JP")}込み` : ""}`,
+      note: `${m}月分${expenses > 0 ? `・経費・別途報酬¥${expenses.toLocaleString("ja-JP")}込み` : ""}`,
     });
   }
 
