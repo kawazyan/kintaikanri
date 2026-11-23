@@ -9,7 +9,7 @@ export type ContractInput = {
   staffName: string;
   storeMatch: string[];
   storeName: string; // 店舗名(スタッフのシフトに自動で入る。空=自動では入れない)
-  storeKind: "SHOP" | "RETAIL"; // ショップ=先頭にキャリア名＋ショップを付ける / 量販店=そのまま
+  storeKind: "SHOP" | "RETAIL"; // ショップ=先頭にキャリア名＋ショップを付ける / 家電量販店=そのまま
   dates: string[]; // 特定日だけ(YYYY-MM-DD)。空=日付を問わない
   fromMonth: string;
   toMonth: string;

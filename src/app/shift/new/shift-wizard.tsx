@@ -9,7 +9,7 @@ import {
   yearMonthLabel,
   TIME_OPTIONS,
 } from "@/lib/time";
-import { CARRIERS, CARRIER_OTHER, WORK_TYPE_LABEL, isPresetCarrier } from "@/lib/carriers";
+import { CARRIERS, CARRIER_OTHER, WORK_TYPE_LABEL, carrierStorePrefix, isPresetCarrier } from "@/lib/carriers";
 import {
   createShiftsBulk,
   getMonthPlanningData,
@@ -29,7 +29,7 @@ export type WizardInitialValues = {
   unitAmount?: number | null;
 };
 
-const STEP_LABELS = ["対象月", "稼働区分", "キャリア", "店舗名", "稼働時間", "稼働日", "確認"];
+const STEP_LABELS = ["対象月", "区分", "店舗", "時間", "稼働日", "確認"];
 
 const INPUT_CLASS =
   "rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:outline-none";
@@ -71,9 +71,10 @@ export function ShiftWizard({
     initial?.carrier && !initialCarrierIsPreset ? initial.carrier : ""
   );
 
-  const [storeNameInput, setStoreName] = useState(initial?.storeName ?? "");
+  const [storeNameInput, setStoreName] = useState((initial?.storeName ?? "").replace(/店$/, ""));
   const contractStore = contractStores?.[yearMonth] ?? null;
-  const storeName = contractStore?.storeName ?? storeNameInput; // 契約で決まっている月は、入力ではなく契約の店舗名
+  // 家電量販店=入力した店名そのまま / ショップ=先頭に「キャリア名＋ショップ」を付ける。コピー元のシフトがある場合の店名は、すでに完成した名前なのでそのまま(家電量販店扱い。入力が「店」で終わっていればそのまま)。
+  const [storeKind, setStoreKind] = useState<"" | "SHOP" | "RETAIL">(initial?.storeName ? "RETAIL" : "");
   const [startTime, setStartTime] = useState(initial?.startTime ?? "10:00");
   const [endTime, setEndTime] = useState(initial?.endTime ?? "19:00");
 
@@ -89,6 +90,16 @@ export function ShiftWizard({
   const monthOptions = useMemo(() => listMonthOptions(3, 6), []);
   const monthDays = useMemo(() => listDaysInJstYearMonth(yearMonth), [yearMonth]);
   const carrier = carrierSelection === CARRIER_OTHER ? carrierOtherText.trim() : carrierSelection;
+  const typedBase = storeNameInput.trim();
+  // 語尾の「店」は自動で付く(入力に「店」が入っていても重ねない)
+  const typedName = typedBase ? (typedBase.endsWith("店") ? typedBase : `${typedBase}店`) : "";
+  const shopPrefix = storeKind === "SHOP" ? carrierStorePrefix(carrier) : null;
+  const storeName = contractStore
+    ? contractStore.storeName // 契約で決まっている月は、入力ではなく契約の店舗名(ショップの先頭の言葉はサーバーで付く)
+    : shopPrefix && !typedName.startsWith(shopPrefix)
+      ? `${shopPrefix}${typedName}`
+      : typedName;
+  const storeStepReady = !!carrier && (contractStore ? true : !!storeKind && !!typedName);
 
   function applyMonthData(data: { existingDates: string[] }) {
     setLockedDates(new Set(data.existingDates));
@@ -161,14 +172,13 @@ export function ShiftWizard({
       return amount === null || amount === undefined || (Number.isInteger(amount) && amount >= 0);
     });
 
-  // 店舗名が契約で決まっている月は、店舗名の入力(4)を飛ばす。
   function goNext() {
     setError(null);
-    setStep((s) => Math.min(s === 3 && contractStore ? 5 : s + 1, 7));
+    setStep((s) => Math.min(s + 1, 6));
   }
   function goBack() {
     setError(null);
-    setStep((s) => Math.max(s === 5 && contractStore ? 3 : s - 1, 1));
+    setStep((s) => Math.max(s - 1, 1));
   }
 
   function submit() {
@@ -203,16 +213,18 @@ export function ShiftWizard({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center gap-1 text-[11px] text-slate-500">
+      <div className="grid grid-cols-6 gap-1">
         {STEP_LABELS.map((label, i) => (
-          <span
-            key={label}
-            className={`flex-1 border-b-2 pb-1 text-center ${
-              i + 1 === step ? "border-red-500 font-semibold text-red-500" : "border-slate-700"
-            }`}
-          >
-            {label}
-          </span>
+          <div key={label} className="flex min-w-0 flex-col items-center gap-1">
+            <span
+              className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
+                i + 1 === step ? "bg-red-500 text-white" : i + 1 < step ? "bg-slate-500 text-white" : "bg-slate-200 text-slate-500"
+              }`}
+            >
+              {i + 1}
+            </span>
+            <span className={`whitespace-nowrap text-xs ${i + 1 === step ? "font-semibold text-red-500" : "text-slate-500"}`}>{label}</span>
+          </div>
         ))}
       </div>
 
@@ -277,38 +289,81 @@ export function ShiftWizard({
       )}
 
       {step === 3 && (
-        <div className="flex flex-col gap-3">
-          <h2 className="text-base font-semibold text-slate-900">稼働キャリアを選択してください</h2>
-          <div className="grid grid-cols-1 gap-2">
-            {CARRIERS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCarrierSelection(c)}
-                className={`rounded-xl border-2 py-3 text-sm font-medium transition ${
-                  carrierSelection === c
-                    ? "border-red-500 bg-red-500/10 text-red-600 shadow-md shadow-red-900/10"
-                    : "border-slate-300 text-slate-600"
-                }`}
-              >
-                {c}
-              </button>
-            ))}
+        <div className="flex flex-col gap-4">
+          <h2 className="text-base font-semibold text-slate-900">キャリアと店舗を選択してください</h2>
+          <div className="flex flex-col gap-2">
+            <span className="text-sm text-slate-600">キャリア</span>
+            <div className="grid grid-cols-2 gap-2">
+              {CARRIERS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCarrierSelection(c)}
+                  className={`flex min-h-14 flex-col items-center justify-center rounded-xl border-2 px-1 py-2 text-sm font-bold leading-tight transition ${
+                    carrierSelection === c
+                      ? "border-red-500 bg-red-500/10 text-red-600 shadow-md shadow-red-900/10"
+                      : "border-slate-300 bg-white text-slate-600"
+                  }`}
+                >
+                  {c.split("・").map((part, i) => (
+                    <span key={part} className={i === 0 ? "" : "text-[11px] font-medium"}>
+                      {part}
+                    </span>
+                  ))}
+                </button>
+              ))}
+            </div>
+            {carrierSelection === CARRIER_OTHER && (
+              <input
+                type="text"
+                value={carrierOtherText}
+                onChange={(e) => setCarrierOtherText(e.target.value)}
+                placeholder="キャリア名を入力"
+                className={`${INPUT_CLASS} py-2 text-sm`}
+              />
+            )}
           </div>
-          {carrierSelection === CARRIER_OTHER && (
-            <input
-              type="text"
-              value={carrierOtherText}
-              onChange={(e) => setCarrierOtherText(e.target.value)}
-              placeholder="キャリア名を入力"
-              className={`${INPUT_CLASS} py-2 text-sm`}
-            />
+          {!contractStore && (
+            <>
+              <div className="flex flex-col gap-2">
+                <span className="text-sm text-slate-600">店の種類</span>
+                <div className="grid grid-cols-2 gap-2">
+                  {([["SHOP", "ショップ"], ["RETAIL", "家電量販店"]] as const).map(([v, label]) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setStoreKind(v)}
+                      className={`rounded-xl border-2 px-2 py-3 text-sm font-bold transition ${
+                        storeKind === v
+                          ? "border-red-500 bg-red-500/10 text-red-600 shadow-md shadow-red-900/10"
+                          : "border-slate-300 bg-white text-slate-600"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <span className="text-sm text-slate-600">店名</span>
+                <div className="flex items-center gap-2">
+                  <input type="text" value={storeNameInput} onChange={(e) => setStoreName(e.target.value)} className={`${INPUT_CLASS} w-44 min-w-0 py-2`} />
+                  <span className="text-base font-bold text-slate-700">店</span>
+                </div>
+              </div>
+              {storeStepReady && (
+                <div className="px-1">
+                  <div className="text-xs text-slate-500">保存される店舗名</div>
+                  <div className="text-base font-bold text-slate-900">{storeName}</div>
+                </div>
+              )}
+            </>
           )}
           <div className="flex gap-3">
             <button type="button" onClick={goBack} className={OUTLINE_BUTTON}>
               戻る
             </button>
-            <button type="button" disabled={!carrier} onClick={goNext} className={PRIMARY_BUTTON}>
+            <button type="button" disabled={!storeStepReady} onClick={goNext} className={PRIMARY_BUTTON}>
               次へ
             </button>
           </div>
@@ -316,33 +371,6 @@ export function ShiftWizard({
       )}
 
       {step === 4 && (
-        <div className="flex flex-col gap-3">
-          <h2 className="text-base font-semibold text-slate-900">稼働先店舗名を入力してください</h2>
-          <input
-            type="text"
-            value={storeNameInput}
-            onChange={(e) => setStoreName(e.target.value)}
-            placeholder="例: auショップ〇〇店"
-            autoFocus
-            className={INPUT_CLASS}
-          />
-          <div className="flex gap-3">
-            <button type="button" onClick={goBack} className={OUTLINE_BUTTON}>
-              戻る
-            </button>
-            <button
-              type="button"
-              disabled={!storeNameInput.trim()}
-              onClick={goNext}
-              className={PRIMARY_BUTTON}
-            >
-              次へ
-            </button>
-          </div>
-        </div>
-      )}
-
-      {step === 5 && (
         <div className="flex flex-col gap-3">
           <h2 className="text-base font-semibold text-slate-900">稼働予定時間を選択してください（日本時間）</h2>
           <div className="flex items-center gap-3">
@@ -390,7 +418,7 @@ export function ShiftWizard({
         </div>
       )}
 
-      {step === 6 && (
+      {step === 5 && (
         <div className="flex flex-col gap-3">
           <h2 className="text-base font-semibold text-slate-900">
             {yearMonthLabel(yearMonth)}の稼働日を選択してください({totalDayCount}日選択中)
@@ -427,7 +455,7 @@ export function ShiftWizard({
         </div>
       )}
 
-      {step === 7 && workType && (
+      {step === 6 && workType && (
         <div className="flex flex-col gap-3">
           <h2 className="text-base font-semibold text-slate-900">登録内容の確認</h2>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 rounded-xl bg-slate-50 p-4 text-sm text-slate-900">

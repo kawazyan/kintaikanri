@@ -30,7 +30,7 @@ export async function contractStoreFor(staffId: string, yearMonth: string): Prom
   return (await contractStoresFor(staffId, [yearMonth]))[yearMonth] ?? null;
 }
 
-// シフトに保存する店舗名。店の種類が「ショップ」の契約で、キャリアに付ける言葉があれば先頭に付ける(すでに付いていれば重ねない)。量販店はそのまま。
+// シフトに保存する店舗名。店の種類が「ショップ」の契約で、キャリアに付ける言葉があれば先頭に付ける(すでに付いていれば重ねない)。家電量販店はそのまま。
 export function storeNameForShift(store: ContractStore, carrier: string): string {
   const prefix = store.carrierPrefix ? carrierStorePrefix(carrier) : null;
   return prefix && !store.storeName.startsWith(prefix) ? `${prefix}${store.storeName}` : store.storeName;
