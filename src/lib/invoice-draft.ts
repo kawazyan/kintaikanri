@@ -261,6 +261,25 @@ async function staffFromRule(ctx: RuleCtx, rule: ShiftBillingRule, manual?: Manu
   };
 }
 
+// 紹介リファラルの自動計算用: 取引先の契約(shiftBilling)から、そのスタッフの当月の請求額(税抜・欠勤の日割り後)を求める。
+// 請求書の下書きと同じ staffFromRule で計算するので、請求書の「業務委託費」と必ず一致する。DBは読むだけ(書き込まない)。
+export async function computeRuleServiceForStaff(terms: BillingTerms, yearMonth: string, staffName: string) {
+  const rules = activeShiftRules(terms, yearMonth).filter((r) => normName(r.staffName) === normName(staffName));
+  if (!rules.length) return null;
+  const ctx = await makeRuleCtx(terms, yearMonth, []);
+  let serviceExTax = 0;
+  let days = 0;
+  const calcs: string[] = [];
+  for (const rule of rules) {
+    const st = await staffFromRule(ctx, rule);
+    if (!st) continue;
+    serviceExTax += st.serviceExTax;
+    days += st.days;
+    calcs.push(st.serviceCalc);
+  }
+  return calcs.length ? { serviceExTax, days, serviceCalc: calcs.join(" ＋ ") } : null;
+}
+
 // 請求書の画面で「スタッフを追加」するときの、そのスタッフ1人ぶんの明細。該当する稼働がなければ staff は null。
 export async function computeManualStaff(clientId: string, yearMonth: string, staffName: string, manual: ManualStaffInput) {
   const client = await prisma.client.findUnique({ where: { id: clientId }, select: { billingTerms: true } });

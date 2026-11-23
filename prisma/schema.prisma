@@ -993,3 +993,16 @@ model ManualPayAmount {
 
   @@unique([staffId, yearMonth])
 }
+
+// 紹介リファラルの設定。referrer(紹介した人=渡辺)が、referee(紹介された人)の請求額の一部を受け取る。
+// リファラル = 日割り後の単価 − 会社取り分(companyPercent%) − 本人への支払い。計算は src/lib/referral-auto.ts。
+// 支払い月に対する稼働月は、referee の Staff.fixedPaymentMonthOffset(0=当月払い・1=翌月払い)で決まる。
+model ReferralLink {
+  id String @id @default(cuid())
+  referrerStaffId String
+  refereeStaffId String
+  companyPercent Int @default(10)
+  fromMonth String // この支払い月(YYYY-MM)から自動計算する
+  createdAt DateTime @default(now())
+  @@unique([referrerStaffId, refereeStaffId])
+}

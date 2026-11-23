@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { currentJstYearMonth, formatJst, jstDayRange, listMonthOptions, toJstDateValue, yearMonthLabel } from "@/lib/time";
 import { loadStaffMonthSummaries } from "@/lib/staff-month-summary";
+import { syncReferralCompensation } from "@/lib/referral-auto";
 import { computeMonthlyConfirmedList, computeTransferBalance } from "@/lib/earnings";
 import { describeEarnings } from "@/lib/earnings-detail";
 import { allocateTransfersByMonth } from "@/lib/transfer-allocation";
@@ -34,6 +35,13 @@ export default async function AdminPaymentsPage({
   const isOverdue = (desired: Date) => desired.getTime() <= todayStart;
 
   const activeStaff = await prisma.staff.findMany({ where: { status: "ACTIVE" }, orderBy: { employeeCode: "asc" } });
+  // 紹介リファラル(渡辺さん)の自動計算。失敗しても画面は止めない。
+  let referralNotes: string[] = [];
+  try {
+    referralNotes = (await syncReferralCompensation(yearMonth, nowDate)).skipped;
+  } catch (e) {
+    console.error("[referral] 自動計算に失敗しました", e);
+  }
   const summaries = await loadStaffMonthSummaries(activeStaff, yearMonth, nowDate);
 
   const requests = await prisma.transferRequest.findMany({
@@ -88,6 +96,17 @@ export default async function AdminPaymentsPage({
       <h1 className="kj-page-title">
         振込関係
       </h1>
+
+      {referralNotes.length > 0 && (
+        <div className="mb-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="font-black">リファラル報酬を自動で作れませんでした（一部の人が計算できないため、作っていません）</p>
+          <ul className="mt-1 list-disc pl-5">
+            {referralNotes.map((n) => (
+              <li key={n}>{n}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <nav className="mb-3 flex gap-1 overflow-x-auto" aria-label="月の切り替え">
         {monthTabs.map((t) => (

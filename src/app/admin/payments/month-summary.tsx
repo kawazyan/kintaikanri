@@ -204,12 +204,12 @@ export function MonthSummary({
                             <span className="whitespace-nowrap text-slate-200">{yen(c.amountTaxInclusive)}</span>
                           </div>
                           {c.items.map((it, i) => (
-                            <div key={i} className="flex justify-between gap-2 pl-3 text-slate-500">
-                              <span>
-                                ・{it.label}
-                                {it.memo ? `(${it.memo})` : ""}
-                              </span>
-                              <span className="whitespace-nowrap">{yen(it.amount)}</span>
+                            <div key={i} className="pl-3 pt-1">
+                              <div className="flex justify-between gap-2 text-sm font-semibold text-slate-700">
+                                <span>・{it.label}</span>
+                                <span className="whitespace-nowrap">{yen(it.amount)}</span>
+                              </div>
+                              {it.memo && <p className="pl-3 text-xs text-slate-600">{it.memo}</p>}
                             </div>
                           ))}
                         </li>
