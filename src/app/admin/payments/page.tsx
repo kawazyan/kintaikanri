@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { currentJstYearMonth, formatJst, jstDayRange, listMonthOptions, yearMonthLabel } from "@/lib/time";
 import { loadStaffMonthSummaries } from "@/lib/staff-month-summary";
+import { computeTransferBalance } from "@/lib/earnings";
 import { MonthSummary } from "./month-summary";
 import { AdminNav } from "../admin-nav";
 import { markTransferRequestPaid, rejectTransferRequest } from "./actions";
@@ -38,6 +39,20 @@ export default async function AdminPaymentsPage({
     orderBy: { requestedAt: "desc" },
     take: 200,
   });
+
+  // 申請支払の人の「支払い可能額」(スタッフ側の申請可能額と同じ計算)と、今月の参考情報(経費・別途報酬)。
+  const requestStaffIds = [...new Set(requests.filter((r) => r.status === "REQUESTING").map((r) => r.staffId))];
+  const balances = await Promise.all(requestStaffIds.map((id) => computeTransferBalance(id)));
+  const balanceByStaff = new Map(requestStaffIds.map((id, i) => [id, balances[i]]));
+  const compByStaff = new Map(
+    (
+      await prisma.compensationRequest.groupBy({
+        by: ["staffId"],
+        where: { staffId: { in: requestStaffIds }, yearMonth, status: "APPROVED", paidAt: null },
+        _sum: { amountTaxInclusive: true },
+      })
+    ).map((g) => [g.staffId, g._sum.amountTaxInclusive ?? 0])
+  );
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
@@ -152,6 +167,26 @@ export default async function AdminPaymentsPage({
                   )}
                 </td>
                 <td className="py-2 pr-3">
+                  {r.status === "REQUESTING" && balanceByStaff.has(r.staffId) && (() => {
+                    const b = balanceByStaff.get(r.staffId)!;
+                    const ex = summaries.get(r.staffId);
+                    const comp = compByStaff.get(r.staffId) ?? 0;
+                    return (
+                      <details className="mb-3 rounded-md border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs text-slate-300">
+                        <summary className="cursor-pointer font-semibold text-cyan-300">支払い可能額を見る</summary>
+                        <dl className="mt-2 space-y-1">
+                          <div className="flex justify-between gap-4"><dt>確定受取(累計)</dt><dd>{b.confirmedAmount.toLocaleString("ja-JP")}円</dd></div>
+                          <div className="flex justify-between gap-4"><dt>申請済み(申請中・振込済)</dt><dd>-{b.requestedAmount.toLocaleString("ja-JP")}円</dd></div>
+                          <div className="flex justify-between gap-4 border-t border-slate-700 pt-1 font-bold text-slate-100"><dt>支払い可能額</dt><dd>{b.availableAmount.toLocaleString("ja-JP")}円</dd></div>
+                        </dl>
+                        <div className="mt-2 border-t border-slate-800 pt-2 text-[11px] text-slate-500">
+                          <div>参考(支払い可能額には含まれていません)</div>
+                          <div className="flex justify-between gap-4"><span>今月の経費(申請中・承認済)</span><span>{ex && ex.expenses > 0 ? `${ex.expenses.toLocaleString("ja-JP")}円` : "-"}</span></div>
+                          <div className="flex justify-between gap-4"><span>今月の別途報酬(承認済・未振込)</span><span>{comp > 0 ? `${comp.toLocaleString("ja-JP")}円` : "-"}</span></div>
+                        </div>
+                      </details>
+                    );
+                  })()}
                   {r.status === "REQUESTING" && (
                     <form action={markTransferRequestPaid.bind(null, r.id)} className="flex flex-col gap-1">
                       <input

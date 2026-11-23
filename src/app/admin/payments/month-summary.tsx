@@ -9,6 +9,7 @@ const md = (key: string) => {
   const [, m, d] = key.split("-").map(Number);
   return `${m}/${d}`;
 };
+const categoryLabel: Record<"TRAVEL" | "LODGING" | "OTHER", string> = { TRAVEL: "交通費", LODGING: "宿泊費", OTHER: "その他" };
 const fmtDate = (d: Date) =>
   new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", weekday: "short" }).format(d);
 
@@ -38,11 +39,11 @@ export function MonthSummary({
     <section className="kj-data-table-panel mb-8 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-lg shadow-black/40 backdrop-blur-sm">
       <h2 className="mb-1 text-sm font-semibold text-slate-300">{monthLabel}の勤怠・支払い予定</h2>
       <p className="mb-3 text-xs text-slate-500">
-        支払い予定金額 = 受取金額(確定分)＋申請のある経費(申請中・承認済)＋承認済みの別途報酬(未振込分)。支払日が土日祝・12/29〜1/3の場合は直前の銀行営業日に前倒し。
+        支払い予定金額 = 受取(確定分)＋経費(申請中・承認済)＋別途報酬(承認済・未振込分)。支払日が土日祝・12/29〜1/3の場合は直前の銀行営業日に前倒し。
         振り込んだら「振込完了」を押してください。支払日になっても押していない分は「未振込」として赤字で表示します(10/23以降の支払日が対象)。
       </p>
       <div className="overflow-x-auto">
-        <table className="kj-mobile-payments w-full min-w-[820px] text-xs text-slate-300">
+        <table className="kj-mobile-payments w-full min-w-[960px] text-xs text-slate-300">
           <thead>
             <tr className="border-b border-slate-700 text-slate-400">
               <th className="px-2 py-2 text-left font-medium">スタッフ</th>
@@ -51,6 +52,8 @@ export function MonthSummary({
               <th className="px-2 py-2 font-medium">定時超過打刻</th>
               <th className="px-2 py-2 font-medium">欠勤</th>
               <th className="px-2 py-2 font-medium">早退</th>
+              <th className="px-2 py-2 text-right font-medium">受取</th>
+              <th className="px-2 py-2 text-right font-medium">経費</th>
               <th className="px-2 py-2 text-right font-medium">別途報酬(リファラル等)</th>
               <th className="px-2 py-2 text-right font-medium">支払い予定金額</th>
               <th className="px-2 py-2 text-left font-medium">支払い予定日</th>
@@ -73,7 +76,35 @@ export function MonthSummary({
                   <CountCell dates={m.lateClockInDates} tone="warn" />
                   <CountCell dates={m.absenceDates} tone="bad" />
                   <CountCell dates={m.earlyLeaveDates} tone="warn" />
-                  <td className="px-2 py-2 text-right align-top">{m.compensation > 0 ? yen(m.compensation) : "-"}</td>
+                  <td className="px-2 py-2 text-right align-top">
+                    {m.earnings === null ? "未確定" : yen(m.earnings)}
+                  </td>
+                  <td className="px-2 py-2 text-right align-top">
+                    {m.expenses > 0 ? yen(m.expenses) : "-"}
+                    {m.expenseItems.length > 0 && (
+                      <ul className="mt-1 space-y-0.5 text-left text-[10px] leading-tight text-slate-400">
+                        {m.expenseItems.map((e) => (
+                          <li key={e.id} className="flex justify-between gap-2">
+                            <span>
+                              {fmtDate(e.expenseDate)} {categoryLabel[e.category]}
+                              {e.description ? `(${e.description})` : ""}
+                              {e.status === "SUBMITTED" && <span className="ml-1 text-amber-300">承認待ち</span>}
+                            </span>
+                            <span className="whitespace-nowrap text-slate-300">{yen(e.amountTaxInclusive)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </td>
+                  <td className="px-2 py-2 text-right align-top">
+                    {s.paymentMethod !== "FIXED" ? (
+                      <span className="text-[10px] text-slate-500">対象外</span>
+                    ) : m.compensation > 0 ? (
+                      yen(m.compensation)
+                    ) : (
+                      "-"
+                    )}
+                  </td>
                   <td className="px-2 py-2 text-right align-top">
                     <div className={m.paymentState === "OVERDUE" ? "font-bold text-red-400" : "font-semibold text-slate-100"}>
                       {m.paymentState === "DONE" && m.paidAmount !== null ? yen(m.paidAmount) : m.total === null ? "金額未確定" : yen(m.total)}
@@ -120,14 +151,7 @@ export function MonthSummary({
                       </form>
                     )}
                     <div className="mt-0.5 text-[10px] leading-tight text-slate-500">
-                      {s.payType === "MANUAL" ? "手入力(その月の金額をそのまま)" : <>受取 {m.earnings === null ? "未確定" : yen(m.earnings)}</>}
-                      {m.expenses > 0 && (
-                        <>
-                          <br />
-                          経費 {yen(m.expenses)}
-                          {m.expensesPending > 0 && `(承認待ち ${yen(m.expensesPending)})`}
-                        </>
-                      )}
+                      {s.payType === "MANUAL" ? "手入力(その月の金額をそのまま)" : "受取＋経費＋別途報酬"}
                     </div>
                   </td>
                   <td className="px-2 py-2 align-top">
@@ -179,7 +203,7 @@ export function MonthSummary({
             })}
             {staff.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-2 py-4 text-center text-slate-500">
+                <td colSpan={11} className="px-2 py-4 text-center text-slate-500">
                   スタッフがいません
                 </td>
               </tr>

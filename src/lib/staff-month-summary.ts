@@ -7,6 +7,15 @@ import { fixedPaymentState, type FixedPaymentState } from "@/lib/fixed-payment-s
 
 // 管理画面「スタッフ管理」の月次サマリー用の集計(判定基準は attendance-summary.ts)。
 
+export type ExpenseItem = {
+  id: string;
+  expenseDate: Date;
+  category: "TRAVEL" | "LODGING" | "OTHER";
+  description: string | null;
+  amountTaxInclusive: number;
+  status: "SUBMITTED" | "APPROVED";
+};
+
 export type StaffMonthSummary = AttendanceCounts & {
   staffId: string;
   earnings: number | null; // その月の受取金額(確定分)。null=計算できない
@@ -14,6 +23,7 @@ export type StaffMonthSummary = AttendanceCounts & {
   expenses: number; // 申請のある経費(申請中+承認済)
   compensation: number; // 別途報酬(リファラル等)のうち承認済・未振込の合計
   expensesPending: number; // うち承認待ち
+  expenseItems: ExpenseItem[]; // 経費の明細(申請中+承認済)。経費の内訳表示用
   total: number | null; // earnings + expenses。earnings が null なら null
   paymentDate: Date | null; // 支払い予定日(固定支払のみ)
   paymentNote: string | null;
@@ -42,7 +52,7 @@ export async function loadStaffMonthSummaries(staffList: StaffInput[], yearMonth
     prisma.clockRecord.findMany({ where: { staffId: { in: ids }, timestamp: { gte: start, lt: end } }, select: { staffId: true, type: true, timestamp: true, shiftId: true } }),
     prisma.irregularReport.findMany({ where: { staffId: { in: ids }, reportType: { in: ["EARLY_LEAVE", "ABSENCE", "SAME_DAY_ABSENCE"] }, targetDate: { gte: start, lt: end } }, select: { staffId: true, targetDate: true, reportType: true } }),
     prisma.simpleAttendanceEntry.findMany({ where: { staffId: { in: ids }, kind: { in: ["EARLY_LEAVE", "ABSENT"] }, date: { startsWith: yearMonth } }, select: { staffId: true, date: true, kind: true } }),
-    prisma.expense.findMany({ where: { staffId: { in: ids }, yearMonth, status: { in: ["SUBMITTED", "APPROVED"] } }, select: { staffId: true, status: true, amountTaxInclusive: true } }),
+    prisma.expense.findMany({ where: { staffId: { in: ids }, yearMonth, status: { in: ["SUBMITTED", "APPROVED"] } }, select: { id: true, staffId: true, status: true, amountTaxInclusive: true, expenseDate: true, category: true, description: true }, orderBy: { expenseDate: "asc" } }),
     prisma.transferRequest.findMany({ where: { staffId: { in: ids }, status: "REQUESTING" }, select: { staffId: true, amount: true, desiredPaymentDate: true } }),
     prisma.fixedPaymentCompletion.findMany({ where: { staffId: { in: ids }, closingYearMonth: yearMonth }, select: { staffId: true, paidAmount: true, paidAt: true } }),
     prisma.monthlyEarningTarget.findMany({ where: { staffId: { in: ids }, yearMonth }, select: { staffId: true, targetAmount: true } }),
@@ -101,6 +111,14 @@ export async function loadStaffMonthSummaries(staffList: StaffInput[], yearMonth
       monthlyMax: targetByStaff.get(s.id) ?? null,
       expenses: expenseTotal,
       expensesPending: expensePending,
+      expenseItems: exps.map((e) => ({
+        id: e.id,
+        expenseDate: e.expenseDate,
+        category: e.category,
+        description: e.description,
+        amountTaxInclusive: e.amountTaxInclusive,
+        status: e.status as "SUBMITTED" | "APPROVED",
+      })),
       compensation: compensationTotal,
       total: confirmedAmount === null ? null : confirmedAmount + expenseTotal + compensationTotal,
       paymentDate,
