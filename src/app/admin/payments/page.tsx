@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { currentJstYearMonth, formatJst, jstDayRange, listMonthOptions, toJstDateValue, yearMonthLabel } from "@/lib/time";
 import { loadStaffMonthSummaries } from "@/lib/staff-month-summary";
 import { syncReferralCompensation } from "@/lib/referral-auto";
+import { syncAutoExpenses } from "@/lib/expense-auto";
 import { computeMonthlyConfirmedList, computeTransferBalance } from "@/lib/earnings";
 import { describeEarnings } from "@/lib/earnings-detail";
 import { allocateTransfersByMonth } from "@/lib/transfer-allocation";
@@ -41,6 +42,13 @@ export default async function AdminPaymentsPage({
     referralNotes = (await syncReferralCompensation(yearMonth, nowDate)).skipped;
   } catch (e) {
     console.error("[referral] 自動計算に失敗しました", e);
+  }
+  // スタッフごとの経費の自動作成(ガソリン代・毎月の固定の経費)。失敗しても画面は止めない。
+  let expenseNotes: string[] = [];
+  try {
+    expenseNotes = (await syncAutoExpenses(nowDate)).notes;
+  } catch (e) {
+    console.error("[expense-auto] 経費の自動作成に失敗しました", e);
   }
   const summaries = await loadStaffMonthSummaries(activeStaff, yearMonth, nowDate);
 
@@ -102,6 +110,17 @@ export default async function AdminPaymentsPage({
           <p className="font-black">リファラル報酬を自動で作れませんでした（一部の人が計算できないため、作っていません）</p>
           <ul className="mt-1 list-disc pl-5">
             {referralNotes.map((n) => (
+              <li key={n}>{n}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {expenseNotes.length > 0 && (
+        <div className="mb-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="font-black">経費の自動計算で、確認が必要なものがあります</p>
+          <ul className="mt-1 list-disc pl-5">
+            {expenseNotes.map((n) => (
               <li key={n}>{n}</li>
             ))}
           </ul>

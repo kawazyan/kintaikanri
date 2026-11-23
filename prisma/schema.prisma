@@ -1006,3 +1006,20 @@ model ReferralLink {
   createdAt DateTime @default(now())
   @@unique([referrerStaffId, refereeStaffId])
 }
+
+// スタッフごとの経費の自動作成ルール(src/lib/expense-auto.ts)。
+//   KM    : storeMatch を含む店名の稼働日ごとに 片道km×2×ratePerKm円 を、月の交通費として自動作成
+//   FIXED : 毎月かかる固定の経費(label・amount)を自動作成
+model StaffExpenseRule {
+  id String @id @default(cuid())
+  staffId String
+  kind String
+  storeMatch String?
+  oneWayKm Float?
+  ratePerKm Int @default(10)
+  label String?
+  amount Int?
+  fromMonth String // この稼働月(YYYY-MM)から自動作成する
+  createdAt DateTime @default(now())
+  @@index([staffId])
+}
