@@ -44,7 +44,10 @@ export function ShiftWizard({
   initial,
   initialDate,
   staffId,
+  contractStores,
 }: {
+  /** 取引先の契約で決まっている店舗名(月ごと)。ある月は店舗名の入力を省き、これを自動で使う。 */
+  contractStores?: Record<string, { storeName: string; clientName: string }>;
   initial?: WizardInitialValues;
   /** カレンダーで選んだ日(YYYY-MM-DD)。月と日付をあらかじめ選択済みにする。 */
   initialDate?: string;
@@ -68,7 +71,9 @@ export function ShiftWizard({
     initial?.carrier && !initialCarrierIsPreset ? initial.carrier : ""
   );
 
-  const [storeName, setStoreName] = useState(initial?.storeName ?? "");
+  const [storeNameInput, setStoreName] = useState(initial?.storeName ?? "");
+  const contractStore = contractStores?.[yearMonth] ?? null;
+  const storeName = contractStore?.storeName ?? storeNameInput; // 契約で決まっている月は、入力ではなく契約の店舗名
   const [startTime, setStartTime] = useState(initial?.startTime ?? "10:00");
   const [endTime, setEndTime] = useState(initial?.endTime ?? "19:00");
 
@@ -156,13 +161,14 @@ export function ShiftWizard({
       return amount === null || amount === undefined || (Number.isInteger(amount) && amount >= 0);
     });
 
+  // 店舗名が契約で決まっている月は、店舗名の入力(4)を飛ばす。
   function goNext() {
     setError(null);
-    setStep((s) => Math.min(s + 1, 7));
+    setStep((s) => Math.min(s === 3 && contractStore ? 5 : s + 1, 7));
   }
   function goBack() {
     setError(null);
-    setStep((s) => Math.max(s - 1, 1));
+    setStep((s) => Math.max(s === 5 && contractStore ? 3 : s - 1, 1));
   }
 
   function submit() {
@@ -314,7 +320,7 @@ export function ShiftWizard({
           <h2 className="text-base font-semibold text-slate-900">稼働先店舗名を入力してください</h2>
           <input
             type="text"
-            value={storeName}
+            value={storeNameInput}
             onChange={(e) => setStoreName(e.target.value)}
             placeholder="例: auショップ〇〇店"
             autoFocus
@@ -326,7 +332,7 @@ export function ShiftWizard({
             </button>
             <button
               type="button"
-              disabled={!storeName.trim()}
+              disabled={!storeNameInput.trim()}
               onClick={goNext}
               className={PRIMARY_BUTTON}
             >
@@ -431,8 +437,12 @@ export function ShiftWizard({
             <dd>{WORK_TYPE_LABEL[workType]}</dd>
             <dt className="text-slate-500">キャリア</dt>
             <dd>{carrier}</dd>
-            <dt className="text-slate-500">店舗名</dt>
-            <dd>{storeName}</dd>
+            {!contractStore && (
+              <>
+                <dt className="text-slate-500">店舗名</dt>
+                <dd>{storeName}</dd>
+              </>
+            )}
             <dt className="text-slate-500">時間（JST）</dt>
             <dd>
               {startTime} 〜 {endTime}

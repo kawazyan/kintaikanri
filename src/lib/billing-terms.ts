@@ -5,6 +5,8 @@ export type TravelByStore = { match: string; perDayExTax: number; detail: string
 export type ShiftBillingRule = {
   staffName: string; // スタッフ名(空白は無視して一致)
   storeMatch?: string[]; // 指定すると、店舗名にどれかを含むシフトだけが対象
+  storeName?: string; // 店舗名。スタッフがシフトを登録するとき、店舗名にこれが自動で入る(storeMatch のどれかを含む名前にすること)
+  storeKind?: "SHOP" | "RETAIL"; // SHOP=キャリアショップ(シフトの店舗名の先頭に「キャリア名＋ショップ」を付ける。例: 西多賀 → auショップ西多賀) / RETAIL=量販店(そのまま)。storeName があるときだけ有効
   dates?: string[]; // 指定すると、この稼働日(YYYY-MM-DD)のシフトだけが対象
   fromMonth?: string; // 適用開始月(YYYY-MM)
   toMonth?: string; // 適用終了月(YYYY-MM)

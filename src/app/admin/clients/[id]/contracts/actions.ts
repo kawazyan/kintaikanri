@@ -8,6 +8,8 @@ import type { BillingTerms, ShiftBillingRule } from "@/lib/billing-terms";
 export type ContractInput = {
   staffName: string;
   storeMatch: string[];
+  storeName: string; // 店舗名(スタッフのシフトに自動で入る。空=自動では入れない)
+  storeKind: "SHOP" | "RETAIL"; // ショップ=先頭にキャリア名＋ショップを付ける / 量販店=そのまま
   dates: string[]; // 特定日だけ(YYYY-MM-DD)。空=日付を問わない
   fromMonth: string;
   toMonth: string;
@@ -47,6 +49,10 @@ export async function adminSaveContract(clientId: string, index: number | null, 
     throw new Error("欠勤で減算する場合は、予定日数を入力してください。");
   }
 
+  const storeName = input.storeName.trim();
+  if (storeName && input.storeMatch.length && !input.storeMatch.some((m) => storeName.includes(m))) {
+    throw new Error("店舗名は、「店舗(名前に含む)」のどれかを含む名前にしてください(契約に合うシフトにならなくなるため)。");
+  }
   const { terms, rules } = await load(clientId);
   const prev = index != null ? rules[index] : undefined;
   if (index != null && !prev) throw new Error("対象の契約が見つかりません。画面を開き直してください。");
@@ -55,6 +61,8 @@ export async function adminSaveContract(clientId: string, index: number | null, 
     ...(prev ?? {}),
     staffName,
     storeMatch: input.storeMatch.length ? input.storeMatch : undefined,
+    storeName: storeName || undefined,
+    storeKind: storeName ? input.storeKind : undefined,
     dates: input.dates.length ? input.dates : undefined,
     fromMonth: input.fromMonth || undefined,
     toMonth: input.toMonth || undefined,

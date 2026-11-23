@@ -2,8 +2,9 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { toJstTimeValue } from "@/lib/time";
+import { listMonthOptions, toJstTimeValue } from "@/lib/time";
 import { ShiftWizard, type WizardInitialValues } from "./shift-wizard";
+import { contractStoresFor } from "@/lib/contract-store";
 
 export default async function NewShiftPage({
   searchParams,
@@ -32,6 +33,8 @@ export default async function NewShiftPage({
     }
   }
 
+  const contractStores = await contractStoresFor(staffId, listMonthOptions(3, 6).map((o) => o.value));
+
   return (
     <main className="min-h-dvh bg-gradient-to-b from-white via-[#fdfaf5] to-[#faf5eb]">
     <div className="mx-auto flex max-w-md flex-col gap-6 px-4 py-8">
@@ -41,7 +44,7 @@ export default async function NewShiftPage({
       <h1 className="bg-gradient-to-r from-red-600 to-slate-700 bg-clip-text text-xl font-bold text-transparent">
         シフト新規登録
       </h1>
-      <ShiftWizard initial={initial} initialDate={initialDate} />
+      <ShiftWizard initial={initial} initialDate={initialDate} contractStores={contractStores} />
     </div>
     </main>
   );

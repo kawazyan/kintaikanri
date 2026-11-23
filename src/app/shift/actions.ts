@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { contractStoreFor, storeNameForShift } from "@/lib/contract-store";
 import { getStaffId, requireAdmin } from "@/lib/auth";
 import { combineJstDateAndTime, jstDayRange, jstMonthRange, toJstDateValue } from "@/lib/time";
 import { notifyAdminsOfShiftChange } from "@/lib/notify";
@@ -111,9 +112,12 @@ async function runCreateShiftsBulk(
   staff: Staff,
   input: BulkShiftInput
 ): Promise<{ error: string } | { ok: true; createdCount: number; skippedCount: number }> {
+  if (!/^\d{4}-\d{2}$/.test(input.yearMonth)) return { error: "対象月が不正です" };
+  // 取引先の契約に正式な店舗名があれば、入力された店舗名の代わりにそれを使う(本人は日付だけ入れればよい)。
+  const contractStore = await contractStoreFor(staffId, input.yearMonth);
+  if (contractStore) input = { ...input, storeName: storeNameForShift(contractStore, input.carrier) };
   const fieldError = validateCommonFields(input);
   if (fieldError) return { error: fieldError };
-  if (!/^\d{4}-\d{2}$/.test(input.yearMonth)) return { error: "対象月が不正です" };
 
 
   const { start, end } = jstMonthRange(input.yearMonth);
@@ -217,6 +221,8 @@ export async function updateShift(
     return { error: "このシフトは編集できません" };
   }
 
+  const contractStore = await contractStoreFor(staffId, input.date.slice(0, 7));
+  if (contractStore) input = { ...input, storeName: storeNameForShift(contractStore, input.carrier) };
   const fieldError = validateCommonFields(input);
   if (fieldError) return { error: fieldError };
   if (

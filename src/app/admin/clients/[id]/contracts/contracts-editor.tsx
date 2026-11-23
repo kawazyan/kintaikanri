@@ -6,7 +6,7 @@ import { adminDeleteContract, adminSaveContract, type ContractInput } from "./ac
 
 const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
 const empty: ContractInput = {
-  staffName: "", storeMatch: [], dates: [], fromMonth: "", toMonth: "", contract: "DAILY", rateExTax: 0,
+  staffName: "", storeMatch: [], storeName: "", storeKind: "RETAIL", dates: [], fromMonth: "", toMonth: "", contract: "DAILY", rateExTax: 0,
   absenceDeduction: "NO", plannedDays: 0, flatTravelExTax: 0, note: "",
 };
 const field = "mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold";
@@ -25,7 +25,7 @@ export function ContractsEditor({ clientId, rules, staffNames }: { clientId: str
     else {
       const r = rules[i];
       setForm({
-        staffName: r.staffName, storeMatch: r.storeMatch ?? [], dates: r.dates ?? [], fromMonth: r.fromMonth ?? "", toMonth: r.toMonth ?? "",
+        staffName: r.staffName, storeMatch: r.storeMatch ?? [], storeName: r.storeName ?? "", storeKind: r.storeKind ?? "RETAIL", dates: r.dates ?? [], fromMonth: r.fromMonth ?? "", toMonth: r.toMonth ?? "",
         contract: r.contract, rateExTax: r.rateExTax, absenceDeduction: r.absenceDeduction ?? "NO",
         plannedDays: r.plannedDays ?? 0, flatTravelExTax: r.flatTravelExTax ?? 0, note: r.note ?? "",
       });
@@ -61,7 +61,7 @@ export function ContractsEditor({ clientId, rules, staffNames }: { clientId: str
           {rules.length === 0 && <tr><td colSpan={5} className="px-4 py-6 text-center font-bold text-slate-400">契約がまだありません。「契約を追加」から登録してください。</td></tr>}
           {rules.map((r, i) => <tr key={i} className="border-t border-slate-100 align-top">
             <td className="px-4 py-3 font-black">{r.staffName}</td>
-            <td className="px-4 py-3 font-bold">{r.storeMatch?.length ? r.storeMatch.join("、") : <span className="text-slate-400">すべての店舗</span>}{r.dates?.length ? <span className="block text-xs text-slate-400">日付指定: {r.dates.map((x) => x.slice(5).replace("-", "/")).join("、")}</span> : null}</td>
+            <td className="px-4 py-3 font-bold">{r.storeMatch?.length ? r.storeMatch.join("、") : <span className="text-slate-400">すべての店舗</span>}{r.storeName ? <span className="block text-xs text-emerald-700">{r.storeKind === "SHOP" ? `${r.storeName}（ショップ）` : `${r.storeName}（量販店）`}</span> : null}{r.dates?.length ? <span className="block text-xs text-slate-400">日付指定: {r.dates.map((x) => x.slice(5).replace("-", "/")).join("、")}</span> : null}</td>
             <td className="px-4 py-3 font-bold">{r.fromMonth || "最初から"} ～ {r.toMonth || "ずっと"}</td>
             <td className="px-4 py-3 font-bold">{r.contract === "DAILY" ? `日額 ${yen(r.rateExTax)}` : `月額 ${yen(r.rateExTax)}`}
               {r.contract === "MONTHLY" && <span className="block text-xs text-slate-500">{r.absenceDeduction === "YES" ? `欠勤で減算(予定${r.plannedDays}日)` : "月額固定"}</span>}
@@ -88,6 +88,20 @@ export function ContractsEditor({ clientId, rules, staffNames }: { clientId: str
           </select></label>
         <label className="text-xs font-black text-slate-500">店舗名に含まれる言葉(複数は「、」区切り。空ならすべての店舗)
           <input className={field} value={stores} onChange={(e) => setStores(e.target.value)} placeholder="例: 石巻、ケーズ" /></label>
+        <label className="text-xs font-black text-slate-500">店舗名
+          <input className={field} value={form.storeName} onChange={(e) => set("storeName", e.target.value)} /></label>
+        {form.storeName.trim() && (
+          <div className="text-xs font-black text-slate-500">
+            店の種類
+            <div className="mt-1 flex gap-2">
+              {([["SHOP", "ショップ"], ["RETAIL", "量販店"]] as const).map(([v, label]) => (
+                <button key={v} type="button" onClick={() => set("storeKind", v)}
+                  className={`rounded-xl border px-4 py-2 text-sm font-bold ${form.storeKind === v ? "border-[#14283b] bg-[#14283b] text-white" : "border-slate-200 bg-white text-slate-700"}`}>{label}</button>
+              ))}
+            </div>
+            <p className="mt-1 font-normal">ショップを選ぶと、シフトの店舗名の先頭に「キャリア名＋ショップ」が付きます</p>
+          </div>
+        )}
         <label className="text-xs font-black text-slate-500 sm:col-span-2">特定の日だけ(掛け持ちの場合。「、」区切りで 2026-10-03、2026-10-05 のように。空=日付を問わない)
           <input className={field} value={datesText} onChange={(e) => setDatesText(e.target.value)} placeholder="2026-10-03、2026-10-05" /></label>
         <label className="text-xs font-black text-slate-500">開始月(空=最初から)

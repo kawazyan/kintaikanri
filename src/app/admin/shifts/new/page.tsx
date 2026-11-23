@@ -3,6 +3,8 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AdminNav } from "../../admin-nav";
 import { ShiftWizard } from "@/app/shift/new/shift-wizard";
+import { contractStoresFor } from "@/lib/contract-store";
+import { listMonthOptions } from "@/lib/time";
 
 export default async function AdminNewShiftPage({
   searchParams,
@@ -57,7 +59,7 @@ export default async function AdminNewShiftPage({
           <p className="mb-3 text-sm font-bold text-slate-200">
             {selectedStaff.name}さんのシフトを登録します
           </p>
-          <ShiftWizard staffId={selectedStaff.id} />
+          <ShiftWizard staffId={selectedStaff.id} contractStores={await contractStoresFor(selectedStaff.id, listMonthOptions(3, 6).map((o) => o.value))} />
         </div>
       )}
     </main>

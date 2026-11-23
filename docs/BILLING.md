@@ -20,6 +20,7 @@ AIが作業するときの前提。変わったら必ずこのファイルも直
 - `Invoice.statement`（JSON）が内訳書の中身。`staff[]`（稼働日・dayPlaces・serviceExTax・serviceCalc・travel）、`clientExtras[]`（広告費など。store＋period がある行が広告費）、`manualLines`（品目の手入力）、`baseline`（作成時の値）。
 - `Client.billingTerms`（JSON）が取引先ごとの請求設定：
   - `shiftBilling[]`：シフトから請求する条件（`contract` MONTHLY/DAILY、`rateExTax`、`staffName`、`fromMonth`/`toMonth`、`absenceDeduction: "YES"` で欠勤日割り控除、`flatTravelExTax`、`travelByStore`）
+  - `shiftBilling[]` の `storeName`（店舗名）と `storeKind`（SHOP=ショップ / RETAIL=量販店）：スタッフがシフトを登録・編集するとき、その月に有効な契約（特定日だけの契約を除く）が1件だけで `storeName` があれば、店舗名の入力は出さず自動で入る（`src/lib/contract-store.ts`）。ショップは先頭に「キャリア名＋ショップ」が付く（au→auショップ / docomo→ドコモショップ / SoftBank→ソフトバンクショップ / 楽天モバイル→楽天モバイル）、量販店はそのまま。契約が複数ある人は従来どおり本人が入力。管理画面のシフト編集は手で直せる。`storeName` は `storeMatch` のどれかを含む名前にする。藤田＝「コジマ×ビックカメライオンモール名取店」（量販店）
   - `statementByStore`：内訳書を店舗別に分ける（表記揺れを照合）
   - `statementServiceLabel`：内訳書での「業務委託費」の呼び方
   - `statementMonthSuffix`：「〇月請求分」の表記（未設定＝請求分）
