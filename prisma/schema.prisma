@@ -739,6 +739,26 @@ model InvoiceSendLog {
   @@index([invoiceId, sentAt])
 }
 
+// 振込・金額設定・経費・別途報酬の変更履歴(スタッフ詳細ページで見る)。
+// 管理画面は共通パスワードで個人を区別できないため、管理者の操作者名は各フォームで入力した名前(自由記述)。
+// スタッフ本人の操作は本人名を自動で記録する。スタッフを削除しても履歴が残るよう、Staff へのリレーションは張らず名前も一緒に保存する。
+model PaymentAuditLog {
+  id        String   @id @default(cuid())
+  staffId   String
+  staffName String
+  category  String // TRANSFER=振込 / AMOUNT_SETTING=金額設定 / EXPENSE=経費 / COMPENSATION=別途報酬
+  action    String // 操作の種類(例: FIXED_PAID, FIXED_UNDO, SET_MONTHLY_MAX)
+  summary   String // 画面に出す1行の説明
+  before    Json? // 変更前の値
+  after     Json? // 変更後の値
+  yearMonth String? // 対象月(YYYY-MM)。月に紐づかない操作は NULL
+  actorType String // ADMIN | STAFF
+  actorName String? // 操作者名。管理者が名前を入れなかったときは NULL
+  createdAt DateTime @default(now())
+
+  @@index([staffId, createdAt])
+}
+
 model InvoiceWorkOrder {
   id String @id @default(cuid())
   invoiceId String

@@ -5,6 +5,9 @@ import { AdminNav } from "../../admin-nav";
 import { updateStaffDetails } from "../actions";
 import { SubmitButton } from "@/components/submit-button";
 import { loadStaffHistory } from "@/lib/staff-history";
+import { loadAuditHistory } from "@/lib/audit";
+import { AuditHistory } from "./audit-history";
+import { OperatorNameInput } from "@/components/operator-name-input";
 
 function toDateInputValue(d: Date | null): string {
   if (!d) return "";
@@ -45,6 +48,7 @@ export default async function AdminStaffDetailPage({
 
   const boundAction = updateStaffDetails.bind(null, staff.id);
   const history = await loadStaffHistory(staff.id);
+  const auditHistory = await loadAuditHistory(staff.id);
   const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
   const ymLabel = (ym: string) => `${ym.slice(0, 4)}年${Number(ym.slice(5))}月`;
 
@@ -98,6 +102,8 @@ export default async function AdminStaffDetailPage({
           売上＝送付済みの請求（訂正版は最新の版）のうち、このスタッフの稼働費・交通費の合計。報酬＋経費＝振込関係ページと同じ計算。別途報酬＝リファラル報酬・インセンティブなどの申請（申請中＋承認済み）。粗利＝売上 − 報酬＋経費 − 別途報酬。振込済み＝固定支払は締め月、振込申請は振込した月で数えます。{history.totals.unknownMonths > 0 ? `報酬が未確定の月（${history.totals.unknownMonths}か月）は、累計に入っていません。` : ""}
         </p>
       </section>
+
+      <AuditHistory data={auditHistory} />
 
       {saved === "1" && (
         <p className="mb-4 rounded-lg border border-emerald-700 bg-emerald-950/40 px-3 py-2 text-sm font-semibold text-emerald-300">
@@ -324,6 +330,11 @@ export default async function AdminStaffDetailPage({
             </span>
           </label>
         </div>
+
+        <label className="flex flex-col gap-1 text-xs text-slate-400">
+          操作者名（変更履歴に残ります。報酬・支払いの設定を変えたときに記録されます）
+          <OperatorNameInput className={`${FIELD_CLASS} py-2 text-sm`} placeholder="あなたの名前" />
+        </label>
 
         <SubmitButton
           className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-3 text-white shadow-lg shadow-blue-950/50 active:scale-[0.98]"

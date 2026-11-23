@@ -1,10 +1,31 @@
 import { prisma } from "@/lib/prisma";
 import { jstDayRange, jstMonthRange, toJstDateValue } from "@/lib/time";
+// 受取金額の内訳(画面表示用)。金額の計算には使わない(計算結果をそのまま分解して見せるだけ)。
+//  MANUAL  = 管理者が入力した金額
+//  DAILY   = 1日あたり(日当 × 稼働日数)
+//  MONTHLY = 月で固定(月額 ÷ 予定日数 × 出勤日数。全日出勤なら満額)
+//  SPOT    = 単価指定のシフト・月固定の月1回分など(上記以外)
+export type EarningsDetail = {
+  mode: "MANUAL" | "DAILY" | "MONTHLY" | "SPOT";
+  days: number; // 稼働(確定)日数。日付の重複は1日
+  rate: number | null; // DAILY=日当 / MONTHLY=1日あたり(切り捨て後)
+  baseAmount: number | null; // MONTHLY=月額(満額の基準)
+  plannedDays: number | null; // MONTHLY=月額を割る予定日数
+  fullAttendance: boolean; // MONTHLY=欠勤なしで満額
+  mainAmount: number; // 日当分・月額分(交通費・単価指定シフトを除く)
+  ownAmountTotal: number; // 単価指定シフトの合計
+  ownCount: number; // 単価指定シフトの確定日数
+  travelPerDay: number; // 1日あたりの交通費(税込)
+  travelAmount: number; // 交通費の合計
+};
+
 export type MonthlyEarnings = {
   // The amount confirmed so far this month. `null` means it cannot be
   // computed yet (e.g. a BAND staff member hasn't entered a monthly target
   // amount) and must be shown as "－", never guessed at or shown as 0.
   confirmedAmount: number | null;
+  // 内訳(金額が計算できるときだけ付く)。
+  detail?: EarningsDetail;
 };
 
 // Server-side source of truth for "今月の確定受取金額". A shift day counts
@@ -47,7 +68,11 @@ export async function computeMonthlyEarnings(
   // 未入力の月は金額未確定(null)。
   if (staffPay?.payType === "MANUAL") {
     const manual = await prisma.manualPayAmount.findUnique({ where: { staffId_yearMonth: { staffId, yearMonth } } });
-    return { confirmedAmount: manual?.amount ?? null };
+    if (!manual) return { confirmedAmount: null };
+    return {
+      confirmedAmount: manual.amount,
+      detail: { mode: "MANUAL", days: 0, rate: null, baseAmount: null, plannedDays: null, fullAttendance: false, mainAmount: manual.amount, ownAmountTotal: 0, ownCount: 0, travelPerDay: 0, travelAmount: 0 },
+    };
   }
 
   const isConfirmed = (s: (typeof shifts)[number]) => {
@@ -91,7 +116,14 @@ export async function computeMonthlyEarnings(
     // 日当が未設定なら金額は決められないので null。
     if (staffPay.dailyRate === null) return { confirmedAmount: null };
     const bandDays = new Set(bandShifts.filter(isConfirmed).map((s) => toJstDateValue(s.startTime))).size;
-    return { confirmedAmount: staffPay.dailyRate * bandDays + spotConfirmedAmount };
+    return {
+      confirmedAmount: staffPay.dailyRate * bandDays + spotConfirmedAmount,
+      detail: {
+        mode: "DAILY", days: bandDays, rate: staffPay.dailyRate, baseAmount: null, plannedDays: null, fullAttendance: false,
+        mainAmount: staffPay.dailyRate * bandDays + settingAmount, ownAmountTotal, ownCount: withOwnAmount.length,
+        travelPerDay: staffPay.dailyTravelInclTax ?? 0, travelAmount,
+      },
+    };
   }
 
   if (bandShifts.length > 0) {
@@ -110,9 +142,28 @@ export async function computeMonthlyEarnings(
     // その月のシフトがすべて月額対象で、全日確定した(欠勤なし)ときは、切り捨ての端数を出さず目標額の満額にする。
     const fullAttendance = bandShifts.length === shifts.length && bandConfirmedDays === bandShifts.length;
     const bandConfirmedAmount = fullAttendance ? targetAmount : dailyRate * bandConfirmedDays;
-    return { confirmedAmount: bandConfirmedAmount + spotConfirmedAmount };  }
+    return {
+      confirmedAmount: bandConfirmedAmount + spotConfirmedAmount,
+      detail: {
+        mode: "MONTHLY", days: bandConfirmedDays, rate: dailyRate, baseAmount: targetAmount, plannedDays: plannedShifts, fullAttendance,
+        mainAmount: bandConfirmedAmount + settingAmount, ownAmountTotal, ownCount: withOwnAmount.length,
+        travelPerDay: staffPay?.dailyTravelInclTax ?? 0, travelAmount,
+      },
+    };
+  }
 
-  return { confirmedAmount: spotConfirmedAmount };
+  return {
+    confirmedAmount: spotConfirmedAmount,
+    detail: {
+      mode: staffPay?.payType === "DAILY" ? "DAILY" : staffPay?.payType === "MONTHLY" ? "MONTHLY" : "SPOT",
+      days: staffPay?.payType === "DAILY" ? withoutOwnAmount.length : confirmedDays,
+      rate: staffPay?.payType === "DAILY" ? (staffPay.dailyRate ?? 0) : null,
+      baseAmount: staffPay?.payType === "MONTHLY" && withoutOwnAmount.length > 0 ? (staffPay.monthlyAmount ?? 0) : null,
+      plannedDays: null, fullAttendance: false,
+      mainAmount: settingAmount, ownAmountTotal, ownCount: withOwnAmount.length,
+      travelPerDay: staffPay?.dailyTravelInclTax ?? 0, travelAmount,
+    },
+  };
 }
 
 // Lifetime confirmed earnings across every month the staff has ever had a
@@ -132,6 +183,25 @@ export async function computeCumulativeConfirmedAmount(staffId: string): Promise
     if (confirmedAmount !== null) total += confirmedAmount;
   }
   return total;
+}
+
+// 月ごとの確定受取の一覧(古い月 → 新しい月)。computeCumulativeConfirmedAmount と同じ月の拾い方・同じ計算で、
+// 金額が計算できない月(null)は一覧に含めない(累計では0として扱われるのと同じ)。振込関係の「何月分」表示用。
+export async function computeMonthlyConfirmedList(
+  staffId: string,
+  now: Date = new Date()
+): Promise<{ yearMonth: string; confirmed: number; detail?: EarningsDetail }[]> {
+  const shifts = await prisma.shift.findMany({
+    where: { staffId, cancelledAt: null },
+    select: { startTime: true },
+  });
+  const yearMonths = [...new Set(shifts.map((s) => toJstDateValue(s.startTime).slice(0, 7)))].sort();
+  const list: { yearMonth: string; confirmed: number; detail?: EarningsDetail }[] = [];
+  for (const yearMonth of yearMonths) {
+    const { confirmedAmount, detail } = await computeMonthlyEarnings(staffId, yearMonth, now);
+    if (confirmedAmount !== null) list.push({ yearMonth, confirmed: confirmedAmount, detail });
+  }
+  return list;
 }
 
 export type TransferBalance = {

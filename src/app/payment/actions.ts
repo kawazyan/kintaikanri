@@ -7,6 +7,7 @@ import { getStaffId } from "@/lib/auth";
 import { computeTransferBalance } from "@/lib/earnings";
 import { fromJstInputValue } from "@/lib/time";
 import { notifyTransferRequest } from "@/lib/transfer-request-notify";
+import { recordAudit, yenText } from "@/lib/audit";
 
 export async function createTransferRequest(input: {
   amount: number;
@@ -41,6 +42,15 @@ export async function createTransferRequest(input: {
       desiredPaymentDate: fromJstInputValue(`${input.desiredDate}T00:00`),
       status: "REQUESTING",
     },
+  });
+
+  await recordAudit({
+    staffId,
+    category: "TRANSFER",
+    action: "REQUEST_CREATED",
+    summary: `振込を申請(申請 ${yenText(input.amount)}・希望振込日 ${input.desiredDate})`,
+    after: { amount: input.amount, desiredPaymentDate: input.desiredDate, availableBefore: balance.availableAmount },
+    actor: { type: "STAFF" },
   });
 
   // 申請をLINEで知らせる(失敗しても申請は成功のまま)。

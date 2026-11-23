@@ -4,6 +4,7 @@ import { AdminNav } from "../admin-nav";
 import { markCompensationPaid, reviewCompensationRequest, undoCompensationPaid } from "./actions";
 import { ConfirmButton } from "./confirm-button";
 import { SubmitButton } from "@/components/submit-button";
+import { OperatorNameInput } from "@/components/operator-name-input";
 import { formatJst, yearMonthLabel } from "@/lib/time";
 
 // 管理画面は明るい配色(.admin-theme)。暗い配色用のクラスは白背景だと濁るので、ここでは色を直接指定する。
@@ -120,6 +121,7 @@ function Card({ x }: { x: Item }) {
             {formatJst(x.paidAt).slice(0, 16)} 振込済み {x.paidAmount != null ? yen(x.paidAmount) : ""}
             {x.paidByOperatorName ? `(処理者: ${x.paidByOperatorName})` : ""}
           </p>
+          <OperatorNameInput className={`${INPUT} w-32 !py-1 text-xs`} />
           <ConfirmButton message={`${x.staff.name}さんの振込済みの記録を取り消して、未振込に戻します。よろしいですか?`} className="rounded-lg border border-[#94a3b8] px-3 py-1 text-xs font-bold text-[#475569]">
             振込済みを取り消す
           </ConfirmButton>

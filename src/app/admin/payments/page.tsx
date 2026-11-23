@@ -1,13 +1,16 @@
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { currentJstYearMonth, formatJst, jstDayRange, listMonthOptions, yearMonthLabel } from "@/lib/time";
+import { currentJstYearMonth, formatJst, jstDayRange, listMonthOptions, toJstDateValue, yearMonthLabel } from "@/lib/time";
 import { loadStaffMonthSummaries } from "@/lib/staff-month-summary";
-import { computeTransferBalance } from "@/lib/earnings";
+import { computeMonthlyConfirmedList, computeTransferBalance } from "@/lib/earnings";
+import { describeEarnings } from "@/lib/earnings-detail";
+import { allocateTransfersByMonth } from "@/lib/transfer-allocation";
 import { MonthSummary } from "./month-summary";
 import { AdminNav } from "../admin-nav";
 import { markTransferRequestPaid, rejectTransferRequest } from "./actions";
 import { RejectButton } from "./reject-button";
-import { SubmitButton } from "@/components/submit-button";
+import { PaidConfirmButton } from "./paid-confirm-button";
+import { TransferBalanceSection, type TransferBalanceView } from "./transfer-balance";
 
 export default async function AdminPaymentsPage({
   searchParams,
@@ -54,6 +57,31 @@ export default async function AdminPaymentsPage({
     ).map((g) => [g.staffId, g._sum.amountTaxInclusive ?? 0])
   );
 
+  // 申請支払の人ごとの「現在の振込可能額残高」と「何月稼働分がいくら振込済みか」(古い月の確定受取から順に充当)。
+  const requestMethodStaff = activeStaff.filter((s) => s.paymentMethod === "REQUEST");
+  const [monthlyLists, transferRows] = await Promise.all([
+    Promise.all(requestMethodStaff.map((s) => computeMonthlyConfirmedList(s.id, nowDate))),
+    prisma.transferRequest.findMany({
+      where: { staffId: { in: requestMethodStaff.map((s) => s.id) }, status: { in: ["REQUESTING", "PAID"] } },
+      select: { id: true, staffId: true, status: true, amount: true, paidAmount: true, paidAt: true, desiredPaymentDate: true },
+      orderBy: { paidAt: "desc" },
+    }),
+  ]);
+  const balanceViews: TransferBalanceView[] = requestMethodStaff.map((s, i) => {
+    const mine = transferRows.filter((t) => t.staffId === s.id);
+    // 残高の計算(computeTransferBalance)と同じく、申請額(amount)で数える。
+    const paidTotal = mine.filter((t) => t.status === "PAID").reduce((sum, t) => sum + t.amount, 0);
+    const requestingTotal = mine.filter((t) => t.status === "REQUESTING").reduce((sum, t) => sum + t.amount, 0);
+    return {
+      staff: { id: s.id, name: s.name, employeeCode: s.employeeCode },
+      alloc: allocateTransfersByMonth(monthlyLists[i].map((m) => ({ yearMonth: m.yearMonth, confirmed: m.confirmed })), paidTotal, requestingTotal),
+      monthLabels: Object.fromEntries(monthlyLists[i].map((m) => [m.yearMonth, m.detail ? describeEarnings(m.detail).short : "-"])),
+      paidHistory: mine
+        .filter((t) => t.status === "PAID")
+        .map((t) => ({ id: t.id, paidAt: t.paidAt, amount: t.amount, paidAmount: t.paidAmount, desiredPaymentDate: t.desiredPaymentDate })),
+    };
+  });
+
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
       <AdminNav />
@@ -78,6 +106,8 @@ export default async function AdminPaymentsPage({
         ))}
       </nav>
       <MonthSummary monthLabel={yearMonthLabel(yearMonth)} yearMonth={yearMonth} staff={activeStaff} summaries={summaries} />
+
+      <TransferBalanceSection views={balanceViews} />
 
       <h2 className="mb-3 text-sm font-semibold text-slate-300">振込申請一覧</h2>
 
@@ -161,7 +191,7 @@ export default async function AdminPaymentsPage({
                   )}
                   {r.status === "PAID" && (
                     <div className="mt-1 text-xs text-slate-500">
-                      {r.paidAt && formatJst(r.paidAt)} / {r.paidAmount?.toLocaleString("ja-JP")}円
+                      振込日 {r.paidAt && formatJst(r.paidAt)} / 振込金額 {(r.paidAmount ?? r.amount).toLocaleString("ja-JP")}円
                       {r.paidByOperatorName && ` / 処理者: ${r.paidByOperatorName}`}
                     </div>
                   )}
@@ -202,11 +232,15 @@ export default async function AdminPaymentsPage({
                         placeholder="処理者名"
                         className="w-28 rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-xs text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
                       />
-                      <SubmitButton
-                        className="rounded-md bg-gradient-to-r from-blue-600 to-cyan-500 px-2 py-1 text-xs text-white shadow-md shadow-blue-950/50 active:scale-[0.98]"
+                      <PaidConfirmButton
+                        expectedDate={toJstDateValue(r.desiredPaymentDate)}
+                        expectedLabel="希望振込日"
+                        staffName={r.staff.name}
+                        amountText={`申請額 ${r.amount.toLocaleString("ja-JP")}円`}
+                        className="rounded-md bg-gradient-to-r from-blue-600 to-cyan-500 px-2 py-1 text-xs text-white shadow-md shadow-blue-950/50 active:scale-[0.98] disabled:opacity-50"
                       >
                         振込完了
-                      </SubmitButton>
+                      </PaidConfirmButton>
                     </form>
                   )}
                   {r.status === "REQUESTING" && (

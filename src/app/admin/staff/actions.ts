@@ -5,6 +5,28 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteGameData } from "@/lib/game";
+import { operatorNameFrom, recordAudit } from "@/lib/audit";
+
+// 報酬・支払いに関わる設定の変更履歴用(スタッフ詳細の保存で変わった項目だけを「変更前 → 変更後」で残す)。
+const PAY_SETTING_LABELS: Record<string, string> = {
+  paymentMethod: "支払方法",
+  fixedClosingDay: "締め日",
+  fixedPaymentMonthOffset: "支払月(0=当月・1=翌月)",
+  fixedPaymentDay: "支払日(0=月末)",
+  payType: "報酬タイプ",
+  dailyRate: "日当",
+  monthlyAmount: "月額",
+  travelExpenseIncluded: "交通費込み",
+  dailyTravelInclTax: "1日あたりの交通費",
+};
+function payFieldText(key: string, v: string | number | boolean | null): string {
+  if (v === null) return "未設定";
+  if (key === "paymentMethod") return v === "FIXED" ? "固定支払" : "申請支払";
+  if (key === "payType") return v === "DAILY" ? "日当" : v === "MONTHLY" ? "月固定" : v === "MANUAL" ? "手入力" : "未設定";
+  if (key === "travelExpenseIncluded") return v ? "交通費込み" : "交通費別";
+  if (key === "dailyRate" || key === "monthlyAmount" || key === "dailyTravelInclTax") return `${Number(v).toLocaleString("ja-JP")}円`;
+  return String(v);
+}
 
 export async function createStaff(formData: FormData) {
   await requireAdmin();
@@ -113,6 +135,14 @@ function nonNegIntOrNull(formData: FormData, key: string): number | null {
 
 export async function updateStaffDetails(staffId: string, formData: FormData) {
   await requireAdmin();
+  const operatorName = operatorNameFrom(formData);
+  const beforePay = await prisma.staff.findUnique({
+    where: { id: staffId },
+    select: {
+      paymentMethod: true, fixedClosingDay: true, fixedPaymentMonthOffset: true, fixedPaymentDay: true,
+      payType: true, dailyRate: true, monthlyAmount: true, travelExpenseIncluded: true, dailyTravelInclTax: true,
+    },
+  });
 
   const birthDateRaw = String(formData.get("birthDate") ?? "").trim();
   const paymentMethod = String(formData.get("paymentMethod") ?? "REQUEST") as "FIXED" | "REQUEST";
@@ -147,6 +177,33 @@ export async function updateStaffDetails(staffId: string, formData: FormData) {
       simpleMode: formData.get("simpleMode") === "on",
     },
   });
+
+  // 金額に関わる設定が変わったときだけ、変更前 → 変更後を履歴に残す。
+  if (beforePay) {
+    const afterPay = {
+      paymentMethod,
+      fixedClosingDay: paymentMethod === "FIXED" ? intOrNull(formData, "fixedClosingDay") : null,
+      fixedPaymentMonthOffset: paymentMethod === "FIXED" ? intOrNull(formData, "fixedPaymentMonthOffset") : null,
+      fixedPaymentDay: paymentMethod === "FIXED" ? intOrNull(formData, "fixedPaymentDay") : null,
+      payType,
+      dailyRate,
+      monthlyAmount,
+      travelExpenseIncluded,
+      dailyTravelInclTax,
+    } as const;
+    const changed = (Object.keys(afterPay) as (keyof typeof afterPay)[]).filter((k) => (beforePay[k] ?? null) !== (afterPay[k] ?? null));
+    if (changed.length > 0) {
+      await recordAudit({
+        staffId,
+        category: "AMOUNT_SETTING",
+        action: "UPDATE_PAY_SETTINGS",
+        summary: changed.map((k) => `${PAY_SETTING_LABELS[k]}: ${payFieldText(k, beforePay[k] ?? null)} → ${payFieldText(k, afterPay[k] ?? null)}`).join(" / "),
+        before: Object.fromEntries(changed.map((k) => [k, beforePay[k] ?? null])),
+        after: Object.fromEntries(changed.map((k) => [k, afterPay[k] ?? null])),
+        actor: { type: "ADMIN", operatorName },
+      });
+    }
+  }
 
   revalidatePath("/admin/staff");
   revalidatePath(`/admin/staff/${staffId}`);

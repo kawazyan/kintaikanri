@@ -5,6 +5,7 @@ import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { splitInclusiveTax } from "@/lib/billing";
 import { parseCompensationItems } from "@/lib/compensation-items";
+import { compCategoryText, recordAudit, yenText } from "@/lib/audit";
 
 export type CompensationFormState = { error?: string; savedAt?: number };
 
@@ -42,6 +43,16 @@ export async function addCompensationRequest(_prev: CompensationFormState, formD
       submittedAt: new Date(),
       items: { create: parsed.items.map((it, i) => ({ sortOrder: i, label: it.label, amount: it.amount, memo: it.memo })) },
     },
+  });
+
+  await recordAudit({
+    staffId,
+    category: "COMPENSATION",
+    action: "COMPENSATION_SUBMITTED",
+    summary: `別途報酬を申請(${compCategoryText(category)} ${yenText(parsed.total)}・内訳${parsed.items.length}件)`,
+    after: { category, amountTaxInclusive: parsed.total, items: parsed.items.map((it) => ({ label: it.label, amount: it.amount })) },
+    yearMonth,
+    actor: { type: "STAFF" },
   });
 
   revalidatePath("/payment/compensation");

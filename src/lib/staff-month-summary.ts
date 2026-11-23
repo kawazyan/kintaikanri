@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { computeMonthlyEarnings } from "@/lib/earnings";
+import { computeMonthlyEarnings, type EarningsDetail } from "@/lib/earnings";
 import { fixedPaymentDateForClosingMonth } from "@/lib/payment";
 import { jstMonthRange, toJstDateValue } from "@/lib/time";
 import { summarizeAttendance, type AttendanceCounts } from "@/lib/attendance-summary";
@@ -16,6 +16,16 @@ export type ExpenseItem = {
   status: "SUBMITTED" | "APPROVED";
 };
 
+// 別途報酬(リファラル等)の明細。items は申請時に1行ずつ入力された内訳(紹介した人ごとの金額など)。
+export type CompensationItem = {
+  id: string;
+  category: "REFERRAL" | "INCENTIVE" | "OTHER";
+  description: string | null;
+  amountTaxInclusive: number;
+  items: { label: string; amount: number; memo: string | null }[];
+  bundledInFixedPayment: boolean; // true=固定支払の「振込完了」に含めて払った分(振込済み)
+};
+
 export type StaffMonthSummary = AttendanceCounts & {
   staffId: string;
   earnings: number | null; // その月の受取金額(確定分)。null=計算できない
@@ -24,6 +34,8 @@ export type StaffMonthSummary = AttendanceCounts & {
   compensation: number; // 別途報酬(リファラル等)のうち承認済・未振込の合計
   expensesPending: number; // うち承認待ち
   expenseItems: ExpenseItem[]; // 経費の明細(申請中+承認済)。経費の内訳表示用
+  compensationItems: CompensationItem[]; // 別途報酬の明細(承認済・未振込 + 固定支払の振込完了に含めて払った分)。内訳表示用
+  earningsDetail: EarningsDetail | null; // 受取金額の内訳(1日あたり/月固定・稼働日数など)
   total: number | null; // earnings + expenses。earnings が null なら null
   paymentDate: Date | null; // 支払い予定日(固定支払のみ)
   paymentNote: string | null;
@@ -56,7 +68,20 @@ export async function loadStaffMonthSummaries(staffList: StaffInput[], yearMonth
     prisma.transferRequest.findMany({ where: { staffId: { in: ids }, status: "REQUESTING" }, select: { staffId: true, amount: true, desiredPaymentDate: true } }),
     prisma.fixedPaymentCompletion.findMany({ where: { staffId: { in: ids }, closingYearMonth: yearMonth }, select: { staffId: true, paidAmount: true, paidAt: true } }),
     prisma.monthlyEarningTarget.findMany({ where: { staffId: { in: ids }, yearMonth }, select: { staffId: true, targetAmount: true } }),
-    prisma.compensationRequest.findMany({ where: { staffId: { in: ids }, yearMonth, status: "APPROVED", paidAt: null }, select: { staffId: true, amountTaxInclusive: true } }),
+    prisma.compensationRequest.findMany({
+      where: {
+        staffId: { in: ids },
+        yearMonth,
+        status: "APPROVED",
+        // 未振込、または固定支払の「振込完了」に含めて払った分(markFixedPaymentDone が paidByOperatorName にこの文言を入れる)。
+        OR: [{ paidAt: null }, { paidByOperatorName: "固定支払の振込完了に含む" }],
+      },
+      select: {
+        id: true, staffId: true, category: true, description: true, amountTaxInclusive: true, paidAt: true,
+        items: { select: { label: true, amount: true, memo: true }, orderBy: { sortOrder: "asc" } },
+      },
+      orderBy: { createdAt: "asc" },
+    }),
   ]);
   const targetByStaff = new Map(targets.map((t) => [t.staffId, t.targetAmount]));
   const completionByStaff = new Map(completions.map((c) => [c.staffId, c]));
@@ -84,12 +109,13 @@ export async function loadStaffMonthSummaries(staffList: StaffInput[], yearMonth
       now,
     });
 
-    const { confirmedAmount } = await computeMonthlyEarnings(s.id, yearMonth, now);
+    const { confirmedAmount, detail } = await computeMonthlyEarnings(s.id, yearMonth, now);
     const exps = gExp.get(s.id) ?? [];
     const expenseTotal = exps.reduce((sum, e) => sum + e.amountTaxInclusive, 0);
     const expensePending = exps.filter((e) => e.status === "SUBMITTED").reduce((sum, e) => sum + e.amountTaxInclusive, 0);
     // 別途報酬は固定支払のスタッフだけ、振込完了時にまとめて払う(申請支払のスタッフは別途報酬の「振込済み」で払う)。
-    const compensationTotal = s.paymentMethod === "FIXED" ? (gComp.get(s.id) ?? []).reduce((sum, c) => sum + c.amountTaxInclusive, 0) : 0;
+    const compRows = gComp.get(s.id) ?? [];
+    const compensationTotal = s.paymentMethod === "FIXED" ? compRows.filter((c) => c.paidAt === null).reduce((sum, c) => sum + c.amountTaxInclusive, 0) : 0;
 
     const reqs = gReq.get(s.id) ?? [];
     let paymentDate: Date | null = null;
@@ -120,6 +146,15 @@ export async function loadStaffMonthSummaries(staffList: StaffInput[], yearMonth
         status: e.status as "SUBMITTED" | "APPROVED",
       })),
       compensation: compensationTotal,
+      compensationItems: compRows.map((c) => ({
+        id: c.id,
+        category: c.category,
+        description: c.description,
+        amountTaxInclusive: c.amountTaxInclusive,
+        items: c.items,
+        bundledInFixedPayment: c.paidAt !== null,
+      })),
+      earningsDetail: detail ?? null,
       total: confirmedAmount === null ? null : confirmedAmount + expenseTotal + compensationTotal,
       paymentDate,
       paymentNote,

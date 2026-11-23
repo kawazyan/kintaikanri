@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { getStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { splitInclusiveTax } from "@/lib/billing";
+import { expenseCategoryText, recordAudit, yenText } from "@/lib/audit";
 
 export async function addExpense(formData: FormData) {
   const staffId = await getStaffId();
@@ -26,6 +27,7 @@ export async function addExpense(formData: FormData) {
   if (category === "OTHER" && !description) throw new Error("その他経費は内容を入力してください。");
   const { amountEx, tax } = splitInclusiveTax(amount, 10);
   await prisma.expense.create({data:{staffId,workOrderStaffId,yearMonth,expenseDate:new Date(`${expenseDate}T12:00:00+09:00`),category,description,amountTaxInclusive:amount,amountExTax:amountEx,taxAmount:tax,taxRate:10,status:"SUBMITTED",submittedAt:new Date()}});
+  await recordAudit({ staffId, category: "EXPENSE", action: "EXPENSE_SUBMITTED", summary: `経費を申請(${expenseCategoryText(category)} ${yenText(amount)}・${expenseDate}${description ? `・${description}` : ""})`, after: { category, amountTaxInclusive: amount, expenseDate, description }, yearMonth, actor: { type: "STAFF" } });
   revalidatePath("/expenses");
 }
 

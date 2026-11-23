@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { splitInclusiveTax } from "@/lib/billing";
+import { compCategoryText, operatorNameFrom, recordAudit, yenText } from "@/lib/audit";
 
 export async function reviewCompensationRequest(id: string, decision: "APPROVED" | "REJECTED", formData: FormData) {
   await requireAdmin();
@@ -26,6 +27,16 @@ export async function reviewCompensationRequest(id: string, decision: "APPROVED"
       reviewNote: note,
     },
   });
+  await recordAudit({
+    staffId: current.staffId,
+    category: "COMPENSATION",
+    action: decision === "APPROVED" ? "COMPENSATION_APPROVED" : "COMPENSATION_REJECTED",
+    summary: `別途報酬(${compCategoryText(current.category)})を${decision === "APPROVED" ? "承認" : "却下"}(金額 ${current.amountTaxInclusive === finalAmount ? yenText(finalAmount) : `${yenText(current.amountTaxInclusive)} → ${yenText(finalAmount)}`}${note ? `・メモ: ${note}` : ""})`,
+    before: { status: current.status, amountTaxInclusive: current.amountTaxInclusive },
+    after: { status: decision, amountTaxInclusive: finalAmount },
+    yearMonth: current.yearMonth,
+    actor: { type: "ADMIN", operatorName: reviewer },
+  });
   revalidatePath("/admin/compensation");
 }
 
@@ -42,19 +53,45 @@ export async function markCompensationPaid(id: string, formData: FormData) {
   const paidAmount = amountRaw ? Number(amountRaw) : current.amountTaxInclusive;
   if (!Number.isInteger(paidAmount) || paidAmount <= 0 || paidAmount > 100_000_000) return;
 
-  await prisma.compensationRequest.updateMany({
+  const paid = await prisma.compensationRequest.updateMany({
     where: { id, status: "APPROVED", paidAt: null },
     data: { paidAt: new Date(), paidAmount, paidByOperatorName: operatorName || null },
   });
+  if (paid.count > 0) {
+    await recordAudit({
+      staffId: current.staffId,
+      category: "COMPENSATION",
+      action: "COMPENSATION_PAID",
+      summary: `別途報酬(${compCategoryText(current.category)} ${yenText(current.amountTaxInclusive)})の振込済みを記録(振込金額 ${yenText(paidAmount)})`,
+      before: { paid: false },
+      after: { paid: true, paidAmount },
+      yearMonth: current.yearMonth,
+      actor: { type: "ADMIN", operatorName },
+    });
+  }
   revalidatePath("/admin/compensation");
 }
 
 // 押し間違い用の取り消し(未振込に戻す)。
-export async function undoCompensationPaid(id: string) {
+export async function undoCompensationPaid(id: string, formData: FormData) {
   await requireAdmin();
-  await prisma.compensationRequest.updateMany({
+  const operatorName = operatorNameFrom(formData);
+  const current = await prisma.compensationRequest.findUnique({ where: { id } });
+  const undone = await prisma.compensationRequest.updateMany({
     where: { id, paidAt: { not: null } },
     data: { paidAt: null, paidAmount: null, paidByOperatorName: null },
   });
+  if (undone.count > 0 && current) {
+    await recordAudit({
+      staffId: current.staffId,
+      category: "COMPENSATION",
+      action: "COMPENSATION_PAID_UNDO",
+      summary: `別途報酬(${compCategoryText(current.category)} ${yenText(current.amountTaxInclusive)})の振込済みを取り消し(未振込に戻す)`,
+      before: { paid: true, paidAmount: current.paidAmount },
+      after: { paid: false },
+      yearMonth: current.yearMonth,
+      actor: { type: "ADMIN", operatorName },
+    });
+  }
   revalidatePath("/admin/compensation");
 }
