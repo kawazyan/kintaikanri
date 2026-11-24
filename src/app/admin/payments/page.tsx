@@ -75,12 +75,18 @@ export default async function AdminPaymentsPage({
 
   // 申請支払の人ごとの「現在の振込可能額残高」と「何月稼働分がいくら振込済みか」(古い月の確定受取から順に充当)。
   const requestMethodStaff = activeStaff.filter((s) => s.paymentMethod === "REQUEST");
-  const [monthlyLists, transferRows] = await Promise.all([
+  const [monthlyLists, transferRows, approvedExpenses] = await Promise.all([
     Promise.all(requestMethodStaff.map((s) => computeMonthlyConfirmedList(s.id, nowDate))),
     prisma.transferRequest.findMany({
       where: { staffId: { in: requestMethodStaff.map((s) => s.id) }, status: { in: ["REQUESTING", "PAID"] } },
       select: { id: true, staffId: true, status: true, amount: true, paidAmount: true, paidAt: true, desiredPaymentDate: true },
       orderBy: { paidAt: "desc" },
+    }),
+    // 承認済みの経費(月末に別で払う。払い済みの記録つき)
+    prisma.expense.findMany({
+      where: { staffId: { in: requestMethodStaff.map((s) => s.id) }, status: "APPROVED" },
+      select: { id: true, staffId: true, yearMonth: true, amountTaxInclusive: true, description: true, paidAt: true },
+      orderBy: [{ yearMonth: "asc" }, { expenseDate: "asc" }],
     }),
   ]);
   const balanceViews: TransferBalanceView[] = requestMethodStaff.map((s, i) => {
@@ -92,6 +98,7 @@ export default async function AdminPaymentsPage({
       staff: { id: s.id, name: s.name, employeeCode: s.employeeCode },
       alloc: allocateTransfersByMonth(monthlyLists[i].map((m) => ({ yearMonth: m.yearMonth, confirmed: m.confirmed })), paidTotal, requestingTotal),
       monthLabels: Object.fromEntries(monthlyLists[i].map((m) => [m.yearMonth, m.detail ? describeEarnings(m.detail).short : "-"])),
+      expenses: approvedExpenses.filter((e) => e.staffId === s.id).map((e) => ({ id: e.id, yearMonth: e.yearMonth, amount: e.amountTaxInclusive, description: e.description, paidAt: e.paidAt })),
       paidHistory: mine
         .filter((t) => t.status === "PAID")
         .map((t) => ({ id: t.id, paidAt: t.paidAt, amount: t.amount, paidAmount: t.paidAmount, desiredPaymentDate: t.desiredPaymentDate })),

@@ -1,5 +1,7 @@
 import type { AllocationResult } from "@/lib/transfer-allocation";
 import { yearMonthLabel } from "@/lib/time";
+import { OperatorNameInput } from "@/components/operator-name-input";
+import { markExpensePaid, undoExpensePaid } from "./actions";
 
 // 申請支払の人ごとの「現在の振込可能額残高」と「何月稼働分がいくら振込済みか」。
 // 申請は月に紐づいていないので、振込済み・申請中は古い月の確定受取から順に充当して表示している。
@@ -8,12 +10,15 @@ export type TransferBalanceView = {
   staff: { id: string; name: string; employeeCode: string };
   alloc: AllocationResult;
   monthLabels: Record<string, string>; // yearMonth → 内訳の1行要約(1日あたり/月固定など)
+  // 承認済みの経費(月末に別で払う。払い済みにしたものは paidAt が入る)
+  expenses: { id: string; yearMonth: string; amount: number; description: string | null; paidAt: Date | null }[];
   paidHistory: { id: string; paidAt: Date | null; amount: number; paidAmount: number | null; desiredPaymentDate: Date }[];
 };
 
 const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
 const fmtDay = (d: Date) =>
   new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "numeric", day: "numeric", weekday: "short" }).format(d);
+const expenseName = (desc: string | null) => (desc ? desc.replace(/^(\d{4}年)?\d+月分?\s*/, "").split(/[（(\s]/)[0] : "") || "経費";
 const dayKey = (d: Date) => new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "numeric", day: "numeric" }).format(d);
 
 // 月ごとの状態(ひと目で分かるようにバッジで出す)
@@ -94,6 +99,67 @@ export function TransferBalanceSection({ views }: { views: TransferBalanceView[]
                 })}
                 {rows.length === 0 && <li className="py-3 text-center text-xs text-slate-500">確定した受取がありません</li>}
               </ul>
+
+
+              {(() => {
+                const unpaid = v.expenses.filter((e) => !e.paidAt);
+                const paid = v.expenses.filter((e) => e.paidAt);
+                const unpaidTotal = unpaid.reduce((sum, e) => sum + e.amount, 0);
+                const btn = "rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700";
+                const opCls = "w-24 rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-900";
+                if (v.expenses.length === 0) return null;
+                return (
+                  <div className="mt-3 border-t border-slate-200 pt-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold text-slate-100">経費（月末に別で払う分）</span>
+                      {unpaidTotal > 0 ? (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">これから払う {yen(unpaidTotal)}</span>
+                      ) : (
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">すべて払い済み</span>
+                      )}
+                    </div>
+                    {unpaid.length > 0 && (
+                      <ul className="mt-1 divide-y divide-slate-200">
+                        {unpaid.map((e) => (
+                          <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5 text-xs">
+                            <span className="text-slate-300">
+                              {yearMonthLabel(e.yearMonth)}分 {expenseName(e.description)}
+                              <span className="ml-2 font-semibold text-slate-100">{yen(e.amount)}</span>
+                            </span>
+                            <form action={markExpensePaid.bind(null, e.id)} className="flex items-center gap-1">
+                              <OperatorNameInput className={opCls} />
+                              <button type="submit" className={btn}>払い済みにする</button>
+                            </form>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {paid.length > 0 && (
+                      <details className="group mt-1 text-xs text-slate-400">
+                        <summary className="flex cursor-pointer list-none items-center gap-1 font-semibold text-slate-300 [&::-webkit-details-marker]:hidden">
+                          <span className="group-open:hidden">▸</span>
+                          <span className="hidden group-open:inline">▾</span>
+                          払い済みの経費（{paid.length}件）
+                        </summary>
+                        <ul className="mt-1 space-y-1">
+                          {paid.map((e) => (
+                            <li key={e.id} className="flex flex-wrap items-center justify-between gap-2">
+                              <span>
+                                {yearMonthLabel(e.yearMonth)}分 {expenseName(e.description)} {yen(e.amount)}
+                                <span className="ml-1 text-slate-500">（{e.paidAt ? fmtDay(e.paidAt) : ""}）</span>
+                              </span>
+                              <form action={undoExpensePaid.bind(null, e.id)} className="flex items-center gap-1">
+                                <OperatorNameInput className={opCls} />
+                                <button type="submit" className={btn}>取り消す</button>
+                              </form>
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    )}
+                  </div>
+                );
+              })()}
 
               <details className="group mt-2 text-xs text-slate-400">
                 <summary className="flex cursor-pointer list-none items-center gap-1 font-semibold text-slate-300 [&::-webkit-details-marker]:hidden">

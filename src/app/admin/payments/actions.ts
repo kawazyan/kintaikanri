@@ -239,3 +239,32 @@ export async function undoFixedPaymentDone(staffId: string, closingYearMonth: st
   revalidatePath("/admin/payments");
   revalidatePath("/admin");
 }
+
+// 経費の「払い済み」の記録/取り消し(申請支払の人の経費は月末に別で払う。承認済みの経費だけ)。
+export async function markExpensePaid(expenseId: string, formData: FormData) {
+  await requireAdmin();
+  const operatorName = operatorNameFrom(formData);
+  const e = await prisma.expense.findUnique({ where: { id: expenseId }, select: { id: true, staffId: true, yearMonth: true, status: true, paidAt: true, amountTaxInclusive: true } });
+  if (!e || e.status !== "APPROVED" || e.paidAt) return;
+  await prisma.expense.update({ where: { id: e.id }, data: { paidAt: new Date(), paidByName: operatorName || null } });
+  await recordAudit({
+    staffId: e.staffId, category: "EXPENSE", action: "EXPENSE_PAID", yearMonth: e.yearMonth,
+    summary: `${ymText(e.yearMonth)}分の経費を払い済みに記録: ${yenText(e.amountTaxInclusive)}`,
+    after: { amount: e.amountTaxInclusive }, actor: { type: "ADMIN", operatorName },
+  });
+  revalidatePath("/admin/payments");
+}
+
+export async function undoExpensePaid(expenseId: string, formData: FormData) {
+  await requireAdmin();
+  const operatorName = operatorNameFrom(formData);
+  const e = await prisma.expense.findUnique({ where: { id: expenseId }, select: { id: true, staffId: true, yearMonth: true, paidAt: true, amountTaxInclusive: true } });
+  if (!e || !e.paidAt) return;
+  await prisma.expense.update({ where: { id: e.id }, data: { paidAt: null, paidByName: null } });
+  await recordAudit({
+    staffId: e.staffId, category: "EXPENSE", action: "EXPENSE_PAID_UNDONE", yearMonth: e.yearMonth,
+    summary: `${ymText(e.yearMonth)}分の経費の払い済みを取り消し: ${yenText(e.amountTaxInclusive)}`,
+    before: { amount: e.amountTaxInclusive, paidAt: e.paidAt.toISOString() }, actor: { type: "ADMIN", operatorName },
+  });
+  revalidatePath("/admin/payments");
+}

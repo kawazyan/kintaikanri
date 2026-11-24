@@ -624,6 +624,8 @@ model Expense {
   reviewedAt DateTime?
   reviewerName String?
   reviewNote String?
+  paidAt DateTime? // 払い済みにした日時(申請支払の人の経費は月末に別で払う。固定支払の人は振込完了に含む)
+  paidByName String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([staffId, yearMonth])
