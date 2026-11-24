@@ -4,6 +4,7 @@ import { renderEstimatePdf } from "@/lib/estimate-render";
 import { invoiceRecipients } from "@/lib/invoice-defaults";
 import { registerClientForSentEstimate, registerNote } from "@/lib/estimate-register-client";
 import { ESTIMATE_CONFIRM_BCC, estimatePdfFileName, resolveEstimateRecipients } from "@/lib/estimate";
+import { greetNamesFor, recipientDetailsOf, type BillingTerms } from "@/lib/billing-terms";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -18,12 +19,9 @@ const MAIL_SIGNATURE = [
   ">>>>>>>>>>>>>>>>>>>>>>>>>>>>",
 ];
 
-// 送付: 保存済み → 送付済み(送付済みの再送も可)。見積書PDFを添付して送る(管理者アドレスをCC、keiri@kjgroup.info をBCC)。
-// 送信先は、見積書に手入力した送信先メールアドレスがあればそれ、なければ取引先の請求用の宛先。どちらもなければ送らない。
-// 送信に成功したときだけ送付済みにする(失敗したら状態は変わらない)。
-// 送信後、宛名が取引先一覧になければ自動で登録する(失敗しても送付は成功のまま)。
-// 呼び出すのは画面の「送付」ボタンを押したときだけ。自動では送らない。
-export async function sendSavedEstimate(id: string) {
+// メールの中身(宛先・件名・本文・添付ファイル名)を作る。PDFは作らず、DBも変えない。
+// 送信前の確認画面(previewEstimateMail)と、実際の送信(sendSavedEstimate)で同じ中身を使う。
+async function composeEstimateMail(id: string) {
   const estimate = await prisma.estimate.findUnique({ where: { id }, include: { client: true } });
   if (!estimate) throw new Error("見積書が見つかりません。");
 
@@ -40,13 +38,14 @@ export async function sendSavedEstimate(id: string) {
   const lower = new Set([...to, ...cc].map((x) => x.toLowerCase()));
   const bcc = lower.has(ESTIMATE_CONFIRM_BCC) ? [] : [ESTIMATE_CONFIRM_BCC];
 
-  const pdf = await renderEstimatePdf(id);
-  if (!pdf) throw new Error("PDFの作成に失敗しました。");
-
   // 宛名・件名が空でも送れるようにする(空のときは、その行を省く)。
   const subject = `【御見積書】${estimate.subject ? `${estimate.subject}` : estimate.estimateNumber}（株式会社K.J）`;
+  // 店舗(見積書の「店舗名」)にエリアが登録されていれば、その担当者(TSL/TL)の名前を宛名の下に「〇〇 様」と書く。
+  const terms = (estimate.client?.billingTerms ?? null) as BillingTerms | null;
+  const greet = greetNamesFor(terms, estimate.storeName);
+  const head = [...(estimate.addressee ? [`${estimate.addressee} 御中`] : []), ...greet.map((n) => `${n} 様`)];
   const text = [
-    ...(estimate.addressee ? [`${estimate.addressee} 御中`, ""] : []),
+    ...(head.length ? [...head, ""] : []),
     "いつも大変お世話になっております。",
     "株式会社K.Jです。",
     "",
@@ -62,13 +61,43 @@ export async function sendSavedEstimate(id: string) {
     ...MAIL_SIGNATURE,
   ].join("\n");
 
+  return { estimate, to, toDetails: recipientDetailsOf(terms, to), cc, bcc, subject, text, attachmentName: estimatePdfFileName(estimate.estimateNumber) };
+}
+
+// 送信前の確認画面に出す内容(実際に送る件名・本文・宛先・添付と同じもの)。何も送らず、DBも変えない。
+export async function previewEstimateMail(id: string) {
+  const c = await composeEstimateMail(id);
+  return {
+    mode: (c.estimate.status === "SENT" ? "resend" : "send") as "send" | "resend",
+    subject: c.subject,
+    text: c.text,
+    to: c.to,
+    toDetails: c.toDetails,
+    cc: c.cc,
+    bcc: c.bcc,
+    attachments: [c.attachmentName],
+    isCorrection: false,
+  };
+}
+
+// 送付: 保存済み → 送付済み(送付済みの再送も可)。見積書PDFを添付して送る(管理者アドレスをCC、keiri@kjgroup.info をBCC)。
+// 送信先は、見積書に手入力した送信先メールアドレスがあればそれ、なければ取引先の請求用の宛先。どちらもなければ送らない。
+// 送信に成功したときだけ送付済みにする(失敗したら状態は変わらない)。
+// 送信後、宛名が取引先一覧になければ自動で登録する(失敗しても送付は成功のまま)。
+// 呼び出すのは画面の「送付」ボタンのあと、送信前の確認画面で「送信する」を押したときだけ。自動では送らない。
+export async function sendSavedEstimate(id: string) {
+  const { to, cc, bcc, subject, text, attachmentName } = await composeEstimateMail(id);
+
+  const pdf = await renderEstimatePdf(id);
+  if (!pdf) throw new Error("PDFの作成に失敗しました。");
+
   await sendMailStrict({
     to,
     cc,
     bcc,
     subject,
     text,
-    attachments: [{ filename: estimatePdfFileName(estimate.estimateNumber), content: pdf.buffer }],
+    attachments: [{ filename: attachmentName, content: pdf.buffer }],
   });
 
   await prisma.estimate.update({

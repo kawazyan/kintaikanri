@@ -18,27 +18,30 @@ export function prevYearMonth(yearMonth: string) {
 // 店舗名の比較用(全角半角・空白・大文字小文字の違いは同じ扱い)
 export const normBranch = (s: string) => s.normalize("NFKC").replace(/\s+/g, "").toLowerCase();
 
-export type BranchInput = { label: string; emails: string };
-export type BranchesChecked = { ok: true; presets: { label: string; emails: string[] }[] } | { ok: false; error: string };
+export type BranchInput = { label: string; emails: string; area?: string };
+export type BranchesChecked = { ok: true; presets: { label: string; emails: string[]; area?: string }[] } | { ok: false; error: string };
 
 // 取引先の画面で「請求先(店舗)」を保存するときの入力チェック(純粋なロジック)。
 // ・店舗名は必須で、同じ名前(全角半角・空白の違いを除く)は重複不可。送信先メールは1件以上必須。メールの形式を確認し、重複は除く。
 // ・空の行(店舗名もメールも空)は無視する。
-export function checkBranches(input: BranchInput[]): BranchesChecked {
-  const presets: { label: string; emails: string[] }[] = [];
+// ・エリアを選んだ店舗は、そのエリアの担当者が自動で宛先に入るので、送信先メールは空でもよい(areaKeys は登録済みのエリアの識別子)。
+export function checkBranches(input: BranchInput[], areaKeys: string[] = []): BranchesChecked {
+  const presets: { label: string; emails: string[]; area?: string }[] = [];
   const seen = new Set<string>();
   for (const b of input) {
     const label = b.label.trim();
     const emails = [...new Set(splitEmails(b.emails))];
-    if (!label && !emails.length) continue;
+    const area = b.area?.trim() || undefined;
+    if (!label && !emails.length && !area) continue;
     if (!label) return { ok: false, error: "店舗名のない行があります。店舗名を入力するか、行を削除してください。" };
     if (label.length > 60) return { ok: false, error: `店舗名「${label}」は60文字以内で入力してください。` };
     if (seen.has(normBranch(label))) return { ok: false, error: `店舗名「${label}」が重複しています。` };
     seen.add(normBranch(label));
-    if (!emails.length) return { ok: false, error: `「${label}」の送信先メールアドレスを入力してください。` };
+    if (area && !areaKeys.includes(area)) return { ok: false, error: `「${label}」のエリアが登録されていません。` };
+    if (!emails.length && !area) return { ok: false, error: `「${label}」の送信先メールアドレスを入力するか、エリアを選んでください。` };
     const bad = emails.find((e) => !EMAIL_RE.test(e));
     if (bad) return { ok: false, error: `「${label}」のメールアドレスの形式が正しくありません: ${bad}` };
-    presets.push({ label, emails });
+    presets.push({ label, emails, ...(area ? { area } : {}) });
   }
   return { ok: true, presets };
 }

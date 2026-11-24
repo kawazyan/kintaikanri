@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { toJstDateValue } from "@/lib/time";
 import { invoiceRecipients } from "@/lib/invoice-defaults";
+import { recipientPresetsOf, type BillingTerms } from "@/lib/billing-terms";
 import { defaultEstimateSubject } from "@/lib/estimate";
 import { AdminNav } from "../../admin-nav";
 import { EstimateForm } from "../estimate-form";
@@ -22,7 +23,7 @@ export default async function NewEstimatePage() {
       <h1 className="mt-3 text-2xl font-black">見積書を作成</h1>
       <p className="mt-1 text-sm text-slate-400">見積番号は「KJ-見積-年月-連番」で自動で付きます。入力は全て任意で、空のままでも保存できます。</p>
       <EstimateForm
-        clients={clients.map((c) => ({ id: c.id, name: c.name, emails: invoiceRecipients(c), cc }))}
+        clients={clients.map((c) => ({ id: c.id, name: c.name, emails: invoiceRecipients(c), cc, presets: recipientPresetsOf(c.billingTerms as BillingTerms | null).map((p) => ({ label: p.label, emails: p.emails })) }))}
         initial={{
           clientId: "",
           issuedDate: toJstDateValue(new Date()),

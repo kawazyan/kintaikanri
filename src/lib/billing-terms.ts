@@ -42,26 +42,96 @@ export type BillingTerms = {
   pdfBundle?: "COMBINED" | "SEPARATE";
   // この取引先あての請求書メールだけ、確認用にBCC(先方には見えない)で自動追加する自社アドレス。
   confirmBcc?: string[];
-  // 店舗ごとなど、請求書の送信先として登録しておく宛先(請求書の「修正」画面で選ぶと送信先の枠に入る)。管理者のCCは自動なので入れない。
-  recipientPresets?: { label: string; emails: string[] }[];
+  // 店舗ごとなど、請求書の送信先として登録しておく宛先(請求書・見積書の画面で選ぶと送信先の枠に入る)。管理者のCCは自動なので入れない。
+  // area を指定すると、そのエリアの担当者(recipientAreas)が自動で宛先に入る(emails にはその店舗だけの宛先を入れる)。
+  recipientPresets?: { label: string; emails: string[]; area?: string }[];
+  // エリアごとの担当者(例: コスモネットの青森秋田・岩手・宮城・福島)。担当者を変えると、そのエリアの全店舗の宛先に反映される。
+  recipientAreas?: RecipientArea[];
 };
 
-// 登録済みの宛先(recipientPresets)から、名前があり、メール形式のアドレスが1件以上あるものだけを取り出す(重複は除く)。
-export function recipientPresetsOf(terms: BillingTerms | null | undefined): { label: string; emails: string[] }[] {
-  const out: { label: string; emails: string[] }[] = [];
-  for (const p of terms?.recipientPresets ?? []) {
-    const label = typeof p?.label === "string" ? p.label.trim() : "";
-    const seen = new Set<string>();
-    const emails: string[] = [];
-    for (const raw of Array.isArray(p?.emails) ? p.emails : []) {
-      const e = typeof raw === "string" ? raw.trim() : "";
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) || seen.has(e.toLowerCase())) continue;
-      seen.add(e.toLowerCase());
-      emails.push(e);
-    }
-    if (label && emails.length) out.push({ label, emails });
+// 宛先の担当者。name は確認画面に出す名前(例: 千坂TSL・石沢 様)。greet=true の人は、メール本文の宛名の下に「〇〇 様」と書く。
+export type RecipientPerson = { name: string; email: string; greet?: boolean };
+export type RecipientArea = { key: string; label: string; people: RecipientPerson[] };
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// メール形式のものだけを、重複(大文字小文字は区別しない)を除いて取り出す。
+function validEmails(raw: unknown[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const x of raw) {
+    const e = typeof x === "string" ? x.trim() : "";
+    if (!EMAIL_PATTERN.test(e) || seen.has(e.toLowerCase())) continue;
+    seen.add(e.toLowerCase());
+    out.push(e);
   }
   return out;
+}
+
+// 店舗名の比較用(全角半角・空白・大文字小文字の違いは同じ扱い)。
+const normLabel = (s: string) => s.normalize("NFKC").replace(/\s+/g, "").toLowerCase();
+
+// 登録済みのエリア(担当者つき)。メール形式でない人は除く。
+export function recipientAreasOf(terms: BillingTerms | null | undefined): RecipientArea[] {
+  const out: RecipientArea[] = [];
+  for (const a of terms?.recipientAreas ?? []) {
+    const key = typeof a?.key === "string" ? a.key.trim() : "";
+    const label = typeof a?.label === "string" ? a.label.trim() : "";
+    if (!key || !label) continue;
+    const people: RecipientPerson[] = [];
+    const seen = new Set<string>();
+    for (const p of Array.isArray(a.people) ? a.people : []) {
+      const email = typeof p?.email === "string" ? p.email.trim() : "";
+      const name = typeof p?.name === "string" ? p.name.trim() : "";
+      if (!EMAIL_PATTERN.test(email) || seen.has(email.toLowerCase())) continue;
+      seen.add(email.toLowerCase());
+      people.push({ name, email, ...(p.greet ? { greet: true } : {}) });
+    }
+    out.push({ key, label, people });
+  }
+  return out;
+}
+
+// 登録済みの宛先(recipientPresets)そのまま(エリアの担当者は足さない)。店舗ごとの宛先の編集画面で使う。
+export function recipientPresetsRawOf(terms: BillingTerms | null | undefined): { label: string; emails: string[]; area?: string }[] {
+  const areaKeys = new Set(recipientAreasOf(terms).map((a) => a.key));
+  const out: { label: string; emails: string[]; area?: string }[] = [];
+  for (const p of terms?.recipientPresets ?? []) {
+    const label = typeof p?.label === "string" ? p.label.trim() : "";
+    const emails = validEmails(Array.isArray(p?.emails) ? p.emails : []);
+    const area = typeof p?.area === "string" && areaKeys.has(p.area) ? p.area : undefined;
+    if (label && (emails.length || area)) out.push({ label, emails, ...(area ? { area } : {}) });
+  }
+  return out;
+}
+
+// 登録済みの宛先(recipientPresets)から、名前があり、メール形式のアドレスが1件以上あるものだけを取り出す(重複は除く)。
+// エリアを指定した店舗は、そのエリアの担当者のアドレスを先に並べ、その店舗だけの宛先を続ける。
+export function recipientPresetsOf(terms: BillingTerms | null | undefined): { label: string; emails: string[]; area?: string }[] {
+  const areas = recipientAreasOf(terms);
+  const out: { label: string; emails: string[]; area?: string }[] = [];
+  for (const p of recipientPresetsRawOf(terms)) {
+    const people = p.area ? (areas.find((a) => a.key === p.area)?.people ?? []) : [];
+    const emails = validEmails([...people.map((x) => x.email), ...p.emails]);
+    if (emails.length) out.push({ label: p.label, emails, ...(p.area ? { area: p.area } : {}) });
+  }
+  return out;
+}
+
+// メールアドレス → 担当者の名前(エリアに登録した人だけ)。確認画面で宛先の名前を出すのに使う。
+export function recipientDetailsOf(terms: BillingTerms | null | undefined, emails: string[]): { email: string; name: string | null }[] {
+  const names = new Map<string, string>();
+  for (const a of recipientAreasOf(terms)) for (const p of a.people) if (p.name && !names.has(p.email.toLowerCase())) names.set(p.email.toLowerCase(), p.name);
+  return emails.map((email) => ({ email, name: names.get(email.toLowerCase()) ?? null }));
+}
+
+// 店舗(請求先)のエリアで、メール本文の宛名の下に書く担当者の名前(例: 千坂TSL)。店舗が見つからない・エリアなしは空。
+export function greetNamesFor(terms: BillingTerms | null | undefined, branch: string | null | undefined): string[] {
+  if (!branch?.trim()) return [];
+  const preset = recipientPresetsRawOf(terms).find((p) => normLabel(p.label) === normLabel(branch));
+  if (!preset?.area) return [];
+  const area = recipientAreasOf(terms).find((a) => a.key === preset.area);
+  return (area?.people ?? []).filter((p) => p.greet && p.name).map((p) => p.name);
 }
 
 // 確認用BCCの宛先: 設定のアドレスから、メールの形式でないもの・すでに宛先(to/cc)にあるもの・重複を除く(大文字小文字は区別しない)。

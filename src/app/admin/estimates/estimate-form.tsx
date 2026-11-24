@@ -2,12 +2,15 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { saveEstimate } from "./actions";
+import { previewEstimate, saveEstimate, sendEstimate } from "./actions";
 import { computeEstimateTotals, defaultEstimateSubject, ESTIMATE_CONFIRM_BCC, resolveEstimateRecipients, type EstimateTaxMode } from "@/lib/estimate";
 import { splitEmails } from "@/lib/invoice-defaults";
+import type { MailPreview } from "../invoices/actions";
+import { MailPreviewDialog } from "../invoices/[id]/mail-preview-dialog";
 
 // emails: 取引先に登録された請求用の宛先。cc: 管理者CCの表示用(例「（CC: a@b.c）」)。
-export type EstimateClientOption = { id: string; name: string; emails: string[]; cc: string };
+// presets: 取引先に登録された店舗ごとの宛先(選ぶと、店舗名と送信先が入る。エリアの担当者を含む)。
+export type EstimateClientOption = { id: string; name: string; emails: string[]; cc: string; presets: { label: string; emails: string[] }[] };
 
 export type EstimateFormInitial = {
   clientId: string;
@@ -77,6 +80,8 @@ export function EstimateForm({
   const [lines, setLines] = useState<Line[]>(() => withKey(initial.lines.length ? initial.lines : [{ label: "", description: "", quantity: 1, unitPrice: 0 }]));
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
+  // 「保存して送付」で保存したあとに出す、送信前の確認画面(「送信する」を押すまで送られない)。
+  const [confirming, setConfirming] = useState<{ id: string; preview: MailPreview } | null>(null);
 
   const client = clients.find((c) => c.id === clientId);
   // 送付先: 手入力した送信先メールアドレスがあればそれ、なければ取引先の登録(どちらもなければ未設定)。
@@ -101,12 +106,9 @@ export function EstimateForm({
 
   function submit(sendAfter: boolean) {
     setMsg(null);
-    if (sendAfter) {
-      if (!toList.length) return setMsg({ ok: false, text: "送付するには、送信先メールアドレスを入力するか、メールアドレスが登録された取引先を選んでください。（「保存だけ」なら入力なしで保存できます）" });
-      const ok = window.confirm(`見積書（税込 ¥${totals.totalInclTax.toLocaleString("ja-JP")}）を保存して、\n${toText}\nへメール送付します（確認用に ${ESTIMATE_CONFIRM_BCC} へもBCCで送ります）。\n\n送付しますか？`);
-      if (!ok) return;
-    }
+    if (sendAfter && !toList.length) return setMsg({ ok: false, text: "送付するには、送信先メールアドレスを入力するか、メールアドレスが登録された取引先を選んでください。（「保存だけ」なら入力なしで保存できます）" });
     startTransition(async () => {
+      // 「保存して送付」は、まず保存だけ行い、送る内容の確認画面を出す(メールは確認画面の「送信する」まで送られない)。
       const res = await saveEstimate(
         {
           clientId,
@@ -119,10 +121,18 @@ export function EstimateForm({
           taxMode,
           lines: lines.map((l) => ({ label: l.label, description: l.description, quantity: Number(l.quantity) || 0, unitPrice: Number(l.unitPrice) || 0 })),
         },
-        sendAfter,
+        false,
         existingId
       );
-      if (res.ok) {
+      if (res.ok && sendAfter) {
+        const pv = await previewEstimate(res.id);
+        if (pv.ok) {
+          setConfirming({ id: res.id, preview: pv.preview });
+        } else {
+          window.alert(`保存しました（まだ送っていません）。送付できませんでした: ${pv.error}`);
+          router.push(`/admin/estimates/${res.id}`);
+        }
+      } else if (res.ok) {
         router.push(`/admin/estimates/${res.id}`);
         router.refresh();
       } else if (res.id) {
@@ -135,8 +145,28 @@ export function EstimateForm({
     });
   }
 
+  function confirmSend() {
+    if (!confirming) return;
+    const id = confirming.id;
+    startTransition(async () => {
+      const res = await sendEstimate(id);
+      if (!res.ok) window.alert(`保存しました。送付できませんでした: ${res.error}`);
+      router.push(`/admin/estimates/${id}`);
+      router.refresh();
+    });
+  }
+  // 確認画面で「戻る」: 保存は済んでいるので、送らずに詳細へ移動する(あとで送付できる)。
+  function cancelConfirm() {
+    if (!confirming || pending) return;
+    const id = confirming.id;
+    setConfirming(null);
+    router.push(`/admin/estimates/${id}`);
+    router.refresh();
+  }
+
   return (
     <div className="mt-6 space-y-5">
+      {confirming && <MailPreviewDialog preview={confirming.preview} note="保存は済んでいます。「戻る」を押すと、送らずに見積書の画面へ移動します（あとで送付できます）。" pending={pending} onConfirm={confirmSend} onClose={cancelConfirm} />}
       <section className="rounded-2xl border border-slate-700 bg-slate-900 p-5">
         <div className="grid gap-3 md:grid-cols-2">
           <label className="text-sm text-slate-300">
@@ -164,6 +194,25 @@ export function EstimateForm({
           </label>
           <div className="text-sm text-slate-300 md:col-span-2">
             送信先メールアドレス（1件ずつ別の枠に入力。すべて空なら取引先の登録を使います）
+            {(client?.presets.length ?? 0) > 0 && (
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-slate-400">登録済みの店舗から選ぶ（店舗名と送信先が入ります）:</span>
+                {client?.presets.map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => {
+                      setStoreName(p.label);
+                      setEmailBoxes(p.emails.length ? p.emails : [""]);
+                    }}
+                    title={p.emails.join(", ")}
+                    className="rounded-lg border-2 border-blue-500 bg-blue-950 px-3 py-1.5 text-sm font-black text-blue-200"
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="mt-1 space-y-2">
               {emailBoxes.map((v, i) => (
                 <div key={i} className="flex gap-2">

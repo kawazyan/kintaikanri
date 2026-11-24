@@ -5,7 +5,8 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ESTIMATE_CONFIRM_BCC, type EstimateInput } from "@/lib/estimate";
 import { createEstimate, updateEstimate } from "@/lib/estimate-save";
-import { sendSavedEstimate } from "@/lib/estimate-send";
+import { previewEstimateMail, sendSavedEstimate } from "@/lib/estimate-send";
+import type { MailPreview } from "../invoices/actions";
 
 export type EstimateActionResult = { ok: true; id: string; message: string } | { ok: false; error: string; id?: string };
 
@@ -36,6 +37,16 @@ export async function saveEstimate(input: EstimateInput, sendAfter: boolean, exi
     return { ok: true, id, message: `保存して送付しました（${estimateNumber} / 宛先: ${to.join(", ")}${cc.length ? ` / CC: ${cc.join(", ")}` : ""}）。確認用に ${ESTIMATE_CONFIRM_BCC} へも送りました。${registered ? `${registered}。` : ""}` };
   } catch (e) {
     return { ok: false, id, error: `保存しました（${estimateNumber}）が、送付できませんでした: ${e instanceof Error ? e.message : "送付に失敗しました。"}` };
+  }
+}
+
+// 送信前の確認画面に出す内容(実際に送る件名・本文・宛先・添付と同じもの)。何も送らず、DBも変えない。
+export async function previewEstimate(id: string): Promise<{ ok: true; preview: MailPreview } | { ok: false; error: string }> {
+  await requireAdmin();
+  try {
+    return { ok: true, preview: await previewEstimateMail(id) };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "送信内容の確認に失敗しました。" };
   }
 }
 

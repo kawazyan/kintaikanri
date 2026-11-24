@@ -3,14 +3,16 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ESTIMATE_CONFIRM_BCC } from "@/lib/estimate";
-import { deleteEstimate, sendEstimate, type EstimateActionResult } from "../actions";
+import { deleteEstimate, previewEstimate, sendEstimate, type EstimateActionResult } from "../actions";
+import type { MailPreview } from "../../invoices/actions";
+import { MailPreviewDialog } from "../../invoices/[id]/mail-preview-dialog";
 
 // 保存済み: 送付 / 修正 / 削除。送付済み: 再送 / 修正 / 削除。メールは「送付」「再送」を押したときだけ送られる。
 export function EstimateActions({ estimateId, recipients, total, clientName, sent }: { estimateId: string; recipients: string; total: number; clientName: string; sent: boolean }) {
   const router = useRouter();
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
+  const [preview, setPreview] = useState<MailPreview | null>(null);
 
   function run(fn: () => Promise<EstimateActionResult>, after?: () => void) {
     setMessage(null);
@@ -26,9 +28,20 @@ export function EstimateActions({ estimateId, recipients, total, clientName, sen
     });
   }
 
+  // 「送付」「再送」を押すと、まず送る内容(宛先・件名・添付・本文)の確認画面を出す。「送信する」を押すまで送られない。
   function send() {
-    if (!window.confirm(`見積書（税込 ¥${total.toLocaleString("ja-JP")}）を\n${recipients || "（取引先のメールアドレス未登録）"}\nへメール${sent ? "を再送" : "送付"}します（確認用に ${ESTIMATE_CONFIRM_BCC} へもBCCで送ります）。\n\n送付しますか？`)) return;
-    run(() => sendEstimate(estimateId));
+    setMessage(null);
+    startTransition(async () => {
+      const res = await previewEstimate(estimateId);
+      if (res.ok) setPreview(res.preview);
+      else setMessage({ ok: false, text: res.error });
+    });
+  }
+  function confirmSend() {
+    run(() => sendEstimate(estimateId), () => {
+      setPreview(null);
+      router.refresh();
+    });
   }
   function remove() {
     if (!window.confirm(`${clientName ? `${clientName} の` : "この"}見積書（税込 ¥${total.toLocaleString("ja-JP")}）を削除します。${sent ? "送付済みの記録も一緒に消えます（相手に送ったメールは取り消せません）。" : ""}元に戻せません。\n\n削除しますか？`)) return;
@@ -51,6 +64,7 @@ export function EstimateActions({ estimateId, recipients, total, clientName, sen
         </button>
       </div>
       {message && <p className={`mt-3 text-sm font-bold ${message.ok ? "text-emerald-400" : "text-red-400"}`}>{message.text}</p>}
+      {preview && <MailPreviewDialog preview={preview} pending={pending} onConfirm={confirmSend} onClose={() => !pending && setPreview(null)} />}
     </div>
   );
 }

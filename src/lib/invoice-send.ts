@@ -5,7 +5,7 @@ import { invoiceRecipients, resolveInvoiceRecipients } from "@/lib/invoice-defau
 import { planManualContracts } from "@/lib/manual-contracts";
 import { invoiceMismatch } from "@/lib/invoice-consistency";
 import { mergePdfs } from "@/lib/pdf-bundle";
-import { confirmBccFor, type BillingTerms } from "@/lib/billing-terms";
+import { confirmBccFor, greetNamesFor, recipientDetailsOf, type BillingTerms } from "@/lib/billing-terms";
 import type { StatementSnapshot } from "@/lib/invoice-draft";
 import { extraTitleOf, invoiceFamilyBase, isExtraInvoice } from "@/lib/invoice-kind";
 
@@ -180,8 +180,11 @@ async function composeInvoiceMail(id: string, opts: { resend: boolean; to?: stri
     : isCorrection
       ? `【請求書（訂正）】${monthLabel}のご請求（株式会社K.J）`
       : `【請求書】${monthLabel}のご請求（株式会社K.J）`;
+  // 店舗のエリア担当者(TSL/TL)の名前を、宛名の下に「〇〇 様」と書く(エリアを登録した店舗だけ)。
+  const greet = greetNamesFor(invoice.client.billingTerms as BillingTerms | null, invoice.branch);
   const text = [
     `${addressee} 御中`,
+    ...greet.map((n) => `${n} 様`),
     "",
     "いつも大変お世話になっております。",
     "株式会社K.Jです。",
@@ -214,7 +217,8 @@ async function composeInvoiceMail(id: string, opts: { resend: boolean; to?: stri
       ? [pdfFileName("請求書・請求内訳書", y, m)]
       : [pdfFileName("請求書", y, m), pdfFileName("請求内訳書", y, m)];
 
-  return { invoice, to, cc, bcc, subject, text, isExtra, isCorrection, y, m, extraTitle, bundle, attachmentNames };
+  const toDetails = recipientDetailsOf(invoice.client.billingTerms as BillingTerms | null, to);
+  return { invoice, to, toDetails, cc, bcc, subject, text, isExtra, isCorrection, y, m, extraTitle, bundle, attachmentNames };
 }
 
 // 送信前の確認画面に出す内容(実際に送る件名・本文・宛先・添付と同じもの)。mode=send は初回送信、resend は再送。
@@ -226,7 +230,7 @@ export async function previewInvoiceMail(id: string, mode: "send" | "resend", to
   const cleaned = mode === "resend" ? [...new Set((to ?? []).map((x) => x.trim()).filter(Boolean))] : undefined;
   if (mode === "resend" && !cleaned?.length) throw new Error("送信先を1件以上選んでください。");
   const c = await composeInvoiceMail(id, { resend: mode === "resend", to: cleaned });
-  return { mode, subject: c.subject, text: c.text, to: c.to, cc: c.cc, bcc: c.bcc, attachments: c.attachmentNames, isCorrection: c.isCorrection };
+  return { mode, subject: c.subject, text: c.text, to: c.to, toDetails: c.toDetails, cc: c.cc, bcc: c.bcc, attachments: c.attachmentNames, isCorrection: c.isCorrection };
 }
 
 // メールを実際に送る共通処理(初回送信と再送で使う)。DBの状態は変えない。

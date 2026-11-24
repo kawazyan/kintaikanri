@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { invoiceRecipients } from "@/lib/invoice-defaults";
+import { recipientPresetsOf, type BillingTerms } from "@/lib/billing-terms";
 import { AdminNav } from "../../../admin-nav";
 import { EstimateForm } from "../../estimate-form";
 
@@ -29,7 +30,7 @@ export default async function EditEstimatePage({ params }: { params: Promise<{ i
         existingId={id}
         existingNumber={e.estimateNumber}
         alreadySent={e.status === "SENT"}
-        clients={clients.map((c) => ({ id: c.id, name: c.name, emails: invoiceRecipients(c), cc }))}
+        clients={clients.map((c) => ({ id: c.id, name: c.name, emails: invoiceRecipients(c), cc, presets: recipientPresetsOf(c.billingTerms as BillingTerms | null).map((p) => ({ label: p.label, emails: p.emails })) }))}
         initial={{
           clientId: e.clientId ?? "",
           issuedDate: e.issuedDate,

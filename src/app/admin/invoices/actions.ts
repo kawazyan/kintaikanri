@@ -245,7 +245,8 @@ export async function sendInvoice(id: string): Promise<ActionResult> {
 }
 
 // 送信・再送の前に、実際に送られる件名・本文・宛先・添付を返す(確認画面用。何も送らず、DBも変えない)。
-export type MailPreview = { mode: "send" | "resend"; subject: string; text: string; to: string[]; cc: string[]; bcc: string[]; attachments: string[]; isCorrection: boolean };
+// toDetails: 宛先ごとの名前(エリアに登録した担当者だけ名前が付く。名前がないときは null)。
+export type MailPreview = { mode: "send" | "resend"; subject: string; text: string; to: string[]; toDetails?: { email: string; name: string | null }[]; cc: string[]; bcc: string[]; attachments: string[]; isCorrection: boolean };
 export async function previewMail(id: string, mode: "send" | "resend", to?: string[]): Promise<{ ok: true; preview: MailPreview } | { ok: false; error: string }> {
   await requireAdmin();
   try {

@@ -25,8 +25,15 @@ export function MailPreviewDialog({
         {preview.isCorrection && <span className="ml-2 inline-block rounded-full bg-red-600 px-3 py-1 text-sm font-black text-white">訂正版</span>}
         <h3 className="mt-2 font-black">{resend ? "この内容でメールを再送します" : "この内容でメールを送ります"}</h3>
 
-        <p className="mt-3 text-xs font-bold text-slate-500">宛先</p>
-        <p className="mt-1 break-all text-sm leading-relaxed">{preview.to.map((x) => <span key={x} className="block">{x}</span>)}</p>
+        <p className="mt-3 text-xs font-bold text-slate-500">宛先（{preview.to.length}件）</p>
+        <ul className="mt-1 divide-y divide-slate-200 rounded-lg border border-slate-200 text-sm">
+          {(preview.toDetails ?? preview.to.map((email) => ({ email, name: null }))).map((x) => (
+            <li key={x.email} className="flex flex-wrap items-baseline justify-between gap-x-3 px-2.5 py-1.5">
+              <span className="font-black">{x.name ?? ""}</span>
+              <span className="break-all text-xs text-slate-600">{x.email}</span>
+            </li>
+          ))}
+        </ul>
         {preview.cc.length > 0 && <p className="mt-1 break-all text-xs text-slate-500">CC: {preview.cc.join(", ")}</p>}
 
         <p className="mt-3 text-xs font-bold text-slate-500">件名</p>
