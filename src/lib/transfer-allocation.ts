@@ -52,3 +52,28 @@ export function allocateTransfersByMonth(months: MonthConfirmed[], paidTotal: nu
     overPaid: paidLeft + reqLeft,
   };
 }
+
+// 振込1件ごとに「何月分がいくらか」を割り振る(古い月の確定受取から順に、振込を古い順に充当)。
+// allocateTransfersByMonth の「振込済み」と同じ充当順なので、月ごとの合計は一致する。transfers は古い順で渡す。
+export type TransferSplit = { yearMonth: string; amount: number };
+
+export function splitTransfersByMonth(months: MonthConfirmed[], transfers: { id: string; amount: number }[]): Map<string, TransferSplit[]> {
+  const left = [...months].sort((a, b) => a.yearMonth.localeCompare(b.yearMonth)).map((m) => ({ yearMonth: m.yearMonth, left: m.confirmed }));
+  const result = new Map<string, TransferSplit[]>();
+  let idx = 0;
+  for (const t of transfers) {
+    let rest = t.amount;
+    const parts: TransferSplit[] = [];
+    while (rest > 0 && idx < left.length) {
+      const take = Math.min(rest, left[idx].left);
+      if (take > 0) {
+        parts.push({ yearMonth: left[idx].yearMonth, amount: take });
+        left[idx].left -= take;
+        rest -= take;
+      }
+      if (left[idx].left === 0) idx++;
+    }
+    result.set(t.id, parts);
+  }
+  return result;
+}

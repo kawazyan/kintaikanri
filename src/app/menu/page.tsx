@@ -81,8 +81,8 @@ export default async function MenuPage() {
                 <Wallet size={21} className="text-red-600" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-black text-slate-900">振込申請履歴</span>
-                <span className="mt-0.5 block text-[11px] font-semibold text-slate-400">申請済みの振込状況を確認</span>
+                <span className="block text-sm font-black text-slate-900">振込履歴</span>
+                <span className="mt-0.5 block text-[11px] font-semibold text-slate-400">受け取った金額と明細を確認</span>
               </span>
               <ChevronRight size={19} className="shrink-0 text-slate-300" />
             </Link>
