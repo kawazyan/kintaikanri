@@ -4,7 +4,7 @@ import { renderEstimatePdf } from "@/lib/estimate-render";
 import { invoiceRecipients } from "@/lib/invoice-defaults";
 import { registerClientForSentEstimate, registerNote } from "@/lib/estimate-register-client";
 import { ESTIMATE_CONFIRM_BCC, estimatePdfFileName, resolveEstimateRecipients } from "@/lib/estimate";
-import { greetNamesFor, recipientDetailsOf, type BillingTerms } from "@/lib/billing-terms";
+import { greetNamesFor, presetEmailsFor, recipientDetailsOf, type BillingTerms } from "@/lib/billing-terms";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -25,7 +25,10 @@ async function composeEstimateMail(id: string) {
   const estimate = await prisma.estimate.findUnique({ where: { id }, include: { client: true } });
   if (!estimate) throw new Error("見積書が見つかりません。");
 
-  const to = resolveEstimateRecipients(estimate.recipientEmails, estimate.client ? invoiceRecipients(estimate.client) : []);
+  const terms = (estimate.client?.billingTerms ?? null) as BillingTerms | null;
+  // 送信先が空のときは、登録済みの店舗(エリアの担当者を含む)→取引先の登録、の順で使う。
+  const storeTo = presetEmailsFor(terms, estimate.storeName);
+  const to = resolveEstimateRecipients(estimate.recipientEmails, storeTo.length ? storeTo : estimate.client ? invoiceRecipients(estimate.client) : []);
   if (!to.length) {
     throw new Error("送信先のメールアドレスがありません。見積書の「送信先メールアドレス」を入力するか、取引先を選んで（取引先窓口でメールアドレスを登録して）から、もう一度送付してください。");
   }
@@ -41,7 +44,6 @@ async function composeEstimateMail(id: string) {
   // 宛名・件名が空でも送れるようにする(空のときは、その行を省く)。
   const subject = `【御見積書】${estimate.subject ? `${estimate.subject}` : estimate.estimateNumber}（株式会社K.J）`;
   // 店舗(見積書の「店舗名」)にエリアが登録されていれば、その担当者(TSL/TL)の名前を宛名の下に「〇〇 様」と書く。
-  const terms = (estimate.client?.billingTerms ?? null) as BillingTerms | null;
   const greet = greetNamesFor(terms, estimate.storeName);
   const head = [...(estimate.addressee ? [`${estimate.addressee} 御中`] : []), ...greet.map((n) => `${n} 様`)];
   const text = [

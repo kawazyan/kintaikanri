@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { greetNamesFor, recipientDetailsOf, recipientPresetsOf, recipientPresetsRawOf, type BillingTerms } from "./billing-terms";
+import { greetNamesFor, presetEmailsFor, recipientDetailsOf, recipientPresetsOf, recipientPresetsRawOf, type BillingTerms } from "./billing-terms";
 
 const terms: BillingTerms = {
   recipientAreas: [
@@ -86,4 +86,13 @@ test("見積書の自由入力の店舗名でも、語尾の店・SB/ソフト�
     assert.deepEqual(greetNamesFor(terms, n), ["千坂TSL"], n);
   }
   assert.deepEqual(greetNamesFor(terms, "SB秋田山王店"), []);
+});
+
+test("店舗名に合う登録済み店舗の宛先(エリアの担当者を含む)を返す", () => {
+  const terms = {
+    recipientAreas: [{ key: "miyagi", label: "宮城", people: [{ name: "宮坂TSL", email: "m@x.jp", greet: true }, { name: "浅野AM", email: "a@x.jp" }] }],
+    recipientPresets: [{ label: "SB小鶴", emails: [], area: "miyagi" }],
+  } as never;
+  assert.deepEqual(presetEmailsFor(terms, "SB小鶴店"), ["m@x.jp", "a@x.jp"]);
+  assert.deepEqual(presetEmailsFor(terms, "SB別の店"), []);
 });

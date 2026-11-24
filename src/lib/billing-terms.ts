@@ -128,6 +128,12 @@ export function recipientDetailsOf(terms: BillingTerms | null | undefined, email
 }
 
 // 店舗(請求先)のエリアで、メール本文の宛名の下に書く担当者の名前(例: 千坂TSL)。店舗が見つからない・エリアなしは空。
+// 店舗名(自由入力でも可)に合う登録済み店舗の宛先(エリアの担当者を含む)。合う店舗がなければ空。
+export function presetEmailsFor(terms: BillingTerms | null | undefined, branch: string | null | undefined): string[] {
+  if (!branch?.trim()) return [];
+  return recipientPresetsOf(terms).find((p) => storeKey(p.label) === storeKey(branch))?.emails ?? [];
+}
+
 export function greetNamesFor(terms: BillingTerms | null | undefined, branch: string | null | undefined): string[] {
   if (!branch?.trim()) return [];
   const preset = recipientPresetsRawOf(terms).find((p) => storeKey(p.label) === storeKey(branch));
