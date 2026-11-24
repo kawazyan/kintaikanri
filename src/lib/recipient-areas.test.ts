@@ -76,3 +76,14 @@ test("本文に書く名前は、TSL/TL(greet)だけ。店舗名の表記違い�
   assert.deepEqual(greetNamesFor(terms, null), []);
   assert.deepEqual(greetNamesFor(terms, "登録にない店"), []);
 });
+
+test("見積書の自由入力の店舗名でも、語尾の店・SB/ソフトバンクの違いを無視してTSLの名前が出る", () => {
+  const terms = {
+    recipientAreas: [{ key: "iwate", label: "岩手", people: [{ name: "千坂TSL", email: "s@x.jp", greet: true }] }],
+    recipientPresets: [{ label: "SB奥州水沢", emails: [], area: "iwate" }],
+  } as never;
+  for (const n of ["SB奥州水沢", "SB奥州水沢店", "ソフトバンク奥州水沢店", "ＳＢ奥州水沢 店"]) {
+    assert.deepEqual(greetNamesFor(terms, n), ["千坂TSL"], n);
+  }
+  assert.deepEqual(greetNamesFor(terms, "SB秋田山王店"), []);
+});

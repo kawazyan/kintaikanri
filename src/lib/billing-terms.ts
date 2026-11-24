@@ -70,6 +70,8 @@ function validEmails(raw: unknown[]): string[] {
 
 // 店舗名の比較用(全角半角・空白・大文字小文字の違いは同じ扱い)。
 const normLabel = (s: string) => s.normalize("NFKC").replace(/\s+/g, "").toLowerCase();
+// 見積書は店舗名を自由に入力できるため、「SB奥州水沢」と「SB奥州水沢店」「ソフトバンク奥州水沢店」を同じ店として照合する(語尾の「店」・SB/ソフトバンクの違いを無視)。
+const storeKey = (s: string) => normLabel(s).replace(/ソフトバンク|softbank/g, "sb").replace(/店$/, "");
 
 // 登録済みのエリア(担当者つき)。メール形式でない人は除く。
 export function recipientAreasOf(terms: BillingTerms | null | undefined): RecipientArea[] {
@@ -128,7 +130,7 @@ export function recipientDetailsOf(terms: BillingTerms | null | undefined, email
 // 店舗(請求先)のエリアで、メール本文の宛名の下に書く担当者の名前(例: 千坂TSL)。店舗が見つからない・エリアなしは空。
 export function greetNamesFor(terms: BillingTerms | null | undefined, branch: string | null | undefined): string[] {
   if (!branch?.trim()) return [];
-  const preset = recipientPresetsRawOf(terms).find((p) => normLabel(p.label) === normLabel(branch));
+  const preset = recipientPresetsRawOf(terms).find((p) => storeKey(p.label) === storeKey(branch));
   if (!preset?.area) return [];
   const area = recipientAreasOf(terms).find((a) => a.key === preset.area);
   return (area?.people ?? []).filter((p) => p.greet && p.name).map((p) => p.name);
