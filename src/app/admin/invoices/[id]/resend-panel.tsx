@@ -110,7 +110,7 @@ export function ResendPanel({
       </label>
       {saveTarget === "INVOICE" && <p className="mt-1 text-xs text-slate-400">この請求は請求ごとに宛先を決めているため、取引先全体には保存せず、この請求だけに保存します。</p>}
       <button type="button" onClick={resend} disabled={pending} className="mt-4 w-full rounded-xl bg-blue-600 px-6 py-3 font-black text-white disabled:opacity-50">
-        {pending ? "再送中..." : `再送する（${extra ? "請求書" : "請求書＋請求内訳書"}）`}
+        {pending ? "準備中..." : `プレビュー（再送する内容を確認：${extra ? "請求書" : "請求書＋請求内訳書"}）`}
       </button>
       {message && <p className={`mt-3 text-sm font-bold ${message.ok ? "text-emerald-400" : "text-red-400"}`}>{message.text}</p>}
       {preview && (

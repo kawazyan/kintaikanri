@@ -297,8 +297,8 @@ export function EstimateForm({
       <section className="rounded-2xl border border-slate-700 bg-slate-900 p-5">
         <p className="text-sm text-slate-300">
           {alreadySent
-            ? "この見積書は送付済みです。「保存だけ」では修正が保存されるだけで、メールは送られません。「保存して再送」を押したときだけ、修正後の見積書をもう一度メールで送ります。"
-            : "「保存だけ」ではメールは送られません。「保存して送付」を押したときだけ、取引先へメールで送ります。"}
+            ? "この見積書は送付済みです。「保存だけ」では修正が保存されるだけで、メールは送られません。「保存してプレビュー」を押して、確認画面で「再送する」を押したときだけ、修正後の見積書をもう一度メールで送ります。"
+            : "「保存だけ」ではメールは送られません。「保存してプレビュー」を押して、確認画面で「送信する」を押したときだけ、取引先へメールで送ります。"}
         </p>
         <p className="mt-1 text-xs text-slate-500">送付すると、確認用に {ESTIMATE_CONFIRM_BCC} へもBCC（取引先には見えません）で自動送付されます。宛名が取引先一覧になければ、送付後に自動で登録されます。</p>
         <p className="mt-1 text-xs text-slate-500">送付先: {toText || "（未設定。送信先メールアドレスを入力するか、取引先を選んでください）"}</p>
@@ -307,7 +307,7 @@ export function EstimateForm({
             {pending ? "処理中..." : "保存だけ"}
           </button>
           <button type="button" onClick={() => submit(true)} disabled={pending} className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white disabled:opacity-50">
-            {pending ? "処理中..." : alreadySent ? "保存して再送（メール）" : "保存して送付（メール）"}
+            {pending ? "処理中..." : "保存してプレビュー"}
           </button>
         </div>
         {msg && <p className={`mt-3 text-sm font-bold ${msg.ok ? "text-emerald-400" : "text-red-400"}`}>{msg.text}</p>}

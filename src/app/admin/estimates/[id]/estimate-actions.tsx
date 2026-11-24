@@ -50,11 +50,11 @@ export function EstimateActions({ estimateId, recipients, total, clientName, sen
 
   return (
     <div className="mt-5 rounded-2xl border border-slate-700 bg-slate-900 p-5">
-      <p className="text-sm text-slate-300">{sent ? "送付済みです。修正したあと「再送」を押すと、もう一度メールで送ります（修正だけでは送られません）。" : "保存済みです。メールはまだ送られていません。「送付」を押すと取引先へメールで送ります。"}</p>
+      <p className="text-sm text-slate-300">{sent ? "送付済みです。修正したあと「プレビュー」を押して確認画面で「再送する」を押すと、もう一度メールで送ります（修正だけでは送られません）。" : "保存済みです。メールはまだ送られていません。「プレビュー」を押して確認画面で「送信する」を押すと、取引先へメールで送ります。"}</p>
       <p className="mt-1 text-xs text-slate-500">送付先: {recipients || "（取引先のメールアドレス未登録）"}</p>
       <div className="mt-3 flex flex-wrap gap-3">
         <button type="button" onClick={send} disabled={pending} className="rounded-xl bg-blue-600 px-6 py-3 font-black text-white disabled:opacity-50">
-          {pending ? "処理中..." : sent ? "再送（メールで送る）" : "送付（メールで送る）"}
+          {pending ? "準備中..." : "プレビュー（送る内容を確認）"}
         </button>
         <Link href={`/admin/estimates/${estimateId}/edit`} className="rounded-xl border border-slate-500 px-6 py-3 font-black text-slate-100">
           修正

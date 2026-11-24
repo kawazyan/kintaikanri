@@ -80,7 +80,7 @@ export function InvoiceActions({
         </>
       ) : (
         <>
-          <p className="text-sm text-slate-300">承認済みです。「送信」を押すと取引先へメールで送付されます。</p>
+          <p className="text-sm text-slate-300">承認済みです。「プレビュー」を押すと送る内容を確認できます。確認画面で「送信する」を押したときだけ、取引先へメールで送付されます。</p>
           <p className="mt-1 text-xs text-slate-600">送信先: {recipients}</p>
         </>
       )}
@@ -91,7 +91,7 @@ export function InvoiceActions({
           </button>
         ) : (
           <button type="button" onClick={send} disabled={pending} className="rounded-xl bg-blue-600 px-6 py-3 font-black text-white disabled:opacity-50">
-            {pending ? "送信中..." : "送信（メールで送付）"}
+            {pending ? "準備中..." : "プレビュー（送る内容を確認）"}
           </button>
         )}
         <Link href={`/admin/invoices/${invoiceId}/edit`} className="rounded-xl border border-slate-500 px-6 py-3 font-black text-slate-100">
