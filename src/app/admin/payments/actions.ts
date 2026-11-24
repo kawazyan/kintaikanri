@@ -224,7 +224,19 @@ export async function undoFixedPaymentDone(staffId: string, closingYearMonth: st
   if (!YEAR_MONTH_RE.test(closingYearMonth)) return;
   const operatorName = operatorNameFrom(formData);
   const done = await prisma.fixedPaymentCompletion.findUnique({ where: { staffId_closingYearMonth: { staffId, closingYearMonth } } });
-  await prisma.fixedPaymentCompletion.deleteMany({ where: { staffId, closingYearMonth } });
+  // 「振込完了」に含めて振込済みにした別途報酬(markFixedPaymentDone が印を付けたもの)も未振込に戻す。
+  // 別途報酬の画面から個別に振込済みにしたものは戻さない。
+  await prisma.$transaction([
+    prisma.fixedPaymentCompletion.deleteMany({ where: { staffId, closingYearMonth } }),
+    ...(done
+      ? [
+          prisma.compensationRequest.updateMany({
+            where: { staffId, yearMonth: closingYearMonth, status: "APPROVED", paidByOperatorName: "固定支払の振込完了に含む" },
+            data: { paidAt: null, paidAmount: null, paidByOperatorName: null },
+          }),
+        ]
+      : []),
+  ]);
   if (done) {
     await recordAudit({
       staffId,
