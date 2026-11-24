@@ -13,6 +13,49 @@ const md = (key: string) => {
   const [, m, d] = key.split("-").map(Number);
   return `${m}/${d}`;
 };
+const KM_LINE = /^(.+?) ([\d.]+)km×2×(\d+)日=([\d.]+)km$/;
+const KM_TOTAL = /^合計([\d.]+)km×(\d+)円=([\d,]+)円。?(.*)$/;
+
+function ExpenseDetail({ description }: { description: string }) {
+  const [title, ...rest] = description.split("\n");
+  const rows = rest.map((l) => KM_LINE.exec(l));
+  const total = KM_TOTAL.exec(rest[rest.length - 1] ?? "");
+  const tableRows = rows.slice(0, -1);
+  // ガソリン代の形式(店舗行がすべて読める・最終行が合計)のときだけ表にする。それ以外は1行ずつ並べる
+  if (total && tableRows.length > 0 && tableRows.every((r) => r)) {
+    const days = tableRows.reduce((sum, r) => sum + Number(r![3]), 0);
+    return (
+      <span className="mt-1 block">
+        <span className="block text-[11px] text-slate-500">{title.replace(/^\d+年\d+月 ガソリン代（/, "").replace(/）$/, "")}</span>
+        <span className="mt-1 grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-0.5 text-[11px] text-slate-500">
+          <span className="border-b border-slate-200 pb-0.5 text-slate-400">店舗</span>
+          <span className="border-b border-slate-200 pb-0.5 text-right text-slate-400">日数</span>
+          <span className="border-b border-slate-200 pb-0.5 text-right text-slate-400">往復×日数</span>
+          {tableRows.map((r) => (
+            <span key={r![1]} className="contents">
+              <span>{r![1]}<span className="text-slate-400">（片道{r![2]}km）</span></span>
+              <span className="text-right">{r![3]}日</span>
+              <span className="text-right">{r![4]}km</span>
+            </span>
+          ))}
+          <span className="border-t border-slate-200 pt-0.5 font-semibold text-slate-600">合計</span>
+          <span className="border-t border-slate-200 pt-0.5 text-right font-semibold text-slate-600">{days}日</span>
+          <span className="border-t border-slate-200 pt-0.5 text-right font-semibold text-slate-600">{total[1]}km</span>
+        </span>
+        <span className="mt-1 block text-[11px] text-slate-500">{total[1]}km × {total[2]}円 = {total[3]}円{total[4] ? `（${total[4].replace(/。$/, "")}）` : ""}</span>
+      </span>
+    );
+  }
+  return (
+    <>
+      <span className="block font-semibold text-slate-600">{title}</span>
+      {rest.map((line, i) => (
+        <span key={i} className="block pl-2 text-[11px] text-slate-500">{line}</span>
+      ))}
+    </>
+  );
+}
+
 const categoryLabel: Record<"TRAVEL" | "LODGING" | "OTHER", string> = { TRAVEL: "交通費", LODGING: "宿泊費", OTHER: "その他" };
 const compCategoryLabel: Record<"REFERRAL" | "INCENTIVE" | "OTHER", string> = { REFERRAL: "リファラル報酬", INCENTIVE: "インセンティブ", OTHER: "その他" };
 const fmtDate = (d: Date) =>
@@ -170,16 +213,43 @@ export function MonthSummary({
                   </div>
                   {m.expenseItems.length > 0 && (
                     <ul className="mt-1 space-y-0.5 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs leading-snug text-slate-400">
-                      {m.expenseItems.map((e) => (
-                        <li key={e.id} className="flex justify-between gap-2">
-                          <span>
-                            {fmtDate(e.expenseDate)} {categoryLabel[e.category]}
-                            {e.description ? `(${e.description})` : ""}
-                            {e.status === "SUBMITTED" && <span className="ml-1 font-semibold text-amber-700">承認待ち</span>}
-                          </span>
-                          <span className="whitespace-nowrap text-slate-200">{yen(e.amountTaxInclusive)}</span>
-                        </li>
-                      ))}
+                      {m.expenseItems.map((e) => {
+                        const desc = e.description ?? "";
+                        const collapsible = desc.includes("\n") || desc.length > 30; // 長い説明は折りたたみ(押すと内訳)
+                        const badge = e.status === "SUBMITTED" ? <span className="ml-1 font-semibold text-amber-700">承認待ち</span> : null;
+                        if (!collapsible) {
+                          return (
+                            <li key={e.id} className="flex justify-between gap-2">
+                              <span className="pl-4">
+                                <span className="font-semibold text-slate-600">{desc || categoryLabel[e.category]}</span>
+                                <span className="ml-1 text-[11px] text-slate-400">{fmtDate(e.expenseDate)}</span>
+                                {badge}
+                              </span>
+                              <span className="whitespace-nowrap text-slate-200">{yen(e.amountTaxInclusive)}</span>
+                            </li>
+                          );
+                        }
+                        const shortName = desc.replace(/^\d{4}年\d+月\s*/, "").split(/[（(\s]/)[0] || categoryLabel[e.category];
+                        const auto = /自動計算|自動作成/.test(desc);
+                        return (
+                          <li key={e.id}>
+                            <details className="group">
+                              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
+                                <span className="flex items-center gap-1">
+                                  <span className="text-slate-400"><span className="group-open:hidden">▸</span><span className="hidden group-open:inline">▾</span></span>
+                                  <span className="font-semibold text-slate-600">{shortName}</span>
+                                  {auto && <span className="rounded bg-slate-200 px-1 text-[10px] text-slate-500">自動</span>}
+                                  {badge}
+                                </span>
+                                <span className="whitespace-nowrap text-slate-200">{yen(e.amountTaxInclusive)}</span>
+                              </summary>
+                              <div className="mt-1 pl-4">
+                                {desc.includes("\n") ? <ExpenseDetail description={desc} /> : <span className="block text-[11px] text-slate-500">{desc}</span>}
+                              </div>
+                            </details>
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </div>

@@ -36,7 +36,7 @@ export function describeEarnings(d: EarningsDetail): EarningsDescription {
     if (d.baseAmount !== null && d.plannedDays !== null && d.rate !== null) {
       rows.push({ label: "月額(月固定)", value: yen(d.baseAmount) });
       rows.push({ label: "予定日数", value: `${d.plannedDays}日` });
-      rows.push({ label: "1日あたり", value: yen(d.rate), note: "月額 ÷ 予定日数(切り捨て)" });
+      rows.push({ label: "1日あたり", value: yen(d.rate), note: "月額 ÷ 予定日数" });
       rows.push({ label: "出勤日数", value: `${d.days}日`, note: d.fullAttendance ? "欠勤なし" : "欠勤あり(日割りで減額)" });
       rows.push({
         label: d.fullAttendance ? "満額" : "1日あたり × 出勤日数",
