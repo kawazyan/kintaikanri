@@ -12,13 +12,17 @@ export default async function ExpensesPage() {
   const staffId = await getStaffId();
   if (!staffId) redirect("/");
   const ym = currentJstYearMonth();
-  const [items, assignments] = await Promise.all([
+  const [items, assignments, autoRules] = await Promise.all([
     prisma.expense.findMany({ where: { staffId, yearMonth: ym }, orderBy: { expenseDate: "desc" } }),
     prisma.workOrderStaff.findMany({
       where: { staffId, workOrder: { yearMonth: ym, status: { in: ["APPROVED", "CHANGES_PENDING"] } } },
       include: { workOrder: { include: { client: true } } },
     }),
+    // 自動で経費が入る人(StaffExpenseRule)。入力不要の項目を画面に出して、二重に申請しないようにする
+    prisma.staffExpenseRule.findMany({ where: { staffId, fromMonth: { lte: ym } }, orderBy: { createdAt: "asc" } }),
   ]);
+  const autoKm = autoRules.some((r) => r.kind === "KM");
+  const autoFixed = autoRules.filter((r) => r.kind === "FIXED" && r.label && r.amount != null);
   const total = items.reduce((s, x) => s + x.amountTaxInclusive, 0);
 
   return (
@@ -32,6 +36,19 @@ export default async function ExpensesPage() {
           <p className="mt-1 text-3xl font-black">¥{total.toLocaleString()}</p>
           <p className="mt-2 text-xs text-slate-400">交通費・宿泊費は税込金額から税抜額と税分を自動計算します。</p>
         </div>
+
+        {(autoKm || autoFixed.length > 0) && (
+          <div className="mt-4 rounded-3xl border-2 border-emerald-300 bg-emerald-50 p-4 text-emerald-950">
+            <p className="text-sm font-black">✅ 次の経費は自動で入ります（入力しないでください）</p>
+            <ul className="mt-2 space-y-1 text-xs font-bold">
+              {autoKm && <li>・ガソリン代：出勤した店の距離から、毎月自動で計算されます（高速代・駐車場代だけ、下から申請してください）</li>}
+              {autoFixed.map((r) => (
+                <li key={r.id}>・{r.label}：毎月 ¥{(r.amount ?? 0).toLocaleString()}</li>
+              ))}
+            </ul>
+            <p className="mt-2 text-[11px] text-emerald-800">自動で入った分は、下の一覧に「承認済み」で出ます。同じものを申請すると二重になります。</p>
+          </div>
+        )}
 
         <form action={addExpense} className="mt-4 space-y-3 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5">
           <input type="hidden" name="yearMonth" value={ym} />
