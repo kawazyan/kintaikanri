@@ -35,9 +35,9 @@ const BADGE: Record<ViewStatus, string> = {
 
 function StatusBadge({ row }: { row: ViewRow }) {
   return (
-    <span className="inline-flex items-center gap-1">
-      <span className={`rounded-full px-2.5 py-0.5 text-xs font-black ${BADGE[row.status]}`}>{row.status}</span>
-      {row.notes.map((n) => <span key={n.label} className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-black text-rose-800">{n.label}</span>)}
+    <span className="inline-flex flex-wrap items-center gap-1">
+      <span className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-black ${BADGE[row.status]}`}>{row.status}</span>
+      {row.notes.map((n) => <span key={n.label} className="whitespace-nowrap rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-black text-rose-800">{n.label}</span>)}
     </span>
   );
 }
@@ -115,7 +115,7 @@ export default async function WatchPage({
                       <h3 className="text-lg font-black">{r.staffName}</h3>
                       <StatusBadge row={r} />
                     </div>
-                    <p className="mt-1 text-sm font-bold text-slate-500">{r.storeName}　予定 {r.plan}</p>
+                    <p className="mt-1 text-sm font-bold text-slate-500">{r.storeName}　<span className="whitespace-nowrap">予定 {r.plan}</span></p>
                     <Reasons row={r} />
                     <div className="mt-3 grid grid-cols-2 gap-3">
                       <div className="rounded-2xl bg-slate-50 p-3"><p className="text-xs font-bold text-slate-400">出勤</p><p className="mt-0.5 text-2xl font-black tabular-nums">{r.clockIn ?? "--:--"}</p></div>
@@ -171,17 +171,17 @@ export default async function WatchPage({
             <div className="mt-3 overflow-x-auto">
               <table className="w-full min-w-[560px] text-sm">
                 <thead>
-                  <tr className="text-left text-xs text-slate-400"><th className="pb-2">日付</th><th>スタッフ</th><th>店舗</th><th>予定</th><th>出勤</th><th>退勤</th><th>状態</th></tr>
+                  <tr className="text-left text-xs text-slate-400"><th className="whitespace-nowrap pb-2">日付</th><th className="whitespace-nowrap">スタッフ</th><th>店舗</th><th className="whitespace-nowrap">予定</th><th className="whitespace-nowrap">出勤</th><th className="whitespace-nowrap">退勤</th><th className="whitespace-nowrap">状態</th></tr>
                 </thead>
                 <tbody>
                   {shown.map((r) => (
                     <tr key={r.id} className="border-t align-top">
-                      <td className="py-2 font-bold">{dayLabel(r.date)}</td>
+                      <td className="whitespace-nowrap py-2 pr-2 font-bold">{dayLabel(r.date)}</td>
                       <td>{r.staffName}</td>
                       <td>{r.storeName}</td>
-                      <td className="tabular-nums">{r.plan}</td>
-                      <td className="tabular-nums font-bold">{r.clockIn ?? "--:--"}</td>
-                      <td className="tabular-nums font-bold">{r.clockOut ?? "--:--"}</td>
+                      <td className="whitespace-nowrap pr-2 tabular-nums">{r.plan}</td>
+                      <td className="whitespace-nowrap pr-2 tabular-nums font-bold">{r.clockIn ?? "--:--"}</td>
+                      <td className="whitespace-nowrap pr-2 tabular-nums font-bold">{r.clockOut ?? "--:--"}</td>
                       <td><StatusBadge row={r} /><Reasons row={r} /></td>
                     </tr>
                   ))}
