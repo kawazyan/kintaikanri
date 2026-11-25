@@ -59,7 +59,7 @@ export default async function AdminPaymentsPage({
     take: 200,
   });
 
-  // 申請支払の人の「支払い可能額」(スタッフ側の申請可能額と同じ計算)と、今月の参考情報(経費・別途報酬)。
+  // 申請支払の人の「支払い可能額」(スタッフ側の申請可能額と同じ計算)と、今月の参考情報(別途報酬)。
   const requestStaffIds = [...new Set(requests.filter((r) => r.status === "REQUESTING").map((r) => r.staffId))];
   const balances = await Promise.all(requestStaffIds.map((id) => computeTransferBalance(id)));
   const balanceByStaff = new Map(requestStaffIds.map((id, i) => [id, balances[i]]));
@@ -82,10 +82,10 @@ export default async function AdminPaymentsPage({
       select: { id: true, staffId: true, status: true, amount: true, paidAmount: true, paidAt: true, desiredPaymentDate: true },
       orderBy: { paidAt: "desc" },
     }),
-    // 承認済みの経費(月末に別で払う。払い済みの記録つき)
+    // 承認済みの経費(稼働分と同じ「確定した受取」に足して払う。月ごとの内訳に出す)
     prisma.expense.findMany({
       where: { staffId: { in: requestMethodStaff.map((s) => s.id) }, status: "APPROVED" },
-      select: { id: true, staffId: true, yearMonth: true, amountTaxInclusive: true, description: true, paidAt: true },
+      select: { id: true, staffId: true, yearMonth: true, amountTaxInclusive: true, category: true, expenseDate: true },
       orderBy: [{ yearMonth: "asc" }, { expenseDate: "asc" }],
     }),
   ]);
@@ -98,7 +98,8 @@ export default async function AdminPaymentsPage({
       staff: { id: s.id, name: s.name, employeeCode: s.employeeCode },
       alloc: allocateTransfersByMonth(monthlyLists[i].map((m) => ({ yearMonth: m.yearMonth, confirmed: m.confirmed })), paidTotal, requestingTotal),
       monthLabels: Object.fromEntries(monthlyLists[i].map((m) => [m.yearMonth, m.detail ? describeEarnings(m.detail).short : "-"])),
-      expenses: approvedExpenses.filter((e) => e.staffId === s.id).map((e) => ({ id: e.id, yearMonth: e.yearMonth, amount: e.amountTaxInclusive, description: e.description, paidAt: e.paidAt })),
+      workByMonth: Object.fromEntries(monthlyLists[i].map((m) => [m.yearMonth, m.work])),
+      expenses: approvedExpenses.filter((e) => e.staffId === s.id).map((e) => ({ id: e.id, yearMonth: e.yearMonth, amount: e.amountTaxInclusive, category: e.category, expenseDate: e.expenseDate })),
       paidHistory: mine
         .filter((t) => t.status === "PAID")
         .map((t) => ({ id: t.id, paidAt: t.paidAt, amount: t.amount, paidAmount: t.paidAmount, desiredPaymentDate: t.desiredPaymentDate })),
@@ -244,19 +245,17 @@ export default async function AdminPaymentsPage({
                 <td className="py-2 pr-3">
                   {r.status === "REQUESTING" && balanceByStaff.has(r.staffId) && (() => {
                     const b = balanceByStaff.get(r.staffId)!;
-                    const ex = summaries.get(r.staffId);
                     const comp = compByStaff.get(r.staffId) ?? 0;
                     return (
                       <details className="mb-3 rounded-md border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs text-slate-300">
                         <summary className="cursor-pointer font-semibold text-cyan-300">支払い可能額を見る</summary>
                         <dl className="mt-2 space-y-1">
-                          <div className="flex justify-between gap-4"><dt>確定受取(累計)</dt><dd>{b.confirmedAmount.toLocaleString("ja-JP")}円</dd></div>
+                          <div className="flex justify-between gap-4"><dt>確定受取(累計・稼働分＋承認済みの経費)</dt><dd>{b.confirmedAmount.toLocaleString("ja-JP")}円</dd></div>
                           <div className="flex justify-between gap-4"><dt>申請済み(申請中・振込済)</dt><dd>-{b.requestedAmount.toLocaleString("ja-JP")}円</dd></div>
                           <div className="flex justify-between gap-4 border-t border-slate-700 pt-1 font-bold text-slate-100"><dt>支払い可能額</dt><dd>{b.availableAmount.toLocaleString("ja-JP")}円</dd></div>
                         </dl>
                         <div className="mt-2 border-t border-slate-800 pt-2 text-[11px] text-slate-500">
-                          <div>参考(支払い可能額には含まれていません)</div>
-                          <div className="flex justify-between gap-4"><span>今月の経費(申請中・承認済)</span><span>{ex && ex.expenses > 0 ? `${ex.expenses.toLocaleString("ja-JP")}円` : "-"}</span></div>
+                          <div>参考(支払い可能額には含まれていません)。経費は、承認済みの分が確定受取に入っています。</div>
                           <div className="flex justify-between gap-4"><span>今月の別途報酬(承認済・未振込)</span><span>{comp > 0 ? `${comp.toLocaleString("ja-JP")}円` : "-"}</span></div>
                         </div>
                       </details>

@@ -185,27 +185,51 @@ export async function computeCumulativeConfirmedAmount(staffId: string): Promise
   return total;
 }
 
+// 申請支払の人の承認済みの経費(月ごと・税込)。申請中・却下・下書きは含めない。
+// 経費は別に払うものではなく、稼働単価以外の請求として「確定した受取」に足して一緒に払う。
+export async function computeApprovedExpensesByMonth(staffId: string): Promise<Map<string, number>> {
+  const rows = await prisma.expense.findMany({
+    where: { staffId, status: "APPROVED" },
+    select: { yearMonth: true, amountTaxInclusive: true },
+  });
+  const byMonth = new Map<string, number>();
+  for (const r of rows) byMonth.set(r.yearMonth, (byMonth.get(r.yearMonth) ?? 0) + r.amountTaxInclusive);
+  return byMonth;
+}
+
 // 月ごとの確定受取の一覧(古い月 → 新しい月)。computeCumulativeConfirmedAmount と同じ月の拾い方・同じ計算で、
-// 金額が計算できない月(null)は一覧に含めない(累計では0として扱われるのと同じ)。振込関係の「何月分」表示用。
+// 金額が計算できない月(null)は稼働分0として扱う(累計では0として扱われるのと同じ)。振込関係の「何月分」表示用。
+// confirmed = 稼働分(work) + 承認済みの経費(expense)。経費だけの月(稼働なし)も一覧に出す。
 export async function computeMonthlyConfirmedList(
   staffId: string,
   now: Date = new Date()
-): Promise<{ yearMonth: string; confirmed: number; detail?: EarningsDetail }[]> {
-  const shifts = await prisma.shift.findMany({
-    where: { staffId, cancelledAt: null },
-    select: { startTime: true },
-  });
-  const yearMonths = [...new Set(shifts.map((s) => toJstDateValue(s.startTime).slice(0, 7)))].sort();
-  const list: { yearMonth: string; confirmed: number; detail?: EarningsDetail }[] = [];
+): Promise<{ yearMonth: string; confirmed: number; work: number; expense: number; detail?: EarningsDetail }[]> {
+  const [shifts, expenseByMonth] = await Promise.all([
+    prisma.shift.findMany({
+      where: { staffId, cancelledAt: null },
+      select: { startTime: true },
+    }),
+    computeApprovedExpensesByMonth(staffId),
+  ]);
+  const shiftMonths = new Set(shifts.map((s) => toJstDateValue(s.startTime).slice(0, 7)));
+  const yearMonths = [...new Set([...shiftMonths, ...expenseByMonth.keys()])].sort();
+  const list: { yearMonth: string; confirmed: number; work: number; expense: number; detail?: EarningsDetail }[] = [];
   for (const yearMonth of yearMonths) {
-    const { confirmedAmount, detail } = await computeMonthlyEarnings(staffId, yearMonth, now);
-    if (confirmedAmount !== null) list.push({ yearMonth, confirmed: confirmedAmount, detail });
+    const expense = expenseByMonth.get(yearMonth) ?? 0;
+    if (shiftMonths.has(yearMonth)) {
+      const { confirmedAmount, detail } = await computeMonthlyEarnings(staffId, yearMonth, now);
+      if (confirmedAmount !== null) {
+        list.push({ yearMonth, confirmed: confirmedAmount + expense, work: confirmedAmount, expense, detail });
+        continue;
+      }
+    }
+    if (expense > 0) list.push({ yearMonth, confirmed: expense, work: 0, expense });
   }
   return list;
 }
 
 export type TransferBalance = {
-  confirmedAmount: number; // lifetime confirmed earnings
+  confirmedAmount: number; // lifetime confirmed earnings + 承認済みの経費
   requestedAmount: number; // sum of REQUESTING + PAID transfer requests
   availableAmount: number; // confirmedAmount - requestedAmount, floored at 0
 };
@@ -215,13 +239,16 @@ export type TransferBalance = {
 // money has been used), preventing the same confirmed reward from being
 // claimed twice (spec item 45).
 export async function computeTransferBalance(staffId: string): Promise<TransferBalance> {
-  const [confirmedAmount, requests] = await Promise.all([
+  const [workAmount, expenseByMonth, requests] = await Promise.all([
     computeCumulativeConfirmedAmount(staffId),
+    computeApprovedExpensesByMonth(staffId),
     prisma.transferRequest.findMany({
       where: { staffId, status: { in: ["REQUESTING", "PAID"] } },
       select: { amount: true },
     }),
   ]);
+  // 承認済みの経費は稼働分と同じ「確定した受取」に足す(月ごとの一覧 computeMonthlyConfirmedList と同じ合計になる)。
+  const confirmedAmount = workAmount + [...expenseByMonth.values()].reduce((sum, v) => sum + v, 0);
   const requestedAmount = requests.reduce((sum, r) => sum + r.amount, 0);
   const availableAmount = Math.max(0, confirmedAmount - requestedAmount);
   return { confirmedAmount, requestedAmount, availableAmount };
