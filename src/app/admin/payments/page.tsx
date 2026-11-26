@@ -13,6 +13,8 @@ import { markTransferRequestPaid, rejectTransferRequest } from "./actions";
 import { RejectButton } from "./reject-button";
 import { PaidConfirmButton } from "./paid-confirm-button";
 import { TransferBalanceSection, type TransferBalanceView } from "./transfer-balance";
+import { ReferralPayeeSection } from "./referral-payees";
+import { loadPayeeRows } from "@/lib/referral-payee";
 
 export default async function AdminPaymentsPage({
   searchParams,
@@ -35,7 +37,14 @@ export default async function AdminPaymentsPage({
   const todayStart = jstDayRange(nowDate).start.getTime();
   const isOverdue = (desired: Date) => desired.getTime() <= todayStart;
 
-  const activeStaff = await prisma.staff.findMany({ where: { status: "ACTIVE" }, orderBy: { employeeCode: "asc" } });
+  const activeStaff = await prisma.staff.findMany({ where: { status: "ACTIVE", excludeFromPayroll: false }, orderBy: { employeeCode: "asc" } });
+  // リファラルのみの人(松浦・十河)への支払い。計算できなくても画面は止めない。
+  let payeeRows: Awaited<ReturnType<typeof loadPayeeRows>> = [];
+  try {
+    payeeRows = await loadPayeeRows(nowDate);
+  } catch (e) {
+    console.error("[referral-payee] 計算に失敗しました", e);
+  }
   // 紹介リファラル(渡辺さん)の自動計算。失敗しても画面は止めない。
   let referralNotes: string[] = [];
   try {
@@ -156,6 +165,7 @@ export default async function AdminPaymentsPage({
       <MonthSummary monthLabel={yearMonthLabel(yearMonth)} yearMonth={yearMonth} staff={activeStaff} summaries={summaries} />
 
       <TransferBalanceSection views={balanceViews} />
+      <ReferralPayeeSection rows={payeeRows} yearMonth={yearMonth} today={toJstDateValue(nowDate)} />
 
       <h2 className="mb-3 text-sm font-semibold text-slate-300">振込申請一覧</h2>
 

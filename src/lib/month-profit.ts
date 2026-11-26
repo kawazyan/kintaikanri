@@ -55,7 +55,7 @@ export async function loadMonthProfits(months: string[]): Promise<Map<string, Mo
       select: { clientId: true, kind: true, branch: true, invoiceNumber: true, revision: true, yearMonth: true, subtotalExTax: true, totalInclTax: true, statement: true },
     }),
     prisma.staff.findMany({
-      where: { status: "ACTIVE" },
+      where: { status: "ACTIVE", excludeFromPayroll: false },
       select: { id: true, name: true, paymentMethod: true, fixedClosingDay: true, fixedPaymentMonthOffset: true, fixedPaymentDay: true },
     }),
     prisma.companyExpense.findMany({ where: { yearMonth: { in: months }, category: OUTSOURCING_CATEGORY }, select: { yearMonth: true, amount: true } }),

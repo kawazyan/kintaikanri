@@ -55,6 +55,7 @@ model Staff {
   name         String
   email        String
   status       StaffStatus @default(ACTIVE)
+  excludeFromPayroll Boolean @default(false) // 給与計算(振込関係・粗利)から外す(社長本人など)
 
   // LINEグループ連携(未出勤アラートのLINE通知用)
   lineGroupId  String? @unique
@@ -1024,4 +1025,38 @@ model StaffExpenseRule {
   fromMonth String // この稼働月(YYYY-MM)から自動作成する
   createdAt DateTime @default(now())
   @@index([staffId])
+}
+
+// リファラルのみの人(スタッフ登録なし)への支払い。src/lib/referral-payee.ts
+model ReferralPayee {
+  id String @id @default(cuid())
+  name String
+  note String?
+  createdAt DateTime @default(now())
+}
+
+model ReferralPayeeRule {
+  id String @id @default(cuid())
+  payeeId String
+  kind String // FIXED / SHARE_STAFF / SHARE_EXTRA
+  label String
+  fromMonth String
+  payLagMonths Int
+  amount Int?
+  staffName String?
+  clientName String?
+  systemFee Int @default(10000)
+  sharePercent Int @default(50)
+  createdAt DateTime @default(now())
+  @@index([payeeId])
+}
+
+model ReferralPayeePaid {
+  id String @id @default(cuid())
+  ruleId String
+  workMonth String
+  amount Int
+  paidAt DateTime @default(now())
+  operatorName String?
+  @@unique([ruleId, workMonth])
 }
