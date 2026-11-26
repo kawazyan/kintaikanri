@@ -46,7 +46,7 @@ export default async function PaymentHistoryPage() {
 
 const card = "rounded-xl bg-gradient-to-b from-white to-slate-100 p-3 shadow-[0_2px_10px_rgba(0,0,0,0.08)]";
 
-// ── 申請支払の人：月ごとの受け取り＋振込の履歴 ─────────────────────────────
+// ── 申請支払の人：月ごとのお支払い状況＋振込の履歴 ─────────────────────────────
 async function RequestHistory({ staffId }: { staffId: string }) {
   const [months, transfers] = await Promise.all([
     computeMonthlyConfirmedList(staffId),
@@ -90,11 +90,11 @@ async function RequestHistory({ staffId }: { staffId: string }) {
     <>
       <div className="grid grid-cols-2 gap-2 text-slate-900">
         <div className="rounded-xl bg-emerald-50 p-3">
-          <div className="text-xs text-emerald-700">これまで受け取った額</div>
+          <div className="text-xs text-emerald-700">お支払い済みの報酬</div>
           <div className="mt-0.5 text-xl font-bold text-emerald-700">{yen(receivedTotal)}</div>
         </div>
         <div className="rounded-xl bg-slate-100 p-3">
-          <div className="text-xs text-slate-600">まだ受け取っていない額</div>
+          <div className="text-xs text-slate-600">未払いの報酬</div>
           <div className="mt-0.5 text-xl font-bold">{yen(notReceived)}</div>
         </div>
         <p className="col-span-2 text-xs text-slate-500">確定した報酬の合計 {yen(alloc.totalConfirmed)}</p>
@@ -120,21 +120,21 @@ async function RequestHistory({ staffId }: { staffId: string }) {
       )}
 
       <section>
-        <h2 className="mb-2 text-sm font-bold text-slate-700">月ごとの受け取り</h2>
+        <h2 className="mb-2 text-sm font-bold text-slate-700">月ごとのお支払い状況</h2>
         {rows.length === 0 ? (
           <p className="text-sm text-slate-500">確定した報酬はまだありません。</p>
         ) : (
           <ul className="flex flex-col divide-y divide-slate-200 rounded-xl bg-white text-sm shadow-[0_2px_10px_rgba(0,0,0,0.08)]">
             {rows.map((r) => (
               <li key={r.yearMonth} className="flex items-center justify-between gap-2 px-3 py-2.5">
-                <span className="w-16 font-semibold text-slate-900">{monthText(r.yearMonth)}</span>
+                <span className="w-24 font-semibold text-slate-900">{monthText(r.yearMonth)}</span>
                 <span className="flex-1 text-slate-600">{yen(r.confirmed)}</span>
                 {r.remaining === 0 && r.requesting === 0 ? (
-                  <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600">受け取り済み</span>
+                  <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600">振込済</span>
                 ) : r.remaining === 0 ? (
                   <span className="rounded bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-700">申請中</span>
                 ) : (
-                  <span className="rounded bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-700">残り{yen(r.remaining)}</span>
+                  <span className="rounded bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-700">未払い {yen(r.remaining)}</span>
                 )}
               </li>
             ))}
@@ -210,7 +210,7 @@ async function FixedHistory({ staffId }: { staffId: string }) {
   return (
     <>
       <div className="rounded-xl bg-emerald-50 p-3 text-slate-900">
-        <div className="text-xs text-emerald-700">これまで受け取った額</div>
+        <div className="text-xs text-emerald-700">お支払い済みの報酬</div>
         <div className="mt-0.5 text-xl font-bold text-emerald-700">{yen(receivedTotal)}</div>
       </div>
 
