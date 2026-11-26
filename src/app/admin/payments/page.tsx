@@ -96,7 +96,9 @@ export default async function AdminPaymentsPage({
     const requestingTotal = mine.filter((t) => t.status === "REQUESTING").reduce((sum, t) => sum + t.amount, 0);
     return {
       staff: { id: s.id, name: s.name, employeeCode: s.employeeCode },
-      alloc: allocateTransfersByMonth(monthlyLists[i].map((m) => ({ yearMonth: m.yearMonth, confirmed: m.confirmed })), paidTotal, requestingTotal),
+      // 申請中は月の残りから引かない(振込完了を押した時点で引く)。申請中の合計は pendingTotal で別に出す。
+      alloc: allocateTransfersByMonth(monthlyLists[i].map((m) => ({ yearMonth: m.yearMonth, confirmed: m.confirmed })), paidTotal, 0),
+      pendingTotal: requestingTotal,
       monthLabels: Object.fromEntries(monthlyLists[i].map((m) => [m.yearMonth, m.detail ? describeEarnings(m.detail).short : "-"])),
       workByMonth: Object.fromEntries(monthlyLists[i].map((m) => [m.yearMonth, m.work])),
       expenses: approvedExpenses.filter((e) => e.staffId === s.id).map((e) => ({ id: e.id, yearMonth: e.yearMonth, amount: e.amountTaxInclusive, category: e.category, expenseDate: e.expenseDate })),
@@ -251,11 +253,15 @@ export default async function AdminPaymentsPage({
                         <summary className="cursor-pointer font-semibold text-cyan-300">支払い可能額を見る</summary>
                         <dl className="mt-2 space-y-1">
                           <div className="flex justify-between gap-4"><dt>確定受取(累計・稼働分＋承認済みの経費)</dt><dd>{b.confirmedAmount.toLocaleString("ja-JP")}円</dd></div>
-                          <div className="flex justify-between gap-4"><dt>申請済み(申請中・振込済)</dt><dd>-{b.requestedAmount.toLocaleString("ja-JP")}円</dd></div>
+                          <div className="flex justify-between gap-4"><dt>振込済み</dt><dd>-{b.paidAmount.toLocaleString("ja-JP")}円</dd></div>
                           <div className="flex justify-between gap-4 border-t border-slate-700 pt-1 font-bold text-slate-100"><dt>支払い可能額</dt><dd>{b.availableAmount.toLocaleString("ja-JP")}円</dd></div>
                         </dl>
                         <div className="mt-2 border-t border-slate-800 pt-2 text-[11px] text-slate-500">
                           <div>参考(支払い可能額には含まれていません)。経費は、承認済みの分が確定受取に入っています。</div>
+                          <div className="flex justify-between gap-4"><span>申請中の合計(この申請を含む)</span><span>{b.pendingAmount.toLocaleString("ja-JP")}円</span></div>
+                          {b.pendingAmount > b.availableAmount && (
+                            <div className="mt-1 font-bold text-red-400">申請中の合計が支払い可能額を超えています。重複した申請がないか確認してください。</div>
+                          )}
                           <div className="flex justify-between gap-4"><span>今月の別途報酬(承認済・未振込)</span><span>{comp > 0 ? `${comp.toLocaleString("ja-JP")}円` : "-"}</span></div>
                         </div>
                       </details>

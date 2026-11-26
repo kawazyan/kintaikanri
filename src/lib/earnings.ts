@@ -230,26 +230,31 @@ export async function computeMonthlyConfirmedList(
 
 export type TransferBalance = {
   confirmedAmount: number; // lifetime confirmed earnings + 承認済みの経費
-  requestedAmount: number; // sum of REQUESTING + PAID transfer requests
-  availableAmount: number; // confirmedAmount - requestedAmount, floored at 0
+  paidAmount: number; // 振込完了(PAID)の申請額の合計
+  pendingAmount: number; // 申請中(REQUESTING)の申請額の合計。振り込める額からは引かない(振込完了を押した時点で引く)
+  requestedAmount: number; // paidAmount + pendingAmount(参考)
+  availableAmount: number; // confirmedAmount - paidAmount, floored at 0
+  requestableAmount: number; // 新たに申請できる額 = availableAmount - pendingAmount(0未満は0)。申請の上限(重複申請を防ぐ)
 };
 
 // Server-side source of truth for how much a staff member may still
-// request. Requests already marked PAID still count against the pool (the
-// money has been used), preventing the same confirmed reward from being
-// claimed twice (spec item 45).
+// request. 振込完了(PAID)になった申請だけを差し引く(2026-11-26 決定)。
+// 申請中(REQUESTING)は差し引かない: 申請しただけでは「今、振り込める額」は減らず、
+// 管理者が「振込完了」を押した時点で減る。申請中の合計は pendingAmount で別に返す。
 export async function computeTransferBalance(staffId: string): Promise<TransferBalance> {
   const [workAmount, expenseByMonth, requests] = await Promise.all([
     computeCumulativeConfirmedAmount(staffId),
     computeApprovedExpensesByMonth(staffId),
     prisma.transferRequest.findMany({
       where: { staffId, status: { in: ["REQUESTING", "PAID"] } },
-      select: { amount: true },
+      select: { amount: true, status: true },
     }),
   ]);
   // 承認済みの経費は稼働分と同じ「確定した受取」に足す(月ごとの一覧 computeMonthlyConfirmedList と同じ合計になる)。
   const confirmedAmount = workAmount + [...expenseByMonth.values()].reduce((sum, v) => sum + v, 0);
-  const requestedAmount = requests.reduce((sum, r) => sum + r.amount, 0);
-  const availableAmount = Math.max(0, confirmedAmount - requestedAmount);
-  return { confirmedAmount, requestedAmount, availableAmount };
+  const paidAmount = requests.filter((r) => r.status === "PAID").reduce((sum, r) => sum + r.amount, 0);
+  const pendingAmount = requests.filter((r) => r.status === "REQUESTING").reduce((sum, r) => sum + r.amount, 0);
+  const availableAmount = Math.max(0, confirmedAmount - paidAmount);
+  const requestableAmount = Math.max(0, availableAmount - pendingAmount);
+  return { confirmedAmount, paidAmount, pendingAmount, requestedAmount: paidAmount + pendingAmount, availableAmount, requestableAmount };
 }

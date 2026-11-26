@@ -31,8 +31,14 @@ export async function createTransferRequest(input: {
 
   // Recomputed server-side — never trust a client-supplied "available amount".
   const balance = await computeTransferBalance(staffId);
-  if (input.amount > balance.availableAmount) {
-    return { error: "振込申請可能額を超えています" };
+  // 申請の上限は、申請中の分を除いた残り(重複した申請で、振り込める額を超えないようにする)。
+  if (input.amount > balance.requestableAmount) {
+    return {
+      error:
+        balance.pendingAmount > 0
+          ? `新たに申請できる額(${balance.requestableAmount.toLocaleString("ja-JP")}円)を超えています。申請中の${balance.pendingAmount.toLocaleString("ja-JP")}円は含まれません`
+          : "振込申請可能額を超えています",
+    };
   }
 
   const created = await prisma.transferRequest.create({
@@ -49,7 +55,7 @@ export async function createTransferRequest(input: {
     category: "TRANSFER",
     action: "REQUEST_CREATED",
     summary: `振込を申請(申請 ${yenText(input.amount)}・希望振込日 ${input.desiredDate})`,
-    after: { amount: input.amount, desiredPaymentDate: input.desiredDate, availableBefore: balance.availableAmount },
+    after: { amount: input.amount, desiredPaymentDate: input.desiredDate, availableBefore: balance.availableAmount, requestableBefore: balance.requestableAmount },
     actor: { type: "STAFF" },
   });
 

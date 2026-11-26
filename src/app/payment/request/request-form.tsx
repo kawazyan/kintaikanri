@@ -20,7 +20,7 @@ const PRIMARY_BUTTON_SHADOW = {
     "inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 12px rgba(220,38,38,0.4), 0 2px 4px rgba(0,0,0,0.3)",
 };
 
-export function RequestForm({ availableAmount }: { availableAmount: number }) {
+export function RequestForm({ availableAmount, pendingAmount = 0, requestableAmount }: { availableAmount: number; pendingAmount?: number; requestableAmount: number }) {
   const router = useRouter();
   const [step, setStep] = useState<"input" | "confirm">("input");
   const [amount, setAmount] = useState<number | null>(null);
@@ -28,7 +28,7 @@ export function RequestForm({ availableAmount }: { availableAmount: number }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const amountValid = amount !== null && amount > 0 && amount <= availableAmount;
+  const amountValid = amount !== null && amount > 0 && amount <= requestableAmount;
 
   function goConfirm() {
     if (!amountValid || !desiredDate) {
@@ -61,6 +61,16 @@ export function RequestForm({ availableAmount }: { availableAmount: number }) {
         <p className="relative text-2xl font-black drop-shadow-[0_1px_3px_rgba(0,0,0,0.3)]">
           {availableAmount.toLocaleString("ja-JP")}円
         </p>
+        {pendingAmount > 0 && (
+          <p className="relative mt-1 text-sm font-bold text-amber-200">
+            うち 振込申請中 {pendingAmount.toLocaleString("ja-JP")}円
+          </p>
+        )}
+        {pendingAmount > 0 && (
+          <p className="relative mt-2 rounded-lg bg-white/10 px-3 py-2 text-sm font-bold text-white">
+            新たに申請できる額　{requestableAmount.toLocaleString("ja-JP")}円
+          </p>
+        )}
       </div>
 
       {step === "input" && (
@@ -71,10 +81,10 @@ export function RequestForm({ availableAmount }: { availableAmount: number }) {
           </label>
           <button
             type="button"
-            onClick={() => setAmount(availableAmount)}
+            onClick={() => setAmount(requestableAmount)}
             className="self-start rounded-lg bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-600 transition active:scale-95"
           >
-            全額申請する({availableAmount.toLocaleString("ja-JP")}円)
+            {pendingAmount > 0 ? "申請できる額をすべて申請する" : "全額申請する"}({requestableAmount.toLocaleString("ja-JP")}円)
           </button>
 
           <label className="flex flex-col gap-1 text-sm text-slate-600">

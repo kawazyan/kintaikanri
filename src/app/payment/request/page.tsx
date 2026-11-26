@@ -24,7 +24,7 @@ export default async function PaymentRequestPage() {
       <h1 className="bg-gradient-to-r from-red-600 to-slate-700 bg-clip-text text-xl font-bold text-transparent">
         振込申請
       </h1>
-      <RequestForm availableAmount={balance.availableAmount} />
+      <RequestForm availableAmount={balance.availableAmount} pendingAmount={balance.pendingAmount} requestableAmount={balance.requestableAmount} />
     </div>
     </main>
   );

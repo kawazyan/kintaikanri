@@ -258,6 +258,11 @@ export default async function ClockPage() {
                     <p className="payment-metal-yen payment-metal-yen--sub">
                       ¥{(transferBalance?.availableAmount ?? 0).toLocaleString("ja-JP")}
                     </p>
+                    {(transferBalance?.pendingAmount ?? 0) > 0 && (
+                      <p className="payment-metal-pending">
+                        うち 振込申請中　¥{(transferBalance?.pendingAmount ?? 0).toLocaleString("ja-JP")}
+                      </p>
+                    )}
                   </div>
                   <Link href="/payment/request" className="payment-metal-apply">
                     振込を申請する

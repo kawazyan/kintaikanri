@@ -560,6 +560,7 @@ body {
 .payment-metal-stack .payment-metal-kicker{font-size:14px;font-weight:800;color:#aab6c1;letter-spacing:0}
 .payment-metal-stack .payment-metal-yen{margin-top:8px;font-size:40px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .payment-metal-stack .payment-metal-yen--sub{font-size:32px}
+.payment-metal-pending{margin-top:8px;font-size:15px;font-weight:800;color:#f0c36a;font-variant-numeric:tabular-nums}
 .payment-metal-apply{display:flex;align-items:center;justify-content:center;gap:6px;margin:6px 0 12px;min-height:52px;border-radius:14px;background:linear-gradient(180deg,#ff3a43,#c50e22);color:#fff;font-size:17px;font-weight:900;box-shadow:0 4px 0 #7f1d1d,0 8px 18px rgba(239,43,53,.28)}
 .payment-metal-apply:active{transform:translateY(2px);box-shadow:0 2px 0 #7f1d1d}
 

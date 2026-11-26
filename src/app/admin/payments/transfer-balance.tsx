@@ -7,6 +7,7 @@ import { yearMonthLabel } from "@/lib/time";
 export type TransferBalanceView = {
   staff: { id: string; name: string; employeeCode: string };
   alloc: AllocationResult;
+  pendingTotal: number; // 申請中の合計(振り込める額からは引かない。振込完了を押した時点で引く)
   monthLabels: Record<string, string>; // yearMonth → 内訳の1行要約(1日あたり/月固定など)
   workByMonth: Record<string, number>; // yearMonth → 稼働分(経費を除く)
   // 承認済みの経費(稼働分と一緒に払う。月ごとの内訳に出す)
@@ -33,11 +34,12 @@ export function TransferBalanceSection({ views }: { views: TransferBalanceView[]
   return (
     <section className="kj-data-table-panel mb-8 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-lg shadow-black/40 backdrop-blur-sm">
       <h2 className="mb-1 text-sm font-semibold text-slate-300">申請支払の人の振込残高</h2>
-      <p className="mb-3 text-xs text-slate-500">今、振り込める額 ＝ 確定した受取（稼働分＋承認済みの経費） − 振込済み − 申請中。月ごとの払い済みは、古い月から順に当てはめた計算です。別途報酬は含みません。</p>
+      <p className="mb-3 text-xs text-slate-500">今、振り込める額 ＝ 確定した受取（稼働分＋承認済みの経費） − 振込済み。申請中の金額は、「振込完了」を押した時点で引かれます。月ごとの払い済みは、古い月から順に当てはめた計算で、全額払い済みの月は出しません。別途報酬は含みません。</p>
       <div className="space-y-4">
         {views.map((v) => {
           const a = v.alloc;
-          const rows = a.rows.filter((r) => r.confirmed > 0 || r.paid > 0 || r.requesting > 0);
+          // 全額払い済みの月は出さない(未払いが残っている月だけ)。
+          const rows = a.rows.filter((r) => r.remaining > 0);
           const mismatch = v.paidHistory.some((h) => h.paidAmount !== null && h.paidAmount !== h.amount);
           return (
             <div key={v.staff.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -62,10 +64,16 @@ export function TransferBalanceSection({ views }: { views: TransferBalanceView[]
                   <div className="text-sm font-semibold text-emerald-700">{yen(a.paidTotal)}</div>
                 </div>
                 <div className="rounded-lg bg-slate-100 px-2 py-1.5">
-                  <div className="text-[11px] text-slate-500">申請中</div>
-                  <div className={`text-sm font-semibold ${a.requestingTotal > 0 ? "text-amber-700" : "text-slate-500"}`}>{yen(a.requestingTotal)}</div>
+                  <div className="text-[11px] text-slate-500">申請中（まだ引かない）</div>
+                  <div className={`text-sm font-semibold ${v.pendingTotal > 0 ? "text-amber-700" : "text-slate-500"}`}>{yen(v.pendingTotal)}</div>
                 </div>
               </div>
+
+              {v.pendingTotal > a.available && (
+                <div className="mt-2 rounded-md border border-red-300 bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">
+                  申請中の合計（{yen(v.pendingTotal)}）が、今、振り込める額（{yen(a.available)}）を超えています。重複した申請がないか確認してください。
+                </div>
+              )}
 
               {a.overPaid > 0 && (
                 <div className="mt-2 rounded-md border border-red-300 bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">
@@ -103,13 +111,12 @@ export function TransferBalanceSection({ views }: { views: TransferBalanceView[]
                       </div>
                       <div className="mt-1 flex justify-end gap-3 text-[11px] text-slate-500">
                         <span>払い済み {yen(r.paid)}</span>
-                        {r.requesting > 0 && <span>申請中 {yen(r.requesting)}</span>}
                         <span className={r.remaining > 0 ? "whitespace-nowrap font-semibold text-slate-700" : ""}>残り {yen(r.remaining)}</span>
                       </div>
                     </li>
                   );
                 })}
-                {rows.length === 0 && <li className="py-3 text-center text-xs text-slate-500">確定した受取がありません</li>}
+                {rows.length === 0 && <li className="py-3 text-center text-xs text-slate-500">未払いの月はありません（確定した受取は、すべて振込済みです）</li>}
               </ul>
 
               <details className="group mt-2 text-xs text-slate-400">
