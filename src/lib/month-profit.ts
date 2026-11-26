@@ -5,6 +5,7 @@ import type { StatementSnapshot } from "@/lib/invoice-draft";
 import { OUTSOURCING_CATEGORY } from "@/lib/company-expense";
 import { normName } from "@/lib/billing-terms";
 import { staffBillableExTax } from "@/lib/invoice-draft";
+import { loadPayeeRows } from "@/lib/referral-payee";
 
 // 請求管理の「月の売上・支払い予定・粗利」。
 // 売上 = その月(請求の対象月)の送付済みの請求。訂正版があるときは、送付済みの一番新しい版だけを数える。
@@ -62,6 +63,8 @@ export async function loadMonthProfits(months: string[]): Promise<Map<string, Mo
     prisma.compensationRequest.findMany({ where: { yearMonth: { in: months }, status: { in: ["SUBMITTED", "APPROVED"] } }, select: { yearMonth: true, staffId: true, amountTaxInclusive: true } }),
   ]);
   const latest = latestSent(sent);
+  // リファラルのみの人(松浦・十河)への支払い。稼働月ごとに「別途報酬」に入れる。計算できない月は、金額が決まっていない扱い。
+  const payeeRows = await loadPayeeRows().catch(() => []);
   for (const ym of months) {
     const inv = latest.filter((i) => i.yearMonth === ym);
     const summaries = await loadStaffMonthSummaries(staff, ym);
@@ -76,7 +79,11 @@ export async function loadMonthProfits(months: string[]): Promise<Map<string, Mo
     const salesExTax = inv.reduce((a, i) => a + i.subtotalExTax, 0);
     const adCost = inv.reduce((a, i) => a + adCostOf(i.statement), 0);
     const outsourcing = outs.filter((o) => o.yearMonth === ym).reduce((a, o) => a + o.amount, 0);
-    const bonus = comps.filter((c) => c.yearMonth === ym).reduce((a, c) => a + c.amountTaxInclusive, 0);
+    const payeeOfMonth = payeeRows.filter((p) => p.workMonth === ym);
+    for (const p of payeeOfMonth) if (p.amount === null) unknown.push(`${p.payeeName}（${p.label}・計算待ち）`);
+    const bonus =
+      comps.filter((c) => c.yearMonth === ym).reduce((a, c) => a + c.amountTaxInclusive, 0) +
+      payeeOfMonth.reduce((a, p) => a + (p.amount ?? 0), 0);
     const payTotal = staffPay + bonus + adCost + outsourcing;
     // スタッフ別の売上: 請求内訳書のスタッフの行を、勤怠の名前(空白を除いて一致)に振り分ける。
     const salesBy = new Map<string, number>();
